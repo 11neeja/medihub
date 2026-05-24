@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Note" ADD COLUMN     "position" INTEGER NOT NULL DEFAULT 0;

@@ -1,0 +1,339 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      String   @default("user")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  posts            Post[]     @relation("AuthorPosts")
+  likedPosts       Post[]     @relation("PostLikes")
+  bookmarkedPosts  Post[]     @relation("PostBookmarks")
+  comments         Comment[]  @relation("AuthorComments")
+  notes            Note[]
+  tasks            Task[]
+  documents        Document[]
+  createdEvents    Event[]    @relation("EventCreator")
+  registeredEvents Event[]    @relation("EventRegistrations")
+
+  conversationMembers ConversationMember[]
+  chatMessages        ChatMessage[]
+  groupJoinRequests   GroupJoinRequest[]
+  notifications       Notification[]
+  aiChatMessages      AiChatMessage[]
+  opportunities       Opportunity[]
+  applications        Application[]
+  communities          CommunityMember[]
+  createdCommunities   Community[]        @relation("CommunityCreator")
+  threads              Thread[]
+  threadReplies        ThreadReply[]
+  threadVotes          ThreadVote[]
+}
+
+model Conversation {
+  id        String   @id @default(cuid())
+  name      String?
+  isGroup   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members      ConversationMember[]
+  messages     ChatMessage[]
+  joinRequests GroupJoinRequest[]
+}
+
+model ConversationMember {
+  id             String   @id @default(cuid())
+  conversationId String
+  userId         String
+  isAdmin        Boolean  @default(false)
+  isPinned       Boolean  @default(false)
+  joinedAt       DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+}
+
+model ChatMessage {
+  id             String   @id @default(cuid())
+  conversationId String
+  senderId       String
+  text           String?
+  fileName       String?
+  fileUrl        String?
+  fileType       String?
+  documentId     String?
+  createdAt      DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation(fields: [senderId], references: [id])
+}
+
+model GroupJoinRequest {
+  id             String   @id @default(cuid())
+  conversationId String
+  userId         String
+  status         String   @default("pending")
+  createdAt      DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id])
+
+  @@unique([conversationId, userId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  title     String
+  message   String
+  link      String?
+  isRead    Boolean  @default(false)
+  metadata  String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Post {
+  id        String   @id @default(cuid())
+  content   String
+  tags      String[]
+  imageUrl  String?
+  linkUrl   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  authorId       String
+  author         User      @relation("AuthorPosts", fields: [authorId], references: [id])
+  likes          User[]    @relation("PostLikes")
+  comments       Comment[]
+  repostedFromId String?
+  repostedFrom   Post?     @relation("PostReposts", fields: [repostedFromId], references: [id])
+  reposts        Post[]    @relation("PostReposts")
+  bookmarkedBy   User[]    @relation("PostBookmarks")
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  authorId String
+  author   User   @relation("AuthorComments", fields: [authorId], references: [id])
+  postId   String
+  post     Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+}
+
+model Note {
+  id        String   @id @default(cuid())
+  title     String
+  subject   String
+  tags      String[]
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId String
+  user   User        @relation(fields: [userId], references: [id])
+  blocks NoteBlock[]
+}
+
+model NoteBlock {
+  id      String  @id @default(cuid())
+  type    String
+  text    String  @default("")
+  checked Boolean @default(false)
+  order   Int     @default(0)
+
+  noteId String
+  note   Note   @relation(fields: [noteId], references: [id], onDelete: Cascade)
+}
+
+model Task {
+  id        String   @id @default(cuid())
+  title     String
+  completed Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+}
+
+model Event {
+  id               String   @id @default(cuid())
+  title            String
+  organizer        String?
+  date             String
+  time             String?
+  location         String?
+  mode             String   @default("Online")
+  type             String   @default("Workshop")
+  shortDescription String?
+  longDescription  String?
+  imageUrl         String?
+  featured         Boolean  @default(false)
+  capacity         Int      @default(100)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  createdById     String?
+  createdBy       User?  @relation("EventCreator", fields: [createdById], references: [id])
+  registeredUsers User[] @relation("EventRegistrations")
+}
+
+model Document {
+  id            String   @id @default(cuid())
+  name          String
+  type          String   @default("other")
+  source        String   @default("assistant")
+  filePath      String
+  mimeType      String
+  size          Int
+  extractedText String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+}
+
+model AiChatMessage {
+  id                String   @id @default(cuid())
+  sender            String   // "user" or "assistant"
+  text              String
+  relatedDocumentId String?
+  createdAt         DateTime @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Opportunity {
+  id           String   @id @default(cuid())
+  roleTitle    String
+  department   String
+  type         String   @default("internship")
+  location     String
+  description  String
+  requirements String[]
+  duration     String?
+  postedBy     String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  userId       String
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  applications Application[]
+}
+
+model Application {
+  id            String   @id @default(cuid())
+  status        String   @default("Applied")
+  appliedAt     DateTime @default(now())
+
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  opportunityId String
+  opportunity   Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, opportunityId])
+}
+
+// ── Community / Groups ──────────────────────────────────
+
+model Community {
+  id          String   @id @default(cuid())
+  name        String
+  description String
+  category    String   @default("General")
+  emoji       String   @default("💬")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  creatorId String
+  creator   User              @relation("CommunityCreator", fields: [creatorId], references: [id])
+  members   CommunityMember[]
+  threads   Thread[]
+  resources CommunityResource[]
+}
+
+model CommunityMember {
+  id          String   @id @default(cuid())
+  communityId String
+  userId      String
+  role        String   @default("member") // creator, admin, member
+  joinedAt    DateTime @default(now())
+
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([communityId, userId])
+}
+
+model Thread {
+  id          String   @id @default(cuid())
+  title       String
+  content     String   @default("")
+  tags        String[]
+  isPinned    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  communityId String
+  community   Community     @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  authorId    String
+  author      User          @relation(fields: [authorId], references: [id])
+  replies     ThreadReply[]
+  votes       ThreadVote[]
+}
+
+model ThreadReply {
+  id        String   @id @default(cuid())
+  content   String
+  createdAt DateTime @default(now())
+
+  threadId String
+  thread   Thread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id])
+}
+
+model ThreadVote {
+  id       String @id @default(cuid())
+  value    Int    // +1 or -1
+  threadId String
+  userId   String
+
+  thread Thread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([threadId, userId])
+}
+
+model CommunityResource {
+  id          String   @id @default(cuid())
+  name        String
+  fileUrl     String
+  fileType    String   @default("pdf")
+  downloads   Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  communityId String
+  community   Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  uploadedById String
+}

@@ -1,0 +1,512 @@
+import axios from 'axios'
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
+
+export const api = axios.create({
+  baseURL: API_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+})
+
+// Request interceptor for adding auth token
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token')
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
+    return config
+  },
+  (error) => Promise.reject(error)
+)
+
+// ─── Health Check ──────────────────────────────────────────────────
+export const checkBackendHealth = async (): Promise<{
+  status: string
+  server: boolean
+  database: string
+}> => {
+  const res = await api.get('/health')
+  return res.data
+}
+
+// ─── Auth API ──────────────────────────────────────────────────────
+export const loginAPI = async (email: string, password: string) => {
+  const res = await api.post('/users/login', { email, password })
+  return res.data
+}
+
+export const registerAPI = async (name: string, email: string, password: string) => {
+  const res = await api.post('/users/register', { name, email, password })
+  return res.data
+}
+
+export const getMeAPI = async () => {
+  const res = await api.get('/users/me')
+  return res.data
+}
+
+// ─── Posts API ──────────────────────────────────────────────────────
+export const getPostsAPI = async () => {
+  const res = await api.get('/posts')
+  return res.data
+}
+
+export const createPostAPI = async (data: {
+  content: string
+  tags?: string[]
+  linkUrl?: string
+  image?: File
+}) => {
+  const formData = new FormData()
+  formData.append('content', data.content)
+  if (data.tags) formData.append('tags', JSON.stringify(data.tags))
+  if (data.linkUrl) formData.append('linkUrl', data.linkUrl)
+  if (data.image) formData.append('image', data.image)
+  const res = await api.post('/posts', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+  return res.data
+}
+
+export const toggleLikeAPI = async (postId: string) => {
+  const res = await api.put(`/posts/${postId}/like`)
+  return res.data
+}
+
+export const toggleBookmarkAPI = async (postId: string) => {
+  const res = await api.put(`/posts/${postId}/bookmark`)
+  return res.data
+}
+
+export const addCommentAPI = async (postId: string, content: string) => {
+  const res = await api.post(`/posts/${postId}/comments`, { content })
+  return res.data
+}
+
+export const deleteCommentAPI = async (postId: string, commentId: string) => {
+  const res = await api.delete(`/posts/${postId}/comments/${commentId}`)
+  return res.data
+}
+
+export const repostAPI = async (postId: string, content?: string) => {
+  const res = await api.post(`/posts/${postId}/repost`, { content })
+  return res.data
+}
+
+export const deletePostAPI = async (postId: string) => {
+  const res = await api.delete(`/posts/${postId}`)
+  return res.data
+}
+
+// ─── Notes API ─────────────────────────────────────────────────────
+export const getNotesAPI = async () => {
+  const res = await api.get('/notes')
+  return res.data
+}
+
+export const createNoteAPI = async (data: {
+  title: string
+  subject: string
+  blocks?: any[]
+  tags?: string[]
+}) => {
+  const res = await api.post('/notes', data)
+  return res.data
+}
+
+export const updateNoteAPI = async (
+  id: string,
+  data: { title?: string; subject?: string; blocks?: any[]; tags?: string[] }
+) => {
+  const res = await api.put(`/notes/${id}`, data)
+  return res.data
+}
+
+export const deleteNoteAPI = async (id: string) => {
+  const res = await api.delete(`/notes/${id}`)
+  return res.data
+}
+
+export const reorderNotesAPI = async (noteIds: string[]) => {
+  const res = await api.put('/notes/reorder', { noteIds })
+  return res.data
+}
+
+// ─── Subjects API ──────────────────────────────────────────────────
+export const getSubjectsAPI = async (): Promise<string[]> => {
+  const res = await api.get('/notes/subjects')
+  return res.data
+}
+
+export const createSubjectAPI = async (name: string) => {
+  const res = await api.post('/notes/subjects', { name })
+  return res.data
+}
+
+export const renameSubjectAPI = async (oldName: string, newName: string) => {
+  const res = await api.put(`/notes/subjects/${encodeURIComponent(oldName)}`, { newName })
+  return res.data
+}
+
+export const deleteSubjectAPI = async (name: string) => {
+  const res = await api.delete(`/notes/subjects/${encodeURIComponent(name)}`)
+  return res.data
+}
+
+// ─── Documents API ─────────────────────────────────────────────────
+export const getDocumentsAPI = async (source?: 'assistant' | 'notebook') => {
+  const params = source ? `?source=${source}` : ''
+  const res = await api.get(`/documents${params}`)
+  return res.data
+}
+
+export const uploadDocumentAPI = async (data: {
+  name: string
+  type: string
+  file: File
+  source?: 'assistant' | 'notebook'
+}) => {
+  const formData = new FormData()
+  formData.append('file', data.file)
+  formData.append('name', data.name)
+  formData.append('type', data.type)
+  if (data.source) formData.append('source', data.source)
+  const res = await api.post('/documents', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+  return res.data
+}
+
+export const downloadDocumentAPI = async (id: string) => {
+  const res = await api.get(`/documents/${id}/download`)
+  return res.data
+}
+
+export const deleteDocumentAPI = async (id: string) => {
+  const res = await api.delete(`/documents/${id}`)
+  return res.data
+}
+
+// ─── AI Assistant API ──────────────────────────────────────────────
+export const aiChatAPI = async (data: {
+  message: string
+  documentIds?: string[]
+  chatHistory?: { sender: string; text: string }[]
+}) => {
+  const res = await api.post('/ai/chat', data)
+  return res.data
+}
+
+export const aiSummarizeAPI = async (documentId: string) => {
+  const res = await api.post('/ai/summarize', { documentId })
+  return res.data
+}
+
+export const getAiMessagesAPI = async () => {
+  const res = await api.get('/ai/messages')
+  return res.data
+}
+
+export const saveAiMessageAPI = async (data: {
+  sender: string
+  text: string
+  relatedDocumentId?: string
+}) => {
+  const res = await api.post('/ai/messages', data)
+  return res.data
+}
+
+export const clearAiMessagesAPI = async () => {
+  const res = await api.delete('/ai/messages')
+  return res.data
+}
+
+// ─── Tasks API ─────────────────────────────────────────────────────
+export const getTasksAPI = async () => {
+  const res = await api.get('/tasks')
+  return res.data
+}
+
+export const createTaskAPI = async (title: string) => {
+  const res = await api.post('/tasks', { title })
+  return res.data
+}
+
+export const toggleTaskAPI = async (id: string) => {
+  const res = await api.put(`/tasks/${id}/toggle`)
+  return res.data
+}
+
+export const deleteTaskAPI = async (id: string) => {
+  const res = await api.delete(`/tasks/${id}`)
+  return res.data
+}
+
+// ─── Events API ────────────────────────────────────────────────────
+export const getEventsAPI = async () => {
+  const res = await api.get('/events')
+  return res.data
+}
+
+export const getEventbriteEventsAPI = async () => {
+  const res = await api.get('/events/eventbrite')
+  return res.data
+}
+
+export const refreshEventbriteCacheAPI = async () => {
+  const res = await api.post('/events/eventbrite/refresh')
+  return res.data
+}
+
+export const createEventAPI = async (data: any) => {
+  const res = await api.post('/events', data)
+  return res.data
+}
+
+export const toggleEventRegistrationAPI = async (id: string) => {
+  const res = await api.put(`/events/${id}/register`)
+  return res.data
+}
+
+// ─── Chat API ──────────────────────────────────────────────────────
+export const getConversationsAPI = async () => {
+  const res = await api.get('/chat/conversations')
+  return res.data
+}
+
+export const getMessagesAPI = async (conversationId: string) => {
+  const res = await api.get(`/chat/conversations/${conversationId}/messages`)
+  return res.data
+}
+
+export const sendMessageAPI = async (conversationId: string, text: string) => {
+  const res = await api.post(`/chat/conversations/${conversationId}/messages`, { text })
+  return res.data
+}
+
+export const sendFileMessageAPI = async (conversationId: string, file: File) => {
+  const formData = new FormData()
+  formData.append('file', file)
+  const res = await api.post(`/chat/conversations/${conversationId}/files`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+  return res.data
+}
+
+export const createPrivateConversationAPI = async (userId: string) => {
+  const res = await api.post('/chat/conversations/private', { userId })
+  return res.data
+}
+
+export const createGroupConversationAPI = async (name: string, memberIds: string[]) => {
+  const res = await api.post('/chat/conversations/group', { name, memberIds })
+  return res.data
+}
+
+export const togglePinConversationAPI = async (conversationId: string) => {
+  const res = await api.put(`/chat/conversations/${conversationId}/pin`)
+  return res.data
+}
+
+export const deleteConversationAPI = async (conversationId: string) => {
+  const res = await api.delete(`/chat/conversations/${conversationId}`)
+  return res.data
+}
+
+export const addGroupMembersAPI = async (conversationId: string, memberIds: string[]) => {
+  const res = await api.post(`/chat/conversations/${conversationId}/members`, { memberIds })
+  return res.data
+}
+
+export const removeGroupMemberAPI = async (conversationId: string, userId: string) => {
+  const res = await api.delete(`/chat/conversations/${conversationId}/members/${userId}`)
+  return res.data
+}
+
+export const searchUsersAPI = async (query: string) => {
+  const res = await api.get(`/chat/users/search?q=${encodeURIComponent(query)}`)
+  return res.data
+}
+
+export const getSharedFilesAPI = async (conversationId: string) => {
+  const res = await api.get(`/chat/conversations/${conversationId}/files`)
+  return res.data
+}
+
+export const handleJoinRequestAPI = async (requestId: string, action: 'approve' | 'reject') => {
+  const res = await api.put(`/chat/join-requests/${requestId}`, { action })
+  return res.data
+}
+
+// ─── Notifications API ─────────────────────────────────────────────
+export const getNotificationsAPI = async () => {
+  const res = await api.get('/notifications')
+  return res.data
+}
+
+export const markNotificationReadAPI = async (id: string) => {
+  const res = await api.put(`/notifications/${id}/read`)
+  return res.data
+}
+
+export const markAllNotificationsReadAPI = async () => {
+  const res = await api.put('/notifications/read-all')
+  return res.data
+}
+
+export const clearAllNotificationsAPI = async () => {
+  const res = await api.delete('/notifications')
+  return res.data
+}
+
+// ─── News API ──────────────────────────────────────────────────────
+export const getNewsAPI = async (params?: {
+  specialty?: string
+  search?: string
+  sort?: string
+}) => {
+  const query = new URLSearchParams()
+  if (params?.specialty && params.specialty !== 'All') query.set('specialty', params.specialty)
+  if (params?.search) query.set('search', params.search)
+  if (params?.sort) query.set('sort', params.sort)
+  const qs = query.toString()
+  const res = await api.get(`/news${qs ? `?${qs}` : ''}`)
+  return res.data
+}
+
+export const getTrendingTopicsAPI = async () => {
+  const res = await api.get('/news/trending')
+  return res.data
+}
+
+// ─── Opportunities API ─────────────────────────────────────────────
+export const getOpportunitiesAPI = async (params?: {
+  department?: string
+  location?: string
+  type?: string
+}) => {
+  const query = new URLSearchParams()
+  if (params?.department && params.department !== 'All') query.set('department', params.department)
+  if (params?.location && params.location !== 'All') query.set('location', params.location)
+  if (params?.type && params.type !== 'all') query.set('type', params.type)
+  const qs = query.toString()
+  const res = await api.get(`/opportunities${qs ? `?${qs}` : ''}`)
+  return res.data
+}
+
+export const createOpportunityAPI = async (data: {
+  roleTitle: string
+  department: string
+  type: string
+  location: string
+  description: string
+  requirements: string[]
+  duration: string
+  postedBy: string
+}) => {
+  const res = await api.post('/opportunities', data)
+  return res.data
+}
+
+export const applyToOpportunityAPI = async (id: string) => {
+  const res = await api.post(`/opportunities/${id}/apply`)
+  return res.data
+}
+
+export const getMyApplicationsAPI = async () => {
+  const res = await api.get('/opportunities/applications')
+  return res.data
+}
+
+// ── Groups / Communities ────────────────────────────────
+
+export const getCommunitiesAPI = async () => {
+  const res = await api.get('/groups')
+  return res.data
+}
+
+export const createCommunityAPI = async (data: { name: string; description: string; category?: string; emoji?: string }) => {
+  const res = await api.post('/groups', data)
+  return res.data
+}
+
+export const updateCommunityAPI = async (id: string, data: { name?: string; description?: string; category?: string; emoji?: string }) => {
+  const res = await api.put(`/groups/${id}`, data)
+  return res.data
+}
+
+export const joinCommunityAPI = async (id: string) => {
+  const res = await api.post(`/groups/${id}/join`)
+  return res.data
+}
+
+export const leaveCommunityAPI = async (id: string) => {
+  const res = await api.delete(`/groups/${id}/leave`)
+  return res.data
+}
+
+export const getCommunityMembersAPI = async (id: string) => {
+  const res = await api.get(`/groups/${id}/members`)
+  return res.data
+}
+
+export const addCommunityMembersAPI = async (id: string, userIds: string[]) => {
+  const res = await api.post(`/groups/${id}/members`, { userIds })
+  return res.data
+}
+
+export const removeCommunityMemberAPI = async (id: string, userId: string) => {
+  const res = await api.delete(`/groups/${id}/members/${userId}`)
+  return res.data
+}
+
+export const getThreadsAPI = async (communityId: string, sort: string = 'hot') => {
+  const res = await api.get(`/groups/${communityId}/threads?sort=${sort}`)
+  return res.data
+}
+
+export const createThreadAPI = async (communityId: string, data: { title: string; content?: string; tags?: string[] }) => {
+  const res = await api.post(`/groups/${communityId}/threads`, data)
+  return res.data
+}
+
+export const voteThreadAPI = async (threadId: string, value: number) => {
+  const res = await api.put(`/groups/threads/${threadId}/vote`, { value })
+  return res.data
+}
+
+export const togglePinThreadAPI = async (threadId: string) => {
+  const res = await api.put(`/groups/threads/${threadId}/pin`)
+  return res.data
+}
+
+export const getThreadRepliesAPI = async (threadId: string) => {
+  const res = await api.get(`/groups/threads/${threadId}/replies`)
+  return res.data
+}
+
+export const createThreadReplyAPI = async (threadId: string, content: string) => {
+  const res = await api.post(`/groups/threads/${threadId}/replies`, { content })
+  return res.data
+}
+
+export const getCommunityResourcesAPI = async (communityId: string) => {
+  const res = await api.get(`/groups/${communityId}/resources`)
+  return res.data
+}
+
+export const uploadCommunityResourceAPI = async (communityId: string, file: File) => {
+  const formData = new FormData()
+  formData.append('file', file)
+  const res = await api.post(`/groups/${communityId}/resources`, formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+  return res.data
+}
+
+export const downloadCommunityResourceAPI = async (resourceId: string) => {
+  const res = await api.put(`/groups/resources/${resourceId}/download`)
+  return res.data
+}
+
+export default api
