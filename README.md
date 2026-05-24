@@ -2,22 +2,6 @@
 
 MediHub is a full-stack medical learning and collaboration platform built with Next.js 14, Express, Prisma, PostgreSQL, and Socket.IO.
 
-<details open>
-<summary>Quick navigation</summary>
-
-- [Overview](#overview)
-- [What changed](#what-changed)
-- [Architecture](#architecture)
-- [Feature tour](#feature-tour)
-- [UI tour](#ui-tour)
-- [Project structure](#project-structure)
-- [Local setup](#local-setup)
-- [Environment variables](#environment-variables)
-- [Scripts](#scripts)
-- [API surface](#api-surface)
-- [Database and Prisma](#database-and-prisma)
-- [Troubleshooting](#troubleshooting)
-
 </details>
 
 ## Overview 🔎
