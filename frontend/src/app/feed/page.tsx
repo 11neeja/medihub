@@ -591,20 +591,19 @@ export default function FeedPage() {
 
   return (
     <div className="min-h-screen gradient-subtle">
-      {/* Header */}
-      <div className="card border-b sticky top-0 z-10">
-        <div className="mx-auto px-6 py-4">
-          <h1 className="heading-2 fade-in-up">Medical Feed</h1>
+      <div className="page-container">
+        {/* Page Header */}
+        <div className="card rounded-3xl p-6 md:p-8 mb-6 animate-section">
+          <p className="label mb-2">Community</p>
+          <h1 className="heading-2 mb-2 fade-in-up">Medical Feed</h1>
           <p className="body-md fade-in-delay-1">Share insights with your MediHub community</p>
         </div>
-      </div>
 
-      <div className="mx-auto px-6 py-6">
-        <div className="flex gap-6">
+        <div className="flex flex-col lg:flex-row gap-6">
           {/* Left Sidebar */}
-          <ResizableSidebar side="left" defaultWidth={280} minWidth={200} maxWidth={400}>
+          <ResizableSidebar side="left" defaultWidth={280} minWidth={200} maxWidth={400} responsive>
             <aside className="w-full">
-              <div className="card p-6 sticky top-24">
+              <div className="card p-6 lg:sticky lg:top-20">
                 <div className="text-center mb-6 pb-6 border-b border-[var(--color-border-light)]">
                   <div className="mx-auto mb-3 ring-2 ring-[var(--color-border-light)] rounded-full w-fit hover-scale transition-transform">
                     <UserAvatar userId={currentUserId} name={currentUserName} size={80} />
@@ -789,9 +788,9 @@ export default function FeedPage() {
           </main>
 
           {/* Right Sidebar */}
-          <ResizableSidebar side="right" defaultWidth={280} minWidth={200} maxWidth={400}>
+          <ResizableSidebar side="right" defaultWidth={280} minWidth={200} maxWidth={400} responsive>
             <aside className="w-full">
-              <div className="sticky top-24 space-y-6">
+              <div className="lg:sticky lg:top-20 space-y-6">
                 {/* Trending Topics */}
                 <div className="card p-6">
                   <h2 className="heading-3 mb-4 flex items-center gap-2">

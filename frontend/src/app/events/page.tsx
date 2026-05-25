@@ -325,61 +325,76 @@ export default function EventsPage() {
 
   return (
     <div className="min-h-screen gradient-subtle">
-      {/* Page Header */}
-      <div className="card border-b">
-        <div className="mx-auto px-6 py-8">
-          <div className="flex justify-between items-start">
+      <div className="page-container">
+        {/* Page Header */}
+        <div className="card rounded-3xl p-6 md:p-8 mb-6 animate-section">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 md:gap-6">
             <div className="fade-in-up">
-              <h1 className="heading-2 mb-3">Medical Events & Conferences</h1>
+              <p className="label mb-2">Events</p>
+              <h1 className="heading-2 mb-2">Medical Events & Conferences</h1>
               <p className="body-md">
                 Discover, host, and register for medical workshops, conferences, fests, and hackathons
               </p>
               {lastUpdated && (
-                <p className="text-xs text-[var(--color-text-muted)] mt-1 flex items-center gap-1">
-                  <Clock className="w-3 h-3" /> Events auto-refresh every 24 hrs &middot; Last updated: {lastUpdated.toLocaleString()}
+                <p className="text-xs text-[var(--color-text-muted)] mt-3 flex items-center gap-1">
+                  <Clock className="w-3 h-3" /> Auto-refresh every 24 hrs &middot; Last updated: {lastUpdated.toLocaleString()}
                   {isCached && <span className="ml-1 text-orange-500 font-medium">(cached)</span>}
                 </p>
               )}
             </div>
-            <div className="flex gap-3 fade-in-delay-1">
-              <button onClick={handleRefreshEventbrite} disabled={isRefreshing} className="btn-secondary px-5 py-3 inline-flex items-center gap-2 disabled:opacity-50" title="Force refresh Eventbrite events">
-                <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <div className="flex flex-wrap gap-3 fade-in-delay-1">
+              <button onClick={handleRefreshEventbrite} disabled={isRefreshing} className="btn-secondary inline-flex items-center gap-2 !py-2.5 disabled:opacity-50" title="Force refresh Eventbrite events">
+                <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
                 Refresh
               </button>
-              <button onClick={() => setShowHostForm(!showHostForm)} className="btn-primary px-8 py-3 inline-flex items-center gap-2">
-                <Plus className="w-5 h-5" />
+              <button onClick={() => setShowHostForm(!showHostForm)} className="btn-primary inline-flex items-center gap-2 !py-2.5">
+                <Plus className="w-4 h-4" />
                 Host Event
               </button>
             </div>
           </div>
         </div>
-      </div>
 
       {/* Host Event Form Modal */}
       {showHostForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 z-50 flex items-center justify-center p-4 fade-in">
-              <div className="card max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                <div className="sticky top-0 border-b px-8 py-6 flex justify-between items-center bg-[var(--color-surface-white)]">
-                  <h2 className="heading-2">Host New Event</h2>
-                  <button onClick={() => setShowHostForm(false)} className="text-slate-500 hover:text-[var(--color-text-primary)] transition p-2 rounded-xl">
-                    <X className="w-6 h-6" />
-                  </button>
-                </div>
+        <div
+          className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 fade-in"
+          onClick={() => setShowHostForm(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="card rounded-3xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-premium-xl overflow-hidden fade-in-up"
+          >
+            {/* Modal Header */}
+            <div className="flex items-start justify-between gap-4 px-6 md:px-8 pt-6 md:pt-7 pb-5 border-b border-[var(--color-border-light)]">
+              <div>
+                <p className="label mb-2">New Event</p>
+                <h2 className="heading-2 mb-1">Host an event</h2>
+                <p className="body-md">Add a workshop, conference, webinar, or other medical event</p>
+              </div>
+              <button
+                onClick={() => setShowHostForm(false)}
+                className="-mr-2 -mt-1 p-2 rounded-xl text-slate-400 hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-muted)] transition"
+                aria-label="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
 
-                <form onSubmit={handleCreateEvent} className="p-8 space-y-6">
-                  <div>
-                    <label className="block text-sm font-semibold text-[var(--color-text-primary)] mb-2">Event Title *</label>
-                    <input type="text" required value={newEvent.title} onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })} className="input" placeholder="e.g., Advanced Surgical Techniques Workshop" />
-                  </div>
+            {/* Modal Body (scrollable) */}
+            <form id="host-event-form" onSubmit={handleCreateEvent} className="flex-1 overflow-y-auto px-6 md:px-8 py-6 space-y-5">
+              <div>
+                <label className="block text-sm font-semibold text-[var(--color-text-primary)] mb-2">Event title <span className="text-red-500">*</span></label>
+                <input type="text" required value={newEvent.title} onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })} className="input" placeholder="e.g., Advanced Surgical Techniques Workshop" />
+              </div>
 
-              <div className="grid md:grid-cols-2 gap-6">
+              <div className="grid md:grid-cols-2 gap-5">
                 <div>
-                  <label className="block text-sm font-semibold text-[var(--color-text-primary)] mb-2">Organizer *</label>
+                  <label className="block text-sm font-semibold text-[var(--color-text-primary)] mb-2">Organizer <span className="text-red-500">*</span></label>
                   <input type="text" required value={newEvent.organizer} onChange={(e) => setNewEvent({ ...newEvent, organizer: e.target.value })} className="input" placeholder="Your name or organization" />
                 </div>
-
                 <div>
-                  <label className="block text-sm font-semibold text-[var(--color-text-primary)] mb-2">Event Type *</label>
+                  <label className="block text-sm font-semibold text-[var(--color-text-primary)] mb-2">Event type <span className="text-red-500">*</span></label>
                   <select value={newEvent.type} onChange={(e) => setNewEvent({ ...newEvent, type: e.target.value as Event['type'] })} className="input">
                     <option value="Workshop">Workshop</option>
                     <option value="Conference">Conference</option>
@@ -390,26 +405,24 @@ export default function EventsPage() {
                 </div>
               </div>
 
-              <div className="grid md:grid-cols-2 gap-6">
+              <div className="grid md:grid-cols-2 gap-5">
                 <div>
-                  <label className="block text-sm font-semibold text-[var(--color-text-primary)] mb-2">Date *</label>
+                  <label className="block text-sm font-semibold text-[var(--color-text-primary)] mb-2">Date <span className="text-red-500">*</span></label>
                   <input type="date" required value={newEvent.date} onChange={(e) => setNewEvent({ ...newEvent, date: e.target.value })} className="input" />
                 </div>
-
                 <div>
-                  <label className="block text-sm font-semibold text-[var(--color-text-primary)] mb-2">Time *</label>
-                  <input type="text" required value={newEvent.time} onChange={(e) => setNewEvent({ ...newEvent, time: e.target.value })} className="input" placeholder="e.g., 09:00 AM - 05:00 PM" />
+                  <label className="block text-sm font-semibold text-[var(--color-text-primary)] mb-2">Time <span className="text-red-500">*</span></label>
+                  <input type="text" required value={newEvent.time} onChange={(e) => setNewEvent({ ...newEvent, time: e.target.value })} className="input" placeholder="09:00 AM – 05:00 PM" />
                 </div>
               </div>
 
-              <div className="grid md:grid-cols-2 gap-6">
+              <div className="grid md:grid-cols-2 gap-5">
                 <div>
-                  <label className="block text-sm font-semibold text-[var(--color-text-primary)] mb-2">Location *</label>
+                  <label className="block text-sm font-semibold text-[var(--color-text-primary)] mb-2">Location <span className="text-red-500">*</span></label>
                   <input type="text" required value={newEvent.location} onChange={(e) => setNewEvent({ ...newEvent, location: e.target.value })} className="input" placeholder="Venue or virtual platform" />
                 </div>
-
                 <div>
-                  <label className="block text-sm font-semibold text-[var(--color-text-primary)] mb-2">Mode *</label>
+                  <label className="block text-sm font-semibold text-[var(--color-text-primary)] mb-2">Mode <span className="text-red-500">*</span></label>
                   <select value={newEvent.mode} onChange={(e) => setNewEvent({ ...newEvent, mode: e.target.value as Event['mode'] })} className="input">
                     <option value="Online">Online</option>
                     <option value="On-campus">On-campus</option>
@@ -419,20 +432,25 @@ export default function EventsPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-[var(--color-text-primary)] mb-2">Short Description *</label>
+                <label className="block text-sm font-semibold text-[var(--color-text-primary)] mb-2">Short description <span className="text-red-500">*</span></label>
                 <input type="text" required value={newEvent.shortDescription} onChange={(e) => setNewEvent({ ...newEvent, shortDescription: e.target.value })} className="input" placeholder="Brief one-line description" />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-[var(--color-text-primary)] mb-2">Detailed Description *</label>
-                <textarea required value={newEvent.longDescription} onChange={(e) => setNewEvent({ ...newEvent, longDescription: e.target.value })} rows={4} className="input" placeholder="Provide comprehensive event details, agenda, and what participants can expect..." />
-              </div>
-
-              <div className="flex gap-4 pt-4">
-                <button type="submit" className="btn-primary flex-1 px-6 py-4 font-semibold">Create Event</button>
-                <button type="button" onClick={() => setShowHostForm(false)} className="btn-secondary px-6 py-4 font-semibold">Cancel</button>
+                <label className="block text-sm font-semibold text-[var(--color-text-primary)] mb-2">Detailed description <span className="text-red-500">*</span></label>
+                <textarea required value={newEvent.longDescription} onChange={(e) => setNewEvent({ ...newEvent, longDescription: e.target.value })} rows={4} className="input resize-none" placeholder="Provide comprehensive event details, agenda, and what participants can expect…" />
               </div>
             </form>
+
+            {/* Modal Footer (sticky) */}
+            <div className="flex items-center justify-end gap-3 px-6 md:px-8 py-4 border-t border-[var(--color-border-light)] bg-[var(--color-surface-muted)]/40">
+              <button type="button" onClick={() => setShowHostForm(false)} className="btn-secondary inline-flex items-center gap-2 !py-2.5">
+                Cancel
+              </button>
+              <button type="submit" form="host-event-form" className="btn-primary inline-flex items-center gap-2 !py-2.5">
+                <Plus className="w-4 h-4" /> Create Event
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -557,13 +575,12 @@ export default function EventsPage() {
         </div>
       )}
 
-      <div className="mx-auto px-6 py-6">
-        {/* Main Layout */}
-        <div className="flex gap-6">
+      {/* Main Layout */}
+      <div className="flex flex-col lg:flex-row gap-6">
           {/* Left Sidebar - Filters */}
-          <ResizableSidebar side="left" defaultWidth={280} minWidth={200} maxWidth={400}>
+          <ResizableSidebar side="left" defaultWidth={280} minWidth={200} maxWidth={400} responsive>
           <aside className="w-full">
-            <div className="bg-[var(--color-surface-muted)] rounded-2xl shadow-premium p-8 sticky top-20 space-y-8">
+            <div className="card p-6 lg:sticky lg:top-20 space-y-6">
               {/* Search */}
               <div>
                 <label className="block text-sm font-semibold text-[var(--color-text-primary)] mb-2">Search Events</label>
@@ -854,12 +871,12 @@ export default function EventsPage() {
           </main>
 
           {/* Right Sidebar - Your Events & Featured */}
-          <ResizableSidebar side="right" defaultWidth={280} minWidth={200} maxWidth={400}>
+          <ResizableSidebar side="right" defaultWidth={280} minWidth={200} maxWidth={400} responsive>
           <aside className="w-full space-y-6">
             {/* Your Registrations */}
             {registeredEvents.length > 0 && (
-              <div className="bg-[var(--color-surface-muted)] rounded-lg border border-[var(--color-border-light)] p-6">
-                  <h2 className="text-lg font-bold text-[var(--color-text-primary)] mb-4 flex items-center gap-2">
+              <div className="card p-6">
+                  <h2 className="heading-3 mb-4 flex items-center gap-2">
                     <Check className="w-5 h-5 text-[var(--color-blue-primary)]" />
                     Your Registrations
                   </h2>
@@ -883,8 +900,8 @@ export default function EventsPage() {
             )}
 
             {/* Featured / Upcoming Events */}
-              <div className="bg-[var(--color-surface-muted)] rounded-lg border border-[var(--color-border-light)] p-6">
-              <h2 className="text-lg font-bold text-[var(--color-text-primary)] mb-4 flex items-center gap-2">
+              <div className="card p-6">
+              <h2 className="heading-3 mb-4 flex items-center gap-2">
                 <Star className="w-5 h-5 text-[var(--color-blue-primary)]" />
                 {featuredEvents.length > 0 ? 'Featured Events' : 'Upcoming Events'}
               </h2>
@@ -939,7 +956,7 @@ export default function EventsPage() {
             </div>
 
             {/* Quick Stats */}
-            <div className="bg-[var(--color-surface-muted)] rounded-lg border border-[var(--color-border-light)] p-6">
+            <div className="card p-6">
               <h3 className="font-semibold text-[var(--color-text-primary)] mb-4">Event Statistics</h3>
               <div className="space-y-3">
                 <div className="flex justify-between">

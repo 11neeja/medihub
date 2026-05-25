@@ -619,17 +619,19 @@ export default function NotebookPage() {
   };
 
   return (
-    <div className="h-screen flex flex-col gradient-subtle">
-      {/* Header */}
-      <div className="card px-6 py-4">
-        <h1 className="heading-lg fade-in-up">My Workspace</h1>
-        <p className="body-sm text-slate-500 fade-in-delay-1">Organize your medical study notes, tasks, and resources</p>
-      </div>
+    <div className="min-h-screen gradient-subtle">
+      <div className="page-container">
+        {/* Page Header */}
+        <div className="card rounded-3xl p-6 md:p-8 mb-6 animate-section">
+          <p className="label mb-2">Workspace</p>
+          <h1 className="heading-2 mb-2 fade-in-up">My Workspace</h1>
+          <p className="body-md fade-in-delay-1">Organize your medical study notes, tasks, and resources</p>
+        </div>
 
-      {/* Main Layout */}
-      <div className="flex-1 flex overflow-hidden">
+        {/* Main Layout */}
+        <div className="card rounded-3xl overflow-hidden flex flex-col lg:flex-row h-[calc(100vh-280px)] min-h-[560px]">
         {/* Left Sidebar */}
-        <ResizableSidebar side="left" defaultWidth={256} minWidth={200} maxWidth={400}>
+        <ResizableSidebar side="left" defaultWidth={256} minWidth={200} maxWidth={400} responsive>
         <aside className="w-full h-full card flex flex-col">
           {/* Search */}
           <div className="p-4 border-b border-[var(--color-border-light)]">
@@ -980,7 +982,7 @@ export default function NotebookPage() {
         </main>
 
         {/* Right Sidebar - Tasks & Uploads */}
-        <ResizableSidebar side="right" defaultWidth={320} minWidth={240} maxWidth={500}>
+        <ResizableSidebar side="right" defaultWidth={320} minWidth={240} maxWidth={500} responsive>
         <aside className="w-full h-full card flex flex-col overflow-y-auto">
           {/* Tasks Section */}
           <div className="p-6 border-b border-[var(--color-border-light)]">
@@ -1253,6 +1255,7 @@ export default function NotebookPage() {
         }}
         onCancel={() => setDeleteSubjectTarget(null)}
       />
+    </div>
     </div>
   );
 }

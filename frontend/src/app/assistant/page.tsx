@@ -481,7 +481,7 @@ export default function AssistantPage() {
   };
 
   return (
-    <div className="h-screen gradient-subtle flex flex-col">
+    <div className="min-h-screen gradient-subtle">
       {/* Custom Toast Notification */}
       {toast && (
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] animate-fade-in-down">
@@ -502,26 +502,28 @@ export default function AssistantPage() {
           </div>
         </div>
       )}
-      {/* Header */}
-      <div className="card px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="heading-lg fade-in-up">AI Study Assistant</h1>
-            <p className="body-sm text-slate-500 fade-in-delay-1">Upload documents, ask questions, and get instant medical knowledge</p>
+      <div className="page-container">
+        {/* Page Header */}
+        <div className="card rounded-3xl p-6 md:p-8 mb-6 animate-section">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 md:gap-6">
+            <div>
+              <p className="label mb-2">AI Assistant</p>
+              <h1 className="heading-2 mb-2 fade-in-up">AI Study Assistant</h1>
+              <p className="body-md fade-in-delay-1">Upload documents, ask questions, and get instant medical knowledge</p>
+            </div>
+            {messages.length > 1 && (
+              <button onClick={() => setShowClearChat(true)} className="btn-secondary inline-flex items-center gap-2 !py-2.5 text-red-600 hover:bg-red-50 self-start">
+                <Trash2 className="w-4 h-4" /> Clear Chat
+              </button>
+            )}
           </div>
-          {messages.length > 1 && (
-            <button onClick={() => setShowClearChat(true)} className="text-xs text-red-500 hover:text-red-700 font-semibold flex items-center gap-1 px-3 py-2 rounded-lg hover:bg-red-50 transition">
-              <Trash2 className="w-3.5 h-3.5" /> Clear Chat
-            </button>
-          )}
         </div>
-      </div>
 
-      {/* Main Layout */}
-      <div className="flex-1 flex overflow-hidden">
+        {/* Main Layout */}
+        <div className="card rounded-3xl overflow-hidden flex flex-col lg:flex-row h-[calc(100vh-280px)] min-h-[560px]">
         {/* Left Sidebar - Documents */}
-        <ResizableSidebar side="left" defaultWidth={320} minWidth={240} maxWidth={480}>
-        <aside className="w-full h-full bg-[var(--color-surface-muted)] border-r border-[var(--color-border-light)] flex flex-col">
+        <ResizableSidebar side="left" defaultWidth={320} minWidth={240} maxWidth={480} responsive>
+        <aside className="w-full h-full bg-[var(--color-surface-muted)] lg:border-r border-[var(--color-border-light)] flex flex-col">
           <div className="p-4 border-b border-[var(--color-border-light)]">
             <h2 className="heading-md mb-3 flex items-center gap-2"><BookOpen className="w-4 h-4 text-[var(--color-blue-primary)]" /> Your Documents</h2>
 
@@ -761,7 +763,7 @@ export default function AssistantPage() {
         </main>
 
         {/* Right Sidebar - Info & Tips */}
-        <ResizableSidebar side="right" defaultWidth={320} minWidth={240} maxWidth={480}>
+        <ResizableSidebar side="right" defaultWidth={320} minWidth={240} maxWidth={480} responsive>
         <aside className="w-full h-full bg-[var(--color-surface-white)] border-l border-[var(--color-border-light)] overflow-y-auto">
           <div className="p-6">
             {/* Usage Stats */}
@@ -831,6 +833,7 @@ export default function AssistantPage() {
         onConfirm={handleClearChat}
         onCancel={() => setShowClearChat(false)}
       />
+    </div>
     </div>
   );
 }

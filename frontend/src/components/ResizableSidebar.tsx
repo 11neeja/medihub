@@ -11,6 +11,7 @@ interface ResizableSidebarProps {
   maxWidth?: number;
   className?: string;
   collapsedWidth?: number;
+  responsive?: boolean;
 }
 
 export default function ResizableSidebar({
@@ -21,6 +22,7 @@ export default function ResizableSidebar({
   maxWidth = 600,
   className = '',
   collapsedWidth = 0,
+  responsive = false,
 }: ResizableSidebarProps) {
   const [width, setWidth] = useState(defaultWidth);
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -77,11 +79,19 @@ export default function ResizableSidebar({
   const currentWidth = isCollapsed ? collapsedWidth : width;
   const showEdgeHighlight = isResizing || isHandleHovered;
 
+  const sidebarStyle: React.CSSProperties = responsive
+    ? ({ ['--sb-w' as string]: `${currentWidth}px` } as React.CSSProperties)
+    : { width: currentWidth };
+
   return (
     <div
       ref={sidebarRef}
-      className={`relative flex-shrink-0 transition-[width] ${isResizing ? 'duration-0' : 'duration-300'} ease-in-out ${className}`}
-      style={{ width: currentWidth }}
+      className={`relative transition-[width] ${isResizing ? 'duration-0' : 'duration-300'} ease-in-out ${
+        responsive
+          ? 'w-full lg:flex-shrink-0 lg:w-[var(--sb-w)]'
+          : 'flex-shrink-0'
+      } ${className}`}
+      style={sidebarStyle}
     >
       {/* Sidebar content */}
       <div
@@ -115,7 +125,7 @@ export default function ResizableSidebar({
           onMouseDown={handleMouseDown}
           onMouseEnter={() => setIsHandleHovered(true)}
           onMouseLeave={() => setIsHandleHovered(false)}
-          className={`absolute top-0 ${side === 'left' ? '-right-1' : '-left-1'} w-3 h-full cursor-col-resize z-20 flex items-center justify-center`}
+          className={`absolute top-0 ${side === 'left' ? '-right-1' : '-left-1'} w-3 h-full cursor-col-resize z-20 ${responsive ? 'hidden lg:flex' : 'flex'} items-center justify-center`}
         >
           <div
             style={{
@@ -132,7 +142,7 @@ export default function ResizableSidebar({
       {/* Collapse/Expand toggle button */}
       <button
         onClick={toggleCollapse}
-        className={`absolute top-1/2 -translate-y-1/2 z-30 w-6 h-12 bg-[var(--color-surface-white)] border transition-all flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-ivory)] shadow-sm rounded-[12px] ${
+        className={`absolute top-1/2 -translate-y-1/2 z-30 w-6 h-12 bg-[var(--color-surface-white)] border transition-all ${responsive ? 'hidden lg:flex' : 'flex'} items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-ivory)] shadow-sm rounded-[12px] ${
           side === 'left'
             ? isCollapsed
               ? 'left-0'

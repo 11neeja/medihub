@@ -125,8 +125,8 @@ export default function HomePage() {
   return (
     <div className="min-h-screen">
       <div className="page-container !pb-6">
-      <div className="card rounded-3xl p-8 mb-8 animate-section">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+      <div className="card rounded-3xl p-6 md:p-8 mb-6 animate-section">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 md:gap-6">
           <div>
             <p className="label mb-2">Dashboard</p>
             <h1 className="heading-2 mb-2">Medical News & Updates</h1>
@@ -148,7 +148,7 @@ export default function HomePage() {
       <div>
         {/* Today's Highlight - Featured Article */}
         {!loading && featuredArticle && (
-          <div onClick={() => handleArticleClick(featuredArticle)} className="card gradient-primary p-10 mb-8 cursor-pointer hover-lift relative overflow-hidden fade-in-delay-2">
+          <div onClick={() => handleArticleClick(featuredArticle)} className="card gradient-primary p-6 md:p-8 lg:p-10 mb-6 cursor-pointer hover-lift relative overflow-hidden fade-in-delay-2">
             <div className="absolute inset-0 opacity-10">
               <div className="absolute inset-0 shimmer"></div>
             </div>
@@ -195,11 +195,11 @@ export default function HomePage() {
         )}
 
         {/* Main 3-Column Layout */}
-        <div className="flex gap-6">
+        <div className="flex flex-col lg:flex-row gap-6">
           {/* Left Sidebar - Filters */}
-          <ResizableSidebar side="left" defaultWidth={280} minWidth={200} maxWidth={400}>
+          <ResizableSidebar side="left" defaultWidth={280} minWidth={200} maxWidth={400} responsive>
           <aside className="w-full">
-            <div className="card p-8 sticky top-20">
+            <div className="card p-6 lg:sticky lg:top-20">
               <h2 className="heading-3 mb-4">Specialties</h2>
               <nav className="space-y-2">
                 {specialties.map(specialty => (
@@ -397,11 +397,11 @@ export default function HomePage() {
           </main>
 
           {/* Right Sidebar - Extra Context */}
-          <ResizableSidebar side="right" defaultWidth={280} minWidth={200} maxWidth={400}>
+          <ResizableSidebar side="right" defaultWidth={280} minWidth={200} maxWidth={400} responsive>
           <aside className="w-full space-y-6">
             {/* Trending Topics */}
-            <div className="bg-[var(--color-surface-muted)] rounded-2xl shadow-premium p-8">
-              <h2 className="text-lg font-semibold text-[var(--color-text-secondary)] mb-4 flex items-center gap-2">
+            <div className="card p-6">
+              <h2 className="heading-3 mb-4 flex items-center gap-2">
                 <TrendingUp className="w-5 h-5 text-[var(--color-blue-primary)]" />
                 Trending Topics
               </h2>
@@ -420,8 +420,8 @@ export default function HomePage() {
             </div>
 
             {/* Quick Access */}
-            <div className="bg-[var(--color-surface-muted)] rounded-2xl shadow-premium p-8">
-              <h2 className="text-lg font-semibold text-[var(--color-text-secondary)] mb-4">Quick Access</h2>
+            <div className="card p-6">
+              <h2 className="heading-3 mb-4">Quick Access</h2>
               <div className="space-y-2">
                 <Link
                   href="/events"
@@ -463,8 +463,8 @@ export default function HomePage() {
 
             {/* Suggested for You */}
             {suggestedArticles.length > 0 && (
-              <div className="bg-[var(--color-surface-muted)] rounded-2xl shadow-premium p-8">
-                <h2 className="text-lg font-semibold text-[var(--color-text-secondary)] mb-4">Suggested for You</h2>
+              <div className="card p-6">
+                <h2 className="heading-3 mb-4">Suggested for You</h2>
                 <div className="space-y-4">
                   {suggestedArticles.map(article => (
                     <div

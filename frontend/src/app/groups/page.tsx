@@ -426,7 +426,7 @@ export default function GroupsPage() {
 
   // ── RENDER ────────────────────────────────────────────
   return (
-    <div className="h-screen flex flex-col gradient-subtle">
+    <div className="min-h-screen gradient-subtle">
       {/* Toast */}
       {toast && (
         <div className={`fixed top-6 right-6 z-[100] px-5 py-3 rounded-xl shadow-lg text-sm font-medium animate-fade-in-down ${
@@ -435,15 +435,17 @@ export default function GroupsPage() {
           {toast.message}
         </div>
       )}
-      {/* Header */}
-      <div className="card px-6 py-4">
-        <h1 className="heading-lg fade-in-up">Communities</h1>
-        <p className="body-sm text-slate-500 fade-in-delay-1">Join groups, discuss cases, and share resources with peers</p>
-      </div>
+      <div className="page-container">
+        {/* Page Header */}
+        <div className="card rounded-3xl p-6 md:p-8 mb-6 animate-section">
+          <p className="label mb-2">Communities</p>
+          <h1 className="heading-2 mb-2 fade-in-up">Communities</h1>
+          <p className="body-md fade-in-delay-1">Join groups, discuss cases, and share resources with peers</p>
+        </div>
 
-      <div className="flex-1 flex overflow-hidden">
+        <div className="card rounded-3xl overflow-hidden flex flex-col lg:flex-row h-[calc(100vh-280px)] min-h-[560px]">
       {/* Left Sidebar — Communities List */}
-      <ResizableSidebar side="left" defaultWidth={280} minWidth={240} maxWidth={360} className="bg-[var(--color-surface-muted)] border-r border-[var(--color-border-light)]">
+      <ResizableSidebar side="left" defaultWidth={280} minWidth={240} maxWidth={360} className="bg-[var(--color-surface-muted)] lg:border-r border-[var(--color-border-light)]" responsive>
         <div className="flex flex-col h-full">
             <div className="p-4 border-b border-[var(--color-border-light)]">
             <h2 className="heading-md mb-3">Communities</h2>
@@ -913,6 +915,7 @@ export default function GroupsPage() {
           </div>
         </div>
       )}
+    </div>
     </div>
     </div>
   );

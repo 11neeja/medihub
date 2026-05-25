@@ -56,19 +56,36 @@ function CreateOpportunityForm({ onClose }: { onClose: () => void }) {
   const inputClass = 'input';
 
   return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-      <div className="card rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
-          <div className="flex items-center justify-between p-6 border-b border-[var(--color-border-light)]">
-          <h2 className="heading-md">Post an Opportunity</h2>
-          <button onClick={onClose} className="btn-secondary p-1">
-            <X className="w-5 h-5 text-slate-500" />
+    <div
+      className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 fade-in"
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="card rounded-3xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-premium-xl overflow-hidden fade-in-up"
+      >
+        {/* Modal Header */}
+        <div className="flex items-start justify-between gap-4 px-6 md:px-8 pt-6 md:pt-7 pb-5 border-b border-[var(--color-border-light)]">
+          <div>
+            <p className="label mb-2">New Opportunity</p>
+            <h2 className="heading-2 mb-1">Post an opportunity</h2>
+            <p className="body-md">Share an internship or job at your clinic or hospital</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="-mr-2 -mt-1 p-2 rounded-xl text-slate-400 hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-muted)] transition"
+            aria-label="Close"
+          >
+            <X className="w-5 h-5" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        {/* Modal Body (scrollable) */}
+        <form id="post-opportunity-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-6 md:px-8 py-6 space-y-5">
           <div>
-            <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-1">Role Title *</label>
-            <input className={inputClass}
+            <label className="block text-sm font-semibold text-[var(--color-text-primary)] mb-2">Role title <span className="text-red-500">*</span></label>
+            <input
+              className={inputClass}
               placeholder="e.g. Clinical Research Intern"
               value={form.roleTitle}
               onChange={e => setForm({ ...form, roleTitle: e.target.value })}
@@ -76,10 +93,11 @@ function CreateOpportunityForm({ onClose }: { onClose: () => void }) {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid md:grid-cols-2 gap-5">
             <div>
-                <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-1">Department *</label>
-              <input className={inputClass}
+              <label className="block text-sm font-semibold text-[var(--color-text-primary)] mb-2">Department <span className="text-red-500">*</span></label>
+              <input
+                className={inputClass}
                 placeholder="e.g. Cardiology"
                 value={form.department}
                 onChange={e => setForm({ ...form, department: e.target.value })}
@@ -87,8 +105,9 @@ function CreateOpportunityForm({ onClose }: { onClose: () => void }) {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-1">Type *</label>
-              <select className={inputClass}
+              <label className="block text-sm font-semibold text-[var(--color-text-primary)] mb-2">Type <span className="text-red-500">*</span></label>
+              <select
+                className={inputClass}
                 value={form.type}
                 onChange={e => setForm({ ...form, type: e.target.value as OpportunityType })}
               >
@@ -98,10 +117,11 @@ function CreateOpportunityForm({ onClose }: { onClose: () => void }) {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid md:grid-cols-2 gap-5">
             <div>
-                <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-1">Location *</label>
-              <input className={inputClass}
+              <label className="block text-sm font-semibold text-[var(--color-text-primary)] mb-2">Location <span className="text-red-500">*</span></label>
+              <input
+                className={inputClass}
                 placeholder="e.g. Mumbai, India"
                 value={form.location}
                 onChange={e => setForm({ ...form, location: e.target.value })}
@@ -109,8 +129,9 @@ function CreateOpportunityForm({ onClose }: { onClose: () => void }) {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-1">Duration</label>
-              <input className={inputClass}
+              <label className="block text-sm font-semibold text-[var(--color-text-primary)] mb-2">Duration</label>
+              <input
+                className={inputClass}
                 placeholder="e.g. 3 months"
                 value={form.duration}
                 onChange={e => setForm({ ...form, duration: e.target.value })}
@@ -119,8 +140,9 @@ function CreateOpportunityForm({ onClose }: { onClose: () => void }) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-1">Posted By (Clinic/Hospital) *</label>
-            <input className={inputClass}
+            <label className="block text-sm font-semibold text-[var(--color-text-primary)] mb-2">Posted by (clinic or hospital) <span className="text-red-500">*</span></label>
+            <input
+              className={inputClass}
               placeholder="e.g. Apollo Hospitals"
               value={form.postedBy}
               onChange={e => setForm({ ...form, postedBy: e.target.value })}
@@ -129,10 +151,11 @@ function CreateOpportunityForm({ onClose }: { onClose: () => void }) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-1">Description *</label>
-            <textarea className={`${inputClass} resize-none`}
-              rows={3}
-              placeholder="Describe the opportunity…"
+            <label className="block text-sm font-semibold text-[var(--color-text-primary)] mb-2">Description <span className="text-red-500">*</span></label>
+            <textarea
+              className={`${inputClass} resize-none`}
+              rows={4}
+              placeholder="Describe the opportunity, responsibilities, and what candidates will gain…"
               value={form.description}
               onChange={e => setForm({ ...form, description: e.target.value })}
               required
@@ -140,20 +163,26 @@ function CreateOpportunityForm({ onClose }: { onClose: () => void }) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-1">Requirements (one per line)</label>
-            <textarea className={`${inputClass} resize-none`}
-              rows={3}
+            <label className="block text-sm font-semibold text-[var(--color-text-primary)] mb-2">Requirements <span className="text-[var(--color-text-muted)] font-normal">(one per line)</span></label>
+            <textarea
+              className={`${inputClass} resize-none`}
+              rows={4}
               placeholder={"MBBS student (3rd year+)\nInterest in cardiology\nBasic statistics knowledge"}
               value={form.requirements}
               onChange={e => setForm({ ...form, requirements: e.target.value })}
             />
           </div>
-
-          <div className="flex justify-end gap-3 pt-2">
-            <button type="button" onClick={onClose} className="btn-secondary px-5 py-2.5">Cancel</button>
-            <button type="submit" className="btn-primary px-6 py-2.5">Post Opportunity</button>
-          </div>
         </form>
+
+        {/* Modal Footer (sticky) */}
+        <div className="flex items-center justify-end gap-3 px-6 md:px-8 py-4 border-t border-[var(--color-border-light)] bg-[var(--color-surface-muted)]/40">
+          <button type="button" onClick={onClose} className="btn-secondary inline-flex items-center gap-2 !py-2.5">
+            Cancel
+          </button>
+          <button type="submit" form="post-opportunity-form" className="btn-primary inline-flex items-center gap-2 !py-2.5">
+            <Plus className="w-4 h-4" /> Post Opportunity
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -317,30 +346,29 @@ export default function OpportunitiesPage() {
 
   return (
     <div className="min-h-screen gradient-subtle">
-      {/* Page Header */}
-      <div className="card">
-        <div className="mx-auto px-6 py-8 flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-semibold text-[var(--color-text-primary)] mb-2 tracking-tight fade-in-up">
-              Clinic Connect
-            </h1>
-            <p className="text-slate-500 fade-in-delay-1">
-              Discover internships and jobs at top clinics and hospitals
-            </p>
+      <div className="page-container">
+        {/* Page Header */}
+        <div className="card rounded-3xl p-6 md:p-8 mb-6 animate-section">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 md:gap-6">
+            <div className="fade-in-up">
+              <p className="label mb-2">Opportunities</p>
+              <h1 className="heading-2 mb-2">Clinic Connect</h1>
+              <p className="body-md">Discover internships and jobs at top clinics and hospitals</p>
+            </div>
+            <div className="flex flex-wrap gap-3 fade-in-delay-1">
+              <button onClick={() => setShowCreate(true)} className="btn-primary inline-flex items-center gap-2 !py-2.5">
+                <Plus className="w-4 h-4" /> Post Opportunity
+              </button>
+            </div>
           </div>
-          <button onClick={() => setShowCreate(true)} className="btn-primary flex items-center gap-2 px-5 py-2.5">
-            <Plus className="w-4 h-4" /> Post Opportunity
-          </button>
         </div>
-      </div>
 
-      <div className="mx-auto px-6 py-6">
-        <div className="flex gap-6">
+        <div className="flex flex-col lg:flex-row gap-6">
           {/* ── Left Sidebar: Filters ── */}
-          <ResizableSidebar side="left" defaultWidth={280} minWidth={200} maxWidth={400}>
+          <ResizableSidebar side="left" defaultWidth={280} minWidth={200} maxWidth={400} responsive>
           <aside className="w-full">
-            <div className="bg-[var(--color-surface-muted)] rounded-2xl shadow-premium p-8 sticky top-20 space-y-6">
-              <h2 className="text-lg font-semibold text-[var(--color-text-primary)] flex items-center gap-2">
+            <div className="card p-6 lg:sticky lg:top-20 space-y-6">
+              <h2 className="heading-3 flex items-center gap-2">
                 <Filter className="w-5 h-5 text-[var(--color-blue-primary)]" /> Filters
               </h2>
 
@@ -470,10 +498,10 @@ export default function OpportunitiesPage() {
                   <p className="text-slate-500 font-medium">Loading opportunities…</p>
                 </div>
               ) : displayedOpportunities.length === 0 ? (
-                <div className="bg-[var(--color-surface-muted)] rounded-2xl shadow-premium p-12 text-center">
+                <div className="card p-12 text-center">
                   <Briefcase className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-                  <h3 className="text-xl font-semibold text-[var(--color-text-primary)] mb-2">No opportunities found</h3>
-                  <p className="text-slate-500">Try adjusting your filters or post a new opportunity</p>
+                  <h3 className="heading-3 mb-2">No opportunities found</h3>
+                  <p className="body-md">Try adjusting your filters or post a new opportunity</p>
                 </div>
               ) : (
                 paginatedOpportunities.map(opp => <OpportunityCard key={opp.id} opp={opp} />)

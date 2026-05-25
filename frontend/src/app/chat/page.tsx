@@ -602,18 +602,20 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="h-screen gradient-subtle flex flex-col">
-      {/* Header */}
-      <div className="card px-6 py-4">
-        <h1 className="heading-lg fade-in-up">Messages</h1>
-        <p className="body-sm text-slate-500 fade-in-delay-1">Chat with colleagues and collaborate in group conversations</p>
-      </div>
+    <div className="min-h-screen gradient-subtle">
+      <div className="page-container">
+        {/* Page Header */}
+        <div className="card rounded-3xl p-6 md:p-8 mb-6 animate-section">
+          <p className="label mb-2">Messaging</p>
+          <h1 className="heading-2 mb-2 fade-in-up">Messages</h1>
+          <p className="body-md fade-in-delay-1">Chat with colleagues and collaborate in group conversations</p>
+        </div>
 
-      {/* Main Layout */}
-      <div className="flex-1 flex overflow-hidden">
+        {/* Main Layout */}
+        <div className="card rounded-3xl overflow-hidden flex flex-col lg:flex-row h-[calc(100vh-280px)] min-h-[560px]">
         {/* Left Sidebar */}
-        <ResizableSidebar side="left" defaultWidth={320} minWidth={240} maxWidth={480}>
-          <aside className="w-full h-full bg-[var(--color-surface-muted)] border-r border-[var(--color-border-light)] flex flex-col">
+        <ResizableSidebar side="left" defaultWidth={320} minWidth={240} maxWidth={480} responsive>
+          <aside className="w-full h-full bg-[var(--color-surface-muted)] lg:border-r border-[var(--color-border-light)] flex flex-col">
             {/* Search & Actions */}
             <div className="p-4 border-b border-[var(--color-border-light)]">
               <div className="relative mb-3">
@@ -846,7 +848,7 @@ export default function ChatPage() {
 
         {/* Right Panel - Chat Info */}
         {selectedConv && showChatInfo && (
-          <ResizableSidebar side="right" defaultWidth={320} minWidth={240} maxWidth={480}>
+          <ResizableSidebar side="right" defaultWidth={320} minWidth={240} maxWidth={480} responsive>
             <aside className="w-full h-full bg-[var(--color-surface-muted)] border-l border-[var(--color-border-light)] overflow-y-auto">
               <div className="p-6">
                 {/* Chat Info Header */}
@@ -1216,6 +1218,7 @@ export default function ChatPage() {
           </div>
         </div>
       )}
+    </div>
     </div>
   );
 }
