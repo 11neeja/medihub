@@ -1,6 +1,5 @@
 import express from 'express'
 import cors from 'cors'
-import dotenv from 'dotenv'
 import path from 'path'
 import http from 'http'
 import { Server } from 'socket.io'
@@ -19,8 +18,6 @@ import newsRoutes from './routes/newsRoutes.js'
 import opportunityRoutes from './routes/opportunityRoutes.js'
 import groupRoutes from './routes/groupRoutes.js'
 import seedDatabase from './utils/seed.js'
-
-dotenv.config()
 
 const app = express()
 const PORT = process.env.PORT || 5000

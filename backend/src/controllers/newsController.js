@@ -1,5 +1,5 @@
 // ─── NewsAPI.org integration with 24-hour cache ────────────────────
-const NEWS_API_KEY = process.env.NEWS_API_KEY || '014c82cf3d0d4d678ebf58e351d8e8d4'
+const NEWS_API_KEY = process.env.NEWS_API_KEY
 const NEWS_API_BASE = 'https://newsapi.org/v2'
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000 // 24 hours
 

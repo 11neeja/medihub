@@ -144,7 +144,7 @@ export default function NotebookPage() {
     completed: apiTask.completed,
   });
 
-  // Fetch notes, tasks, subjects, and documents from MongoDB on mount
+  // Fetch notes, tasks, subjects, and documents from database on mount
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -194,7 +194,7 @@ export default function NotebookPage() {
     .filter(page => page.subject === selectedSubject)
     .sort((a, b) => a.position - b.position);
 
-  // Update page title (auto-saves to MongoDB)
+  // Update page title (auto-saves to database)
   const updatePageTitle = (newTitle: string) => {
     if (!selectedPage) return;
 
@@ -207,11 +207,11 @@ export default function NotebookPage() {
     setPages(updatedPages);
     setSelectedPage({ ...selectedPage, title: newTitle });
 
-    // Save to MongoDB (debounced effect would be ideal, but simple save here)
+    // Save to database (debounced effect would be ideal, but simple save here)
     updateNoteAPI(selectedPage.id, { title: newTitle }).catch(console.error);
   };
 
-  // Update block text (auto-saves to MongoDB)
+  // Update block text (auto-saves to database)
   const updateBlockText = (blockId: string, newText: string) => {
     if (!selectedPage) return;
 
@@ -224,11 +224,11 @@ export default function NotebookPage() {
     setPages(pages.map(p => p.id === selectedPage.id ? updatedPage : p));
     setSelectedPage(updatedPage);
 
-    // Save blocks to MongoDB
+    // Save blocks to database
     updateNoteAPI(selectedPage.id, { blocks: updatedBlocks }).catch(console.error);
   };
 
-  // Toggle checklist (auto-saves to MongoDB)
+  // Toggle checklist (auto-saves to database)
   const toggleChecklist = (blockId: string) => {
     if (!selectedPage) return;
 
@@ -244,7 +244,7 @@ export default function NotebookPage() {
     updateNoteAPI(selectedPage.id, { blocks: updatedBlocks }).catch(console.error);
   };
 
-  // Add new block (saved to MongoDB)
+  // Add new block (saved to database)
   const addBlock = (type: BlockType) => {
     if (!selectedPage) return;
 
@@ -269,7 +269,7 @@ export default function NotebookPage() {
     updateNoteAPI(selectedPage.id, { blocks: updatedBlocks }).catch(console.error);
   };
 
-  // Delete block (saved to MongoDB)
+  // Delete block (saved to database)
   const deleteBlock = (blockId: string) => {
     if (!selectedPage) return;
 
@@ -282,7 +282,7 @@ export default function NotebookPage() {
     updateNoteAPI(selectedPage.id, { blocks: updatedBlocks }).catch(console.error);
   };
 
-  // Create new page (saved to MongoDB)
+  // Create new page (saved to database)
   const createNewPage = async () => {
     try {
       const apiNote = await createNoteAPI({
@@ -302,7 +302,7 @@ export default function NotebookPage() {
     }
   };
 
-  // Add task (saved to MongoDB)
+  // Add task (saved to database)
   const addTask = async () => {
     if (!newTaskTitle.trim()) return;
     try {
@@ -314,7 +314,7 @@ export default function NotebookPage() {
     }
   };
 
-  // Toggle task (saved to MongoDB)
+  // Toggle task (saved to database)
   const toggleTask = async (taskId: string) => {
     try {
       const updated = await toggleTaskAPI(taskId);
@@ -324,7 +324,7 @@ export default function NotebookPage() {
     }
   };
 
-  // Delete task (from MongoDB)
+  // Delete task (from database)
   const deleteTask = async (taskId: string) => {
     try {
       await deleteTaskAPI(taskId);
@@ -334,7 +334,7 @@ export default function NotebookPage() {
     }
   };
 
-  // Handle file upload - stores permanently in MongoDB
+  // Handle file upload - stores permanently in database
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
     setIsUploading(true);

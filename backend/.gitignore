@@ -2,4 +2,6 @@ node_modules
 # Keep environment variables out of version control
 .env
 
-/src/generated/prisma
+# Uploaded files are user/runtime data, not source
+uploads/*
+!uploads/.gitkeep

@@ -1,7 +1,7 @@
 import prisma from '../config/prisma.js'
 
 // ─── Eventbrite cache (24-hour TTL) ────────────────────────────────
-const EVENTBRITE_TOKEN = process.env.EVENTBRITE_TOKEN || 'VKHZN7QHV2CGY46EFPKY'
+const EVENTBRITE_TOKEN = process.env.EVENTBRITE_TOKEN
 const EVENTBRITE_BASE  = 'https://www.eventbriteapi.com/v3'
 const CACHE_TTL_MS     = 24 * 60 * 60 * 1000 // 24 hours
 

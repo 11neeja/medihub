@@ -40,7 +40,7 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
           <p className="text-[var(--color-text-secondary)] mb-6 leading-relaxed">
             {!backendConnected
               ? 'The MediHub backend server is not running. All features require a working backend connection.'
-              : 'The MongoDB database is not connected. Please check your database configuration.'}
+              : 'The database is not connected. Please check your database configuration.'}
           </p>
           <div className="bg-[var(--color-surface-muted)] rounded-[12px] p-4 mb-6 text-left">
             <p className="text-sm font-medium text-[var(--color-text-primary)] mb-2">To start the backend:</p>

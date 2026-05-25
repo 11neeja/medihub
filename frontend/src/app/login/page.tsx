@@ -62,7 +62,7 @@ export default function LoginPage() {
               <p className="text-red-600 text-xs mt-1">
                 {!backendConnected
                   ? 'Cannot reach the backend server. Please start it with: cd backend && npm run dev'
-                  : 'Database is not connected. Check your MongoDB connection.'}
+                  : 'Database is not connected. Check your database configuration.'}
               </p>
             </div>
           </div>

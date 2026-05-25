@@ -118,16 +118,9 @@ The current frontend is not just functional; it is visually structured to feel l
 - Node.js 18+ recommended
 - npm
 - Docker Desktop or another Docker runtime
+- (Optional) [Ollama](https://ollama.com) running locally if you want to use the AI assistant. Pull the default model with `ollama pull smollm:1.7b`.
 
-### 1. Start PostgreSQL with Docker 🐳
-
-```bash
-docker compose up -d
-```
-
-This starts the PostgreSQL container defined in `docker-compose.yml` on port `5433`.
-
-### 2. Install dependencies 📦
+### 1. Install dependencies 📦
 
 From the repository root:
 
@@ -135,31 +128,41 @@ From the repository root:
 npm run install:all
 ```
 
-Or install the apps individually:
+This installs root, frontend, and backend dependencies.
+
+### 2. Configure environment variables 🔐
 
 ```bash
-cd frontend
-npm install
-cd ../backend
-npm install
+cp backend/.env.example backend/.env
 ```
 
-### 3. Configure Prisma 🧩
+Then open `backend/.env` and set at minimum:
+
+- `JWT_SECRET` — any long random string
+- `EVENTBRITE_TOKEN` / `NEWS_API_KEY` — optional, leave blank to disable events / news fetching
+
+The default `DATABASE_URL` matches the Docker Compose setup below.
+
+### 3. Start PostgreSQL with Docker 🐳
+
+```bash
+docker compose up -d
+```
+
+This starts the PostgreSQL container defined in `docker-compose.yml` on port `5432`.
+
+### 4. Apply database migrations 🧩
 
 From the `backend/` folder:
 
 ```bash
-npx prisma generate
-npx prisma migrate dev
-```
-
-If you are only applying committed migrations in a deployment flow:
-
-```bash
 npx prisma migrate deploy
+npx prisma generate
 ```
 
-### 4. Run the app ▶️
+(Use `npx prisma migrate dev` instead if you intend to author new migrations.)
+
+### 5. Run the app ▶️
 
 From the repository root:
 
@@ -168,16 +171,6 @@ npm run dev
 ```
 
 That starts the frontend on `http://localhost:3000` and the backend on `http://localhost:5000`.
-
-## Environment Variables 🔐
-
-Create `backend/.env` with values like this:
-
-```env
-DATABASE_URL="postgresql://medihub:medihub_secret@localhost:5433/medihub?schema=public"
-JWT_SECRET="your_secret_key"
-PORT=5000
-```
 
 ## Scripts ⚙️
 
