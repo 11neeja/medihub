@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ArrowRight,
   BadgeCheck,
@@ -85,8 +85,25 @@ const FAQ_ITEMS = [
   },
 ];
 
-const HERO_IMAGE =
-  'https://images.unsplash.com/photo-1551601651-2a8555f1a136?w=1400&h=800&fit=crop&q=80';
+const HERO_IMAGES: { src: string; alt: string }[] = [
+  {
+    src: 'https://images.unsplash.com/photo-1551601651-2a8555f1a136?w=1400&h=800&fit=crop&q=80',
+    alt: 'Medical professionals performing surgery in an operating room',
+  },
+  {
+    src: 'https://images.unsplash.com/photo-1505751172876-fa1923c5c528?w=1400&h=800&fit=crop&q=80',
+    alt: 'Doctor consulting with a patient in a clinic',
+  },
+  {
+    src: 'https://images.unsplash.com/photo-1559757148-5c350d0d3c56?w=1400&h=800&fit=crop&q=80',
+    alt: 'Medical research team in a modern clinical environment',
+  },
+  {
+    src: 'https://images.unsplash.com/photo-1666214280391-8ff5bd3c0bf0?w=1400&h=800&fit=crop&q=80',
+    alt: 'Medical students collaborating with study materials',
+  },
+];
+const HERO_ROTATION_MS = 5000;
 const FEEDBACK_IMAGE_1 =
   'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=700&h=500&fit=crop&q=80';
 const FEEDBACK_IMAGE_2 =
@@ -95,6 +112,15 @@ const FEEDBACK_IMAGE_2 =
 export default function LandingPage() {
   const [formData, setFormData] = useState({ name: '', email: '', message: '' });
   const [openFaq, setOpenFaq] = useState(0);
+  const [heroImageIndex, setHeroImageIndex] = useState(0);
+
+  // Auto-rotate hero images
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setHeroImageIndex((i) => (i + 1) % HERO_IMAGES.length);
+    }, HERO_ROTATION_MS);
+    return () => clearInterval(timer);
+  }, []);
 
   const scrollToSection = (sectionId: string) => {
     document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -180,12 +206,38 @@ export default function LandingPage() {
       {/* ── Hero image ────────────────────────────────────────── */}
       <section className="px-4 sm:px-6 pb-20 md:pb-28">
         <div className="max-w-6xl mx-auto relative pb-6">
-          <div className="rounded-[2.5rem] overflow-hidden shadow-[0_24px_64px_rgba(0,11,51,0.12)]">
-            <img
-              src={HERO_IMAGE}
-              alt="Medical professionals in a clinical setting"
-              className="w-full h-[280px] sm:h-[380px] md:h-[480px] object-cover"
-            />
+          <div className="relative rounded-[2.5rem] overflow-hidden shadow-[0_24px_64px_rgba(0,11,51,0.12)] bg-[var(--color-surface-muted)]">
+            <div className="relative w-full h-[280px] sm:h-[380px] md:h-[480px]">
+              {HERO_IMAGES.map((image, i) => (
+                <img
+                  key={image.src}
+                  src={image.src}
+                  alt={image.alt}
+                  aria-hidden={i !== heroImageIndex}
+                  className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-[1200ms] ease-in-out ${
+                    i === heroImageIndex ? 'opacity-100' : 'opacity-0'
+                  }`}
+                />
+              ))}
+            </div>
+
+            {/* Dot indicators */}
+            <div className="absolute bottom-5 left-5 sm:bottom-6 sm:left-6 flex items-center gap-2 z-10">
+              {HERO_IMAGES.map((_, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => setHeroImageIndex(i)}
+                  aria-label={`Show slide ${i + 1}`}
+                  aria-current={i === heroImageIndex}
+                  className={`h-2 rounded-full transition-all duration-300 ${
+                    i === heroImageIndex
+                      ? 'w-8 bg-white'
+                      : 'w-2 bg-white/50 hover:bg-white/80'
+                  }`}
+                />
+              ))}
+            </div>
           </div>
 
           <div className="absolute -bottom-6 right-6 sm:right-10 bg-white rounded-2xl shadow-[0_8px_32px_rgba(0,11,51,0.18)] border border-[var(--color-border-light)] p-4 sm:p-5 flex items-center gap-4 max-w-xs z-10">
