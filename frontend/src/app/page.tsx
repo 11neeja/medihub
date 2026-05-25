@@ -109,40 +109,55 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen w-full bg-[#F8FAFC] text-[var(--color-navy)]">
       {/* ── Hero copy ───────────────────────────────────────── */}
-      <section id="home" className="relative overflow-hidden pt-20 pb-16 md:pt-28 md:pb-20">
+      <section
+        id="home"
+        className="relative overflow-hidden flex items-center justify-center min-h-[calc(100vh-72px)] py-20 md:py-24"
+      >
         {/* Watermark — very subtle, behind the heading */}
         <p
           aria-hidden
-          className="pointer-events-none absolute left-1/2 select-none text-center font-extrabold uppercase tracking-tight whitespace-nowrap"
+          className="pointer-events-none absolute left-1/2 select-none text-center font-extrabold uppercase tracking-tight whitespace-nowrap opacity-50"
           style={{
-            fontSize: 'clamp(5rem, 20vw, 16rem)',
+            fontSize: 'clamp(6rem, 22vw, 20rem)',
             lineHeight: 1,
             zIndex: 0,
-            top: '48%',
-            transform: 'translateX(-50%) translateY(-50%)',
+            bottom: '4%',
+            transform: 'translateX(-50%)',
             color: '#E8ECF4',
           }}
         >
           THE MEDIHUB
         </p>
 
+        {/* Decorative gradient orbs */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -top-32 -left-32 w-[420px] h-[420px] rounded-full opacity-40 blur-3xl"
+          style={{ background: 'radial-gradient(circle, var(--color-accent-soft) 0%, transparent 70%)' }}
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -bottom-32 -right-32 w-[420px] h-[420px] rounded-full opacity-40 blur-3xl"
+          style={{ background: 'radial-gradient(circle, var(--color-accent-soft) 0%, transparent 70%)' }}
+        />
+
         <div className="relative z-10 max-w-4xl mx-auto px-6 text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-[#E2E8F0] text-sm font-medium text-[var(--color-text-secondary)] shadow-sm mb-8">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-[#E2E8F0] text-sm font-medium text-[var(--color-text-secondary)] shadow-sm mb-8 fade-in-up">
             <BadgeCheck className="w-4 h-4 text-[var(--color-blue-primary)]" />
             The Future of Medical Learning
           </div>
 
-          <h1 className="text-5xl sm:text-6xl md:text-7xl font-extrabold tracking-tight text-[var(--color-navy)] mb-6">
+          <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-extrabold tracking-tight text-[var(--color-navy)] mb-6 fade-in-delay-1">
             Welcome to MediHub
           </h1>
 
-          <p className="text-base sm:text-lg text-[var(--color-text-secondary)] leading-relaxed max-w-2xl mx-auto mb-10">
+          <p className="text-base sm:text-lg md:text-xl text-[var(--color-text-secondary)] leading-relaxed max-w-2xl mx-auto mb-10 fade-in-delay-2">
             Your complete digital hub for medical learning and collaboration. Medical news, events,
             workspace tools, social networking, discussion groups, messaging, and an AI-powered study
             assistant, all in one place.
           </p>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 fade-in-delay-3">
             <Link
               href="/signup"
               className="btn-primary !px-8 !py-3.5 text-base inline-flex items-center gap-2"
@@ -158,6 +173,7 @@ export default function LandingPage() {
               Explore Features
             </button>
           </div>
+
         </div>
       </section>
 

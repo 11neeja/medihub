@@ -19,7 +19,9 @@ import {
   UserPlus,
   CalendarClock,
   AlertCircle,
-  Briefcase
+  Briefcase,
+  Menu,
+  LogOut
 } from 'lucide-react';
 
 export default function Navbar() {
@@ -28,7 +30,13 @@ export default function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
+
+  // Close mobile menu whenever the route changes
+  useEffect(() => {
+    setShowMobileMenu(false);
+  }, [pathname]);
 
   useEffect(() => {
     if (!showNotifications) return;
@@ -129,7 +137,7 @@ export default function Navbar() {
 
   return (
     <nav className="nav-glass sticky top-0 z-50 overflow-visible">
-      <div className="max-w-content mx-auto px-4 sm:px-6 flex justify-between items-center h-16 gap-4">
+      <div className="w-full max-w-[1600px] min-[1920px]:max-w-[1760px] mx-auto px-4 sm:px-6 flex justify-between items-center h-16 gap-4">
         <Link
           href="/"
           className="text-xl font-bold text-[var(--color-navy)] hover:text-[var(--color-blue-primary)] transition-smooth shrink-0"
@@ -140,7 +148,7 @@ export default function Navbar() {
         <div className="flex items-center gap-2 min-w-0 flex-1 justify-end">
           {isAuthenticated ? (
             <>
-              <div className="flex gap-1 sm:gap-1.5 items-center overflow-x-auto scrollbar-hide min-w-0">
+              <div className="hidden md:flex gap-1 sm:gap-1.5 items-center overflow-x-auto scrollbar-hide min-w-0">
               {appLinks.map(link => {
                 const Icon = link.icon;
                 const active = isActive(link.href);
@@ -277,9 +285,21 @@ export default function Navbar() {
               <button
                 type="button"
                 onClick={handleLogout}
-                className="btn-primary !py-2.5 !px-5 text-sm shrink-0"
+                className="hidden md:inline-flex btn-primary !py-2.5 !px-5 text-sm shrink-0"
               >
                 Logout
+              </button>
+
+              {/* Hamburger — mobile only */}
+              <button
+                type="button"
+                onClick={() => setShowMobileMenu((open) => !open)}
+                className="md:hidden p-2.5 rounded-full text-[var(--color-text-muted)] hover:text-[var(--color-blue-primary)] hover:bg-[var(--color-accent-soft)] transition-smooth shrink-0"
+                aria-label={showMobileMenu ? 'Close menu' : 'Open menu'}
+                aria-expanded={showMobileMenu}
+                aria-controls="mobile-menu"
+              >
+                {showMobileMenu ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
               </button>
             </>
           ) : (
@@ -300,6 +320,49 @@ export default function Navbar() {
           )}
         </div>
       </div>
+
+      {/* Mobile menu dropdown — slides down below navbar */}
+      {isAuthenticated && showMobileMenu && (
+        <div
+          id="mobile-menu"
+          className="md:hidden border-t border-[var(--color-border-light)] bg-[var(--color-surface-white)] shadow-premium"
+        >
+          <nav className="px-4 py-3 space-y-1">
+            {appLinks.map((link) => {
+              const Icon = link.icon;
+              const active = isActive(link.href);
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setShowMobileMenu(false)}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-smooth ${
+                    active
+                      ? 'bg-[var(--color-accent-soft)] text-[var(--color-blue-primary)] font-semibold'
+                      : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-accent-soft)] hover:text-[var(--color-blue-primary)]'
+                  }`}
+                >
+                  <Icon className="w-5 h-5" />
+                  <span>{link.label}</span>
+                </Link>
+              );
+            })}
+          </nav>
+          <div className="px-4 py-3 border-t border-[var(--color-border-light)]">
+            <button
+              type="button"
+              onClick={() => {
+                setShowMobileMenu(false);
+                handleLogout();
+              }}
+              className="btn-primary w-full inline-flex items-center justify-center gap-2 !py-2.5 text-sm"
+            >
+              <LogOut className="w-4 h-4" />
+              Logout
+            </button>
+          </div>
+        </div>
+      )}
     </nav>
   );
 }
