@@ -207,7 +207,7 @@ function OpportunityCard({ opp }: { opp: Opportunity }) {
   };
 
   return (
-    <div className="card">
+    <div className="card hover-lift">
       <div className="p-6">
         {/* Header */}
         <div className="flex items-start justify-between mb-3">
@@ -348,14 +348,22 @@ export default function OpportunitiesPage() {
     <div className="min-h-screen gradient-subtle">
       <div className="page-container">
         {/* Page Header */}
-        <div className="card rounded-3xl p-6 md:p-8 mb-6 animate-section">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 md:gap-6">
-            <div className="fade-in-up">
-              <p className="label mb-2">Opportunities</p>
-              <h1 className="heading-2 mb-2">Clinic Connect</h1>
-              <p className="body-md">Discover internships and jobs at top clinics and hospitals</p>
+        <div className="relative card rounded-3xl p-6 md:p-8 mb-6 animate-section overflow-hidden">
+          <div aria-hidden className="pointer-events-none absolute -top-32 -right-32 w-80 h-80 rounded-full opacity-50 blur-3xl" style={{ background: 'radial-gradient(circle, var(--color-accent-soft) 0%, transparent 70%)' }} />
+          <div aria-hidden className="pointer-events-none absolute -bottom-32 -left-24 w-64 h-64 rounded-full opacity-30 blur-3xl" style={{ background: 'radial-gradient(circle, var(--color-blue-soft) 0%, transparent 70%)' }} />
+
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-5 md:gap-6">
+            <div className="flex items-start gap-4 fade-in-up">
+              <div className="hidden sm:flex w-12 h-12 lg:w-14 lg:h-14 rounded-2xl items-center justify-center flex-shrink-0" style={{ background: 'var(--gradient-primary)', boxShadow: 'var(--shadow-btn)' }}>
+                <Briefcase className="w-6 h-6 lg:w-7 lg:h-7 text-white" />
+              </div>
+              <div>
+                <p className="label mb-2">Opportunities</p>
+                <h1 className="heading-2 mb-2">Clinic Connect</h1>
+                <p className="body-md">Discover internships and jobs at top clinics and hospitals</p>
+              </div>
             </div>
-            <div className="flex flex-wrap gap-3 fade-in-delay-1">
+            <div className="flex flex-wrap gap-3 fade-in-delay-1 flex-shrink-0">
               <button onClick={() => setShowCreate(true)} className="btn-primary inline-flex items-center gap-2 !py-2.5">
                 <Plus className="w-4 h-4" /> Post Opportunity
               </button>
@@ -499,9 +507,11 @@ export default function OpportunitiesPage() {
                 </div>
               ) : displayedOpportunities.length === 0 ? (
                 <div className="card p-12 text-center">
-                  <Briefcase className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+                  <div className="w-20 h-20 mx-auto mb-5 rounded-2xl flex items-center justify-center" style={{ background: 'var(--color-accent-soft)' }}>
+                    <Briefcase className="w-10 h-10 text-[var(--color-blue-primary)]" />
+                  </div>
                   <h3 className="heading-3 mb-2">No opportunities found</h3>
-                  <p className="body-md">Try adjusting your filters or post a new opportunity</p>
+                  <p className="body-md max-w-sm mx-auto">Try adjusting your filters &mdash; or post your own opportunity to reach the community.</p>
                 </div>
               ) : (
                 paginatedOpportunities.map(opp => <OpportunityCard key={opp.id} opp={opp} />)

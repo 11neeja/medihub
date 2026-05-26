@@ -437,10 +437,20 @@ export default function GroupsPage() {
       )}
       <div className="page-container">
         {/* Page Header */}
-        <div className="card rounded-3xl p-6 md:p-8 mb-6 animate-section">
-          <p className="label mb-2">Communities</p>
-          <h1 className="heading-2 mb-2 fade-in-up">Communities</h1>
-          <p className="body-md fade-in-delay-1">Join groups, discuss cases, and share resources with peers</p>
+        <div className="relative card rounded-3xl p-6 md:p-8 mb-6 animate-section overflow-hidden">
+          <div aria-hidden className="pointer-events-none absolute -top-32 -right-32 w-80 h-80 rounded-full opacity-50 blur-3xl" style={{ background: 'radial-gradient(circle, var(--color-accent-soft) 0%, transparent 70%)' }} />
+          <div aria-hidden className="pointer-events-none absolute -bottom-32 -left-24 w-64 h-64 rounded-full opacity-30 blur-3xl" style={{ background: 'radial-gradient(circle, var(--color-blue-soft) 0%, transparent 70%)' }} />
+
+          <div className="relative z-10 flex items-start gap-4">
+            <div className="hidden sm:flex w-12 h-12 lg:w-14 lg:h-14 rounded-2xl items-center justify-center flex-shrink-0" style={{ background: 'var(--gradient-primary)', boxShadow: 'var(--shadow-btn)' }}>
+              <Users className="w-6 h-6 lg:w-7 lg:h-7 text-white" />
+            </div>
+            <div>
+              <p className="label mb-2">Communities</p>
+              <h1 className="heading-2 mb-2 fade-in-up">Communities</h1>
+              <p className="body-md fade-in-delay-1">Join groups, discuss cases, and share resources with peers</p>
+            </div>
+          </div>
         </div>
 
         <div className="card rounded-3xl overflow-hidden flex flex-col lg:flex-row h-[calc(100vh-280px)] min-h-[560px]">

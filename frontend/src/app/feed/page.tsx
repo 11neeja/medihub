@@ -593,10 +593,20 @@ export default function FeedPage() {
     <div className="min-h-screen gradient-subtle">
       <div className="page-container">
         {/* Page Header */}
-        <div className="card rounded-3xl p-6 md:p-8 mb-6 animate-section">
-          <p className="label mb-2">Community</p>
-          <h1 className="heading-2 mb-2 fade-in-up">Medical Feed</h1>
-          <p className="body-md fade-in-delay-1">Share insights with your MediHub community</p>
+        <div className="relative card rounded-3xl p-6 md:p-8 mb-6 animate-section overflow-hidden">
+          <div aria-hidden className="pointer-events-none absolute -top-32 -right-32 w-80 h-80 rounded-full opacity-50 blur-3xl" style={{ background: 'radial-gradient(circle, var(--color-accent-soft) 0%, transparent 70%)' }} />
+          <div aria-hidden className="pointer-events-none absolute -bottom-32 -left-24 w-64 h-64 rounded-full opacity-30 blur-3xl" style={{ background: 'radial-gradient(circle, var(--color-blue-soft) 0%, transparent 70%)' }} />
+
+          <div className="relative z-10 flex items-start gap-4">
+            <div className="hidden sm:flex w-12 h-12 lg:w-14 lg:h-14 rounded-2xl items-center justify-center flex-shrink-0" style={{ background: 'var(--gradient-primary)', boxShadow: 'var(--shadow-btn)' }}>
+              <Heart className="w-6 h-6 lg:w-7 lg:h-7 text-white" />
+            </div>
+            <div>
+              <p className="label mb-2">Community</p>
+              <h1 className="heading-2 mb-2 fade-in-up">Medical Feed</h1>
+              <p className="body-md fade-in-delay-1">Share insights and stay connected with your MediHub community</p>
+            </div>
+          </div>
         </div>
 
         <div className="flex flex-col lg:flex-row gap-6">
@@ -777,9 +787,11 @@ export default function FeedPage() {
                 </div>
               ) : filteredPosts.length === 0 ? (
                 <div className="card p-12 text-center">
-                  <div className="mb-4 flex justify-center"><Smartphone className="w-14 h-14 text-slate-300" /></div>
+                  <div className="w-20 h-20 mx-auto mb-5 rounded-2xl flex items-center justify-center" style={{ background: 'var(--color-accent-soft)' }}>
+                    <Heart className="w-10 h-10 text-[var(--color-blue-primary)]" />
+                  </div>
                   <h3 className="heading-3 mb-2">No posts found</h3>
-                  <p className="body-md">Try adjusting your filter or create a new post</p>
+                  <p className="body-md max-w-sm mx-auto">Try adjusting your filter, or share something with the community to kick things off.</p>
                 </div>
               ) : (
                 filteredPosts.map(post => renderPostCard(post))

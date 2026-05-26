@@ -327,22 +327,30 @@ export default function EventsPage() {
     <div className="min-h-screen gradient-subtle">
       <div className="page-container">
         {/* Page Header */}
-        <div className="card rounded-3xl p-6 md:p-8 mb-6 animate-section">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 md:gap-6">
-            <div className="fade-in-up">
-              <p className="label mb-2">Events</p>
-              <h1 className="heading-2 mb-2">Medical Events & Conferences</h1>
-              <p className="body-md">
-                Discover, host, and register for medical workshops, conferences, fests, and hackathons
-              </p>
-              {lastUpdated && (
-                <p className="text-xs text-[var(--color-text-muted)] mt-3 flex items-center gap-1">
-                  <Clock className="w-3 h-3" /> Auto-refresh every 24 hrs &middot; Last updated: {lastUpdated.toLocaleString()}
-                  {isCached && <span className="ml-1 text-orange-500 font-medium">(cached)</span>}
+        <div className="relative card rounded-3xl p-6 md:p-8 mb-6 animate-section overflow-hidden">
+          <div aria-hidden className="pointer-events-none absolute -top-32 -right-32 w-80 h-80 rounded-full opacity-50 blur-3xl" style={{ background: 'radial-gradient(circle, var(--color-accent-soft) 0%, transparent 70%)' }} />
+          <div aria-hidden className="pointer-events-none absolute -bottom-32 -left-24 w-64 h-64 rounded-full opacity-30 blur-3xl" style={{ background: 'radial-gradient(circle, var(--color-blue-soft) 0%, transparent 70%)' }} />
+
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-5 md:gap-6">
+            <div className="flex items-start gap-4 fade-in-up">
+              <div className="hidden sm:flex w-12 h-12 lg:w-14 lg:h-14 rounded-2xl items-center justify-center flex-shrink-0" style={{ background: 'var(--gradient-primary)', boxShadow: 'var(--shadow-btn)' }}>
+                <Calendar className="w-6 h-6 lg:w-7 lg:h-7 text-white" />
+              </div>
+              <div>
+                <p className="label mb-2">Events</p>
+                <h1 className="heading-2 mb-2">Medical Events & Conferences</h1>
+                <p className="body-md">
+                  Discover, host, and register for medical workshops, conferences, fests, and hackathons
                 </p>
-              )}
+                {lastUpdated && (
+                  <p className="text-xs text-[var(--color-text-muted)] mt-3 flex items-center gap-1">
+                    <Clock className="w-3 h-3" /> Auto-refresh every 24 hrs &middot; Last updated: {lastUpdated.toLocaleString()}
+                    {isCached && <span className="ml-1 text-orange-500 font-medium">(cached)</span>}
+                  </p>
+                )}
+              </div>
             </div>
-            <div className="flex flex-wrap gap-3 fade-in-delay-1">
+            <div className="flex flex-wrap gap-3 fade-in-delay-1 flex-shrink-0">
               <button onClick={handleRefreshEventbrite} disabled={isRefreshing} className="btn-secondary inline-flex items-center gap-2 !py-2.5 disabled:opacity-50" title="Force refresh Eventbrite events">
                 <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
                 Refresh
@@ -757,22 +765,24 @@ export default function EventsPage() {
             )}
             <div className="space-y-4">
               {filteredEvents.length === 0 ? (
-                <div className="bg-[var(--color-surface-muted)] rounded-lg border border-[var(--color-border-light)] p-12 text-center">
-                  <div className="flex justify-center mb-4 text-slate-300"><Target className="w-16 h-16" /></div>
-                  <h3 className="text-xl font-semibold text-[var(--color-text-primary)] mb-2">No events found</h3>
-                  <p className="text-slate-500 mb-4">Try adjusting your filters or search query</p>
+                <div className="card p-12 text-center">
+                  <div className="w-20 h-20 mx-auto mb-5 rounded-2xl flex items-center justify-center" style={{ background: 'var(--color-accent-soft)' }}>
+                    <Calendar className="w-10 h-10 text-[var(--color-blue-primary)]" />
+                  </div>
+                  <h3 className="heading-3 mb-2">No events found</h3>
+                  <p className="body-md max-w-sm mx-auto mb-5">Try adjusting your filters &mdash; or host the first event the community needs.</p>
                   <button
                     onClick={() => setShowHostForm(true)}
-                    className="bg-[var(--color-blue-primary)] text-white px-6 py-2 rounded-lg hover:bg-[var(--color-blue-primary)]/80 transition"
+                    className="btn-primary inline-flex items-center gap-2 !py-2.5"
                   >
-                    Host Your Own Event
+                    <Plus className="w-4 h-4" /> Host Your Own Event
                   </button>
                 </div>
               ) : (
                 paginatedEvents.map(event => (
                   <article
                     key={event.id}
-                    className="bg-[var(--color-surface-muted)] rounded-2xl transition-smooth overflow-hidden group shadow-premium hover-lift hover-gradient-overlay"
+                    className="card hover-lift transition-smooth overflow-hidden group"
                   >
                     <div className="flex flex-col sm:flex-row">
                       {/* Event Image */}

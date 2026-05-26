@@ -4,7 +4,11 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 import { useAuth } from '@/context/AuthContext';
 import { UserAvatar } from '@/components/ui/user-avatar';
-import { Bot, BookOpen, FileText, BarChart3, Lightbulb, MessageCircle, Save, Target, Send, Trash2, X, Upload, Loader2, Image, Table, File, Presentation, CheckCircle2, AlertCircle } from 'lucide-react';
+import {
+  Bot, BookOpen, FileText, BarChart3, Lightbulb, MessageCircle, Save, Target,
+  Send, Trash2, X, Upload, Loader2, Image, Table, File, Presentation,
+  CheckCircle2, AlertCircle, Sparkles, Paperclip, ArrowRight
+} from 'lucide-react';
 import ConfirmModal from '@/components/ConfirmModal';
 import ResizableSidebar from '@/components/ResizableSidebar';
 import {
@@ -50,17 +54,31 @@ const getFileType = (fileName: string, mimeType: string): string => {
   return 'other';
 };
 
-// File icon component
-const FileIcon = ({ type }: { type: string }) => {
+// File icon component (now returns icon + bg color combo)
+const getFileIconConfig = (type: string) => {
   switch (type) {
-    case 'pdf': return <FileText className="w-5 h-5 text-red-600" />;
-    case 'ppt': return <Presentation className="w-5 h-5 text-orange-500" />;
-    case 'image': return <Image className="w-5 h-5 text-blue-500" />;
+    case 'pdf': return { Icon: FileText, color: 'text-red-600', bg: 'bg-red-50' };
+    case 'ppt': return { Icon: Presentation, color: 'text-orange-600', bg: 'bg-orange-50' };
+    case 'image': return { Icon: Image, color: 'text-[var(--color-blue-primary)]', bg: 'bg-[var(--color-accent-soft)]' };
     case 'csv':
-    case 'excel': return <Table className="w-5 h-5 text-green-600" />;
-    case 'doc': return <FileText className="w-5 h-5 text-blue-600" />;
-    default: return <File className="w-5 h-5 text-slate-500" />;
+    case 'excel': return { Icon: Table, color: 'text-emerald-600', bg: 'bg-emerald-50' };
+    case 'doc': return { Icon: FileText, color: 'text-[var(--color-blue-primary)]', bg: 'bg-[var(--color-accent-soft)]' };
+    default: return { Icon: File, color: 'text-slate-500', bg: 'bg-slate-100' };
   }
+};
+
+const FileIconBadge = ({ type, size = 'md' }: { type: string; size?: 'sm' | 'md' | 'lg' }) => {
+  const { Icon, color, bg } = getFileIconConfig(type);
+  const sizes = {
+    sm: { wrap: 'w-8 h-8 rounded-lg', icon: 'w-4 h-4' },
+    md: { wrap: 'w-10 h-10 rounded-xl', icon: 'w-5 h-5' },
+    lg: { wrap: 'w-12 h-12 rounded-2xl', icon: 'w-6 h-6' },
+  }[size];
+  return (
+    <div className={`${sizes.wrap} ${bg} ${color} flex items-center justify-center flex-shrink-0`}>
+      <Icon className={sizes.icon} />
+    </div>
+  );
 };
 
 // Accepted file types
@@ -480,14 +498,27 @@ export default function AssistantPage() {
     return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
   };
 
+  // Quick prompt suggestions for the welcome state
+  const quickPrompts = [
+    { icon: BookOpen, text: 'Explain a medical concept' },
+    { icon: FileText, text: 'Summarize my uploaded document' },
+    { icon: Lightbulb, text: 'Give me study tips' },
+    { icon: Sparkles, text: 'Quiz me on cardiology' },
+  ];
+
+  // Stats
+  const questionsAsked = messages.filter(m => m.sender === 'user').length;
+  const aiResponses = messages.filter(m => m.sender === 'assistant' && m.id !== 'm1').length;
+  const onlyWelcome = messages.length === 1 && messages[0].id === 'm1';
+
   return (
     <div className="min-h-screen gradient-subtle">
       {/* Custom Toast Notification */}
       {toast && (
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] animate-fade-in-down">
-          <div className={`flex items-center gap-2.5 px-5 py-3 rounded-xl shadow-premium-lg border ${
+          <div className={`flex items-center gap-2.5 px-5 py-3 rounded-2xl shadow-premium-lg border ${
             toast.type === 'success'
-              ? 'bg-[var(--color-blue-primary)] text-[var(--color-blue-soft)] border-[var(--color-border-mid)]'
+              ? 'bg-[var(--color-blue-primary)] text-white border-[var(--color-blue-secondary)]'
               : 'bg-red-600 text-white border-red-500'
           }`}>
             {toast.type === 'success' ? (
@@ -502,315 +533,502 @@ export default function AssistantPage() {
           </div>
         </div>
       )}
+
       <div className="page-container">
         {/* Page Header */}
-        <div className="card rounded-3xl p-6 md:p-8 mb-6 animate-section">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 md:gap-6">
-            <div>
-              <p className="label mb-2">AI Assistant</p>
-              <h1 className="heading-2 mb-2 fade-in-up">AI Study Assistant</h1>
-              <p className="body-md fade-in-delay-1">Upload documents, ask questions, and get instant medical knowledge</p>
+        <div className="relative card rounded-3xl p-6 md:p-8 mb-6 animate-section overflow-hidden">
+          <div aria-hidden className="pointer-events-none absolute -top-32 -right-32 w-80 h-80 rounded-full opacity-50 blur-3xl" style={{ background: 'radial-gradient(circle, var(--color-accent-soft) 0%, transparent 70%)' }} />
+          <div aria-hidden className="pointer-events-none absolute -bottom-32 -left-24 w-64 h-64 rounded-full opacity-30 blur-3xl" style={{ background: 'radial-gradient(circle, var(--color-blue-soft) 0%, transparent 70%)' }} />
+
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-5 md:gap-6">
+            <div className="flex items-start gap-4">
+              <div className="hidden sm:flex w-12 h-12 lg:w-14 lg:h-14 rounded-2xl items-center justify-center flex-shrink-0 relative" style={{ background: 'var(--gradient-primary)', boxShadow: 'var(--shadow-btn)' }}>
+                <Bot className="w-6 h-6 lg:w-7 lg:h-7 text-white" />
+                <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white" />
+              </div>
+              <div>
+                <p className="label mb-2 inline-flex items-center gap-1.5"><Sparkles className="w-3 h-3" /> AI Assistant</p>
+                <h1 className="heading-2 mb-2 fade-in-up">Your Study Companion</h1>
+                <p className="body-md fade-in-delay-1">Upload documents, ask questions, get instant medical knowledge.</p>
+              </div>
             </div>
-            {messages.length > 1 && (
-              <button onClick={() => setShowClearChat(true)} className="btn-secondary inline-flex items-center gap-2 !py-2.5 text-red-600 hover:bg-red-50 self-start">
-                <Trash2 className="w-4 h-4" /> Clear Chat
-              </button>
-            )}
+
+            {/* Stat chips + clear button */}
+            <div className="flex flex-wrap items-center gap-2.5 flex-shrink-0">
+              <div className="flex items-center gap-2.5 px-3.5 py-2 rounded-2xl bg-white/70 backdrop-blur border border-[var(--color-border-light)]">
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: 'var(--color-accent-soft)' }}>
+                  <FileText className="w-4 h-4 text-[var(--color-blue-primary)]" />
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-wider font-bold text-[var(--color-text-muted)]">Docs</div>
+                  <div className="text-sm font-semibold text-[var(--color-text-primary)] leading-tight">{documents.length}</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2.5 px-3.5 py-2 rounded-2xl bg-white/70 backdrop-blur border border-[var(--color-border-light)]">
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: 'var(--color-accent-soft)' }}>
+                  <MessageCircle className="w-4 h-4 text-[var(--color-blue-primary)]" />
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-wider font-bold text-[var(--color-text-muted)]">Asked</div>
+                  <div className="text-sm font-semibold text-[var(--color-text-primary)] leading-tight">{questionsAsked}</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2.5 px-3.5 py-2 rounded-2xl bg-white/70 backdrop-blur border border-[var(--color-border-light)]">
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: 'var(--color-accent-soft)' }}>
+                  <Bot className="w-4 h-4 text-[var(--color-blue-primary)]" />
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-wider font-bold text-[var(--color-text-muted)]">Replies</div>
+                  <div className="text-sm font-semibold text-[var(--color-text-primary)] leading-tight">{aiResponses}</div>
+                </div>
+              </div>
+              {!onlyWelcome && (
+                <button
+                  onClick={() => setShowClearChat(true)}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-2xl text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 border border-red-100 transition-smooth"
+                >
+                  <Trash2 className="w-4 h-4" /> Clear
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
         {/* Main Layout */}
         <div className="card rounded-3xl overflow-hidden flex flex-col lg:flex-row h-[calc(100vh-280px)] min-h-[560px]">
-        {/* Left Sidebar - Documents */}
-        <ResizableSidebar side="left" defaultWidth={320} minWidth={240} maxWidth={480} responsive>
-        <aside className="w-full h-full bg-[var(--color-surface-muted)] lg:border-r border-[var(--color-border-light)] flex flex-col">
-          <div className="p-4 border-b border-[var(--color-border-light)]">
-            <h2 className="heading-md mb-3 flex items-center gap-2"><BookOpen className="w-4 h-4 text-[var(--color-blue-primary)]" /> Your Documents</h2>
-
-            {/* Upload Button */}
-            <label className="btn-primary block w-full text-center py-3 px-4 rounded-xl font-semibold cursor-pointer">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept={ACCEPTED_FILE_TYPES}
-                onChange={handleFileUpload}
-                className="hidden"
-                disabled={isProcessing}
-              />
-              {isProcessing ? (
-                <span className="flex items-center justify-center gap-2">
-                  <Loader2 className="w-4 h-4 animate-spin" /> Processing...
-                </span>
-              ) : (
-                <span className="flex items-center justify-center gap-2">
-                  <Upload className="w-4 h-4" /> Upload Document
-                </span>
-              )}
-            </label>
-            <p className="text-xs text-slate-400 mt-1.5 text-center">PDF, PPT, Images, CSV, Excel & more</p>
-          </div>
-
-          {/* Documents List */}
-            <div className="flex-1 overflow-y-auto p-4">
-                {isLoadingDocs ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-[var(--color-blue-primary)]" />
-              </div>
-            ) : documents.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="mb-4 flex justify-center"><FileText className="w-14 h-14 text-slate-300" /></div>
-                <p className="text-slate-500 text-sm">
-                  No documents yet.<br />Upload a file to get started!
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {documents.map(doc => (
-                  <div key={doc.id} className={`card p-3 transition-smooth cursor-pointer ${selectedDocument?.id === doc.id ? 'shadow-premium' : ''}`} onClick={() => setSelectedDocument(selectedDocument?.id === doc.id ? null : doc)}>
-                    <div className="flex items-start gap-2 mb-2">
-                      <FileIcon type={doc.type} />
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-sm text-[var(--color-text-primary)] truncate">
-                          {doc.name}
-                        </h3>
-                        <p className="text-xs text-slate-500">
-                          {doc.size && `${doc.size} • `}{doc.type?.toUpperCase()} • {formatTime(doc.uploadedAt)}
-                        </p>
-                      </div>
-                    </div>
-                    <button onClick={(e) => { e.stopPropagation(); setDeleteDocId(doc.id); }} className="text-xs text-red-600 hover:text-red-700 font-semibold flex items-center gap-1"> <Trash2 className="w-3 h-3" /> Delete</button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Document Info */}
-          {selectedDocument && (
-                <div className="p-4 border-t border-[var(--color-border-light)] bg-[var(--color-surface-muted)]">
-              <h3 className="font-semibold text-sm text-[var(--color-text-primary)] mb-2 flex items-center gap-1.5">
-                <Target className="w-3.5 h-3.5 text-[var(--color-blue-primary)]" /> Chatting about:
-              </h3>
-              <p className="text-xs text-slate-600 mb-2 font-medium truncate">{selectedDocument.name}</p>
-              <p className="text-xs text-slate-400">AI responses will be based on this document</p>
-              <button
-                onClick={() => setSelectedDocument(null)}
-                className="text-xs text-[var(--color-blue-primary)] hover:text-[var(--color-blue-primary)] font-semibold mt-2 flex items-center gap-1"
-              >
-                <X className="w-3 h-3" /> Deselect
-              </button>
-            </div>
-          )}
-        </aside>
-        </ResizableSidebar>
-
-        {/* Center - Chat Interface */}
-        <main className="flex-1 flex flex-col bg-[var(--color-surface-muted)] min-w-0 transition-all duration-300">
-          {/* Messages Area */}
-          <div className="flex-1 overflow-y-auto p-6">
-            {messages.length === 0 ? (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center">
-                  <div className="mb-4 flex justify-center"><Bot className="w-20 h-20 text-[var(--color-blue-soft)]" /></div>
-                  <h2 className="text-2xl font-semibold text-[var(--color-text-primary)] mb-2">
-                    Ready to assist!
-                  </h2>
-                  <p className="text-slate-500">Ask a question or upload a document</p>
+          {/* Left Sidebar - Documents */}
+          <ResizableSidebar side="left" defaultWidth={340} minWidth={260} maxWidth={480} responsive>
+            <aside className="w-full h-full bg-white lg:border-r border-[var(--color-border-light)] flex flex-col">
+              {/* Upload Zone */}
+              <div className="p-4 border-b border-[var(--color-border-light)] flex-shrink-0">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="label inline-flex items-center gap-1.5"><BookOpen className="w-3 h-3" /> Library</p>
+                  <span className="text-[10px] font-semibold text-[var(--color-text-muted)] bg-[var(--color-surface-muted)] px-2 py-0.5 rounded-full">{documents.length} files</span>
                 </div>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                {messages.map(message => (
-                  <div
-                    key={message.id}
-                    className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-                  >
-                    <div className={`max-w-2xl ${message.sender === 'user' ? 'ml-12' : 'mr-12'}`}>
-                      {/* Sender Label */}
-                      <div className={`flex items-center gap-2 mb-2 ${message.sender === 'user' ? 'justify-end' : 'justify-start'
-                        }`}>
-                          {message.sender === 'assistant' && (
-                          <>
-                            <div className="w-6 h-6 bg-[var(--color-blue-primary)] rounded-full flex items-center justify-center">
-                              <Bot className="w-3.5 h-3.5 text-white" />
-                            </div>
-                            <span className="text-xs font-semibold text-[var(--color-text-muted)]">
-                              MediHub AI
-                            </span>
-                          </>
-                        )}
-                        {message.sender === 'user' && (
-                          <>
-                            <span className="text-xs font-semibold text-slate-500">You</span>
-                            <UserAvatar userId={user?._id || 'current-user'} name={user?.name || 'You'} size={24} />
-                          </>
-                        )}
-                      </div>
-
-                      {/* Message Bubble */}
-                      <div className={"p-4 shadow-premium " + (message.sender === 'user' ? 'user-prompt-bubble' : 'ai-response-card')}>
-                        <div className="prose prose-sm max-w-none">
-                          {message.text.split('\n').map((line, i) => {
-                            // Handle bold markdown
-                            const parts = line.split(/(\*\*.*?\*\*)/g);
-                            return (
-                              <p key={i} className="mb-2 last:mb-0">
-                                {parts.map((part, j) => {
-                                  if (part.startsWith('**') && part.endsWith('**')) {
-                                    return (
-                                      <strong key={j}>
-                                        {part.slice(2, -2)}
-                                      </strong>
-                                    );
-                                  }
-                                  return <span key={j}>{part}</span>;
-                                })}
-                              </p>
-                            );
-                          })}
+                <label className={`relative block w-full rounded-2xl border-2 border-dashed transition-smooth cursor-pointer overflow-hidden group ${
+                  isProcessing
+                    ? 'border-[var(--color-blue-primary)] bg-[var(--color-accent-soft)]'
+                    : 'border-[var(--color-border-mid)] hover:border-[var(--color-blue-primary)] hover:bg-[var(--color-accent-soft)]/50 bg-[var(--color-surface-muted)]'
+                }`}>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept={ACCEPTED_FILE_TYPES}
+                    onChange={handleFileUpload}
+                    className="hidden"
+                    disabled={isProcessing}
+                  />
+                  <div className="px-4 py-5 text-center">
+                    {isProcessing ? (
+                      <>
+                        <Loader2 className="w-7 h-7 mx-auto mb-2 text-[var(--color-blue-primary)] animate-spin" />
+                        <p className="text-sm font-semibold text-[var(--color-blue-primary)]">Processing...</p>
+                        <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">This may take a moment</p>
+                      </>
+                    ) : (
+                      <>
+                        <div className="w-10 h-10 mx-auto mb-2 rounded-2xl flex items-center justify-center transition-smooth group-hover:scale-105" style={{ background: 'var(--gradient-primary)', boxShadow: 'var(--shadow-btn)' }}>
+                          <Upload className="w-5 h-5 text-white" />
                         </div>
-
-                        {/* Timestamp */}
-                        <div className={`text-xs mt-2 ${message.sender === 'user' ? 'text-[var(--color-text-muted)]' : 'text-slate-500'
-                          }`}>
-                          {formatTime(message.createdAt)}
-                        </div>
-                      </div>
-
-                      {/* Actions for assistant messages */}
-                      {message.sender === 'assistant' && message.id !== 'm1' && (
-                        <div className="flex gap-2 mt-2">
-                          <button onClick={() => handleSaveToNotebook(message)} className="btn-primary text-xs px-3 py-1 rounded-xl font-semibold flex items-center gap-1">
-                            <Save className="w-3 h-3" /> Save to Notebook
-                          </button>
-                          {message.relatedDocumentId && (
-                            <span className="text-xs bg-[var(--color-blue-soft)] text-[var(--color-blue-primary)] px-3 py-1 rounded-lg font-semibold flex items-center gap-1">
-                              <FileText className="w-3 h-3" /> From Document
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </div>
+                        <p className="text-sm font-semibold text-[var(--color-text-primary)]">Upload Document</p>
+                        <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">PDF · PPT · DOC · Image · CSV · Excel</p>
+                      </>
+                    )}
                   </div>
-                ))}
+                </label>
+              </div>
 
-                {/* Processing Indicator */}
-                {isProcessing && (
-                  <div className="flex justify-start">
-                    <div className="mr-12">
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="w-6 h-6 bg-[var(--color-blue-primary)] rounded-full flex items-center justify-center">
-                          <div className="w-2 h-2 bg-[var(--color-blue-primary)] rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                          <div className="w-2 h-2 bg-[var(--color-blue-primary)] rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                          <div className="w-2 h-2 bg-[var(--color-blue-primary)] rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
-                          <Bot className="w-3.5 h-3.5 text-white" />
-                        </div>
-                        <span className="text-xs font-semibold text-slate-500">
-                          AI Assistant
-                        </span>
-                      </div>
-                      <div className="bg-slate-100 rounded-lg p-4">
-                        <div className="flex items-center gap-2">
-                            <div className="flex gap-1">
-                            <div className="w-2 h-2 bg-[var(--color-blue-primary)] rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                            <div className="w-2 h-2 bg-[var(--color-blue-primary)] rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                            <div className="w-2 h-2 bg-[var(--color-blue-primary)] rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
-                          </div>
-                          <span className="text-sm text-slate-500">Thinking...</span>
-                        </div>
-                      </div>
+              {/* Documents List */}
+              <div className="flex-1 overflow-y-auto px-3 py-3">
+                {isLoadingDocs ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="w-8 h-8 animate-spin text-[var(--color-blue-primary)]" />
+                  </div>
+                ) : documents.length === 0 ? (
+                  <div className="text-center py-10 px-4">
+                    <div className="w-16 h-16 mx-auto mb-3 rounded-2xl flex items-center justify-center" style={{ background: 'var(--color-accent-soft)' }}>
+                      <FileText className="w-8 h-8 text-[var(--color-blue-primary)]" />
                     </div>
+                    <p className="text-sm font-semibold text-[var(--color-text-primary)] mb-1">No documents yet</p>
+                    <p className="text-xs text-[var(--color-text-muted)]">Upload a file to start chatting with your library.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-1.5">
+                    {documents.map(doc => {
+                      const isActive = selectedDocument?.id === doc.id;
+                      return (
+                        <div
+                          key={doc.id}
+                          onClick={() => setSelectedDocument(isActive ? null : doc)}
+                          className={`group relative rounded-2xl p-3 cursor-pointer transition-smooth border ${
+                            isActive
+                              ? 'bg-[var(--color-accent-soft)] border-[var(--color-blue-primary)] shadow-premium'
+                              : 'bg-white border-[var(--color-border-light)] hover:border-[var(--color-border-mid)] hover:shadow-premium'
+                          }`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <FileIconBadge type={doc.type} />
+                            <div className="flex-1 min-w-0">
+                              <h3 className={`font-semibold text-sm truncate ${isActive ? 'text-[var(--color-blue-primary)]' : 'text-[var(--color-text-primary)]'}`}>
+                                {doc.name}
+                              </h3>
+                              <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5 truncate">
+                                {doc.size && `${doc.size} · `}{doc.type?.toUpperCase()} · {formatTime(doc.uploadedAt)}
+                              </p>
+                              <div className="flex items-center gap-3 mt-2">
+                                {isActive && (
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--color-blue-primary)] bg-white px-1.5 py-0.5 rounded">
+                                    <Target className="w-2.5 h-2.5" /> Active
+                                  </span>
+                                )}
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setDeleteDocId(doc.id); }}
+                                  className="text-[11px] font-medium text-red-600 hover:text-red-700 inline-flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-smooth ml-auto"
+                                >
+                                  <Trash2 className="w-3 h-3" /> Delete
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
-
-                <div ref={messagesEndRef} />
               </div>
-            )}
-          </div>
 
-          {/* Input Area */}
-          <div className="border-t border-[var(--color-border-light)] bg-[var(--color-surface-white)] p-6">
-            <div>
-              {/* Input Field */}
-              <div className="flex gap-3">
-                <textarea
-                  value={inputText}
-                  onChange={(e) => setInputText(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSendMessage();
+              {/* Active Document Indicator */}
+              {selectedDocument && (
+                <div className="p-4 border-t border-[var(--color-border-light)] flex-shrink-0 relative overflow-hidden" style={{ background: 'var(--gradient-bg)' }}>
+                  <div aria-hidden className="pointer-events-none absolute -top-16 -right-16 w-40 h-40 rounded-full opacity-50 blur-3xl" style={{ background: 'radial-gradient(circle, var(--color-accent-soft) 0%, transparent 70%)' }} />
+                  <div className="relative z-10">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: 'var(--gradient-primary)' }}>
+                        <Target className="w-3.5 h-3.5 text-white" />
+                      </div>
+                      <p className="label">Chatting about</p>
+                    </div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <FileIconBadge type={selectedDocument.type} size="sm" />
+                      <p className="text-sm font-semibold text-[var(--color-text-primary)] truncate">{selectedDocument.name}</p>
+                    </div>
+                    <p className="text-[11px] text-[var(--color-text-muted)] mb-2">AI responses will use this document as context.</p>
+                    <button
+                      onClick={() => setSelectedDocument(null)}
+                      className="text-xs text-[var(--color-blue-primary)] hover:underline font-semibold inline-flex items-center gap-1"
+                    >
+                      <X className="w-3 h-3" /> Deselect
+                    </button>
+                  </div>
+                </div>
+              )}
+            </aside>
+          </ResizableSidebar>
+
+          {/* Center - Chat Interface */}
+          <main className="flex-1 flex flex-col bg-[var(--color-bg-ivory)] min-w-0 transition-all duration-300">
+            {/* Messages Area */}
+            <div className="flex-1 overflow-y-auto px-4 md:px-8 py-6">
+              {isLoadingMessages ? (
+                <div className="flex items-center justify-center h-full">
+                  <Loader2 className="w-8 h-8 animate-spin text-[var(--color-blue-primary)]" />
+                </div>
+              ) : (
+                <div className="max-w-3xl mx-auto space-y-6">
+                  {/* Welcome / Hero block - shown only when only welcome message exists */}
+                  {onlyWelcome && (
+                    <div className="relative card rounded-3xl p-6 md:p-8 overflow-hidden fade-in-up">
+                      <div aria-hidden className="pointer-events-none absolute -top-24 -right-24 w-64 h-64 rounded-full opacity-50 blur-3xl" style={{ background: 'radial-gradient(circle, var(--color-accent-soft) 0%, transparent 70%)' }} />
+                      <div aria-hidden className="pointer-events-none absolute -bottom-24 -left-24 w-56 h-56 rounded-full opacity-40 blur-3xl" style={{ background: 'radial-gradient(circle, var(--color-blue-soft) 0%, transparent 70%)' }} />
+
+                      <div className="relative z-10 text-center max-w-md mx-auto">
+                        <div className="w-20 h-20 mx-auto mb-5 rounded-3xl flex items-center justify-center" style={{ background: 'var(--gradient-primary)', boxShadow: 'var(--shadow-btn)' }}>
+                          <Bot className="w-10 h-10 text-white" />
+                        </div>
+                        <h2 className="heading-2 mb-2">Hi {user?.name?.split(' ')[0] || 'there'}!</h2>
+                        <p className="body-md mb-6">I&apos;m your MediHub AI Assistant. Ask me anything — or upload a document for instant analysis.</p>
+                      </div>
+
+                      <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-w-xl mx-auto">
+                        {quickPrompts.map((prompt, i) => {
+                          const Icon = prompt.icon;
+                          return (
+                            <button
+                              key={i}
+                              onClick={() => setInputText(prompt.text)}
+                              className="flex items-center gap-3 p-3 rounded-2xl bg-white border border-[var(--color-border-light)] hover:border-[var(--color-blue-primary)] hover:shadow-premium transition-smooth text-left group"
+                            >
+                              <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-smooth group-hover:scale-105" style={{ background: 'var(--color-accent-soft)' }}>
+                                <Icon className="w-4 h-4 text-[var(--color-blue-primary)]" />
+                              </div>
+                              <span className="text-sm font-medium text-[var(--color-text-primary)] flex-1">{prompt.text}</span>
+                              <ArrowRight className="w-4 h-4 text-[var(--color-text-muted)] group-hover:text-[var(--color-blue-primary)] group-hover:translate-x-0.5 transition-smooth" />
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Messages */}
+                  {!onlyWelcome && messages.map(message => {
+                    const isUser = message.sender === 'user';
+                    return (
+                      <div key={message.id} className={`flex gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
+                        {/* Avatar */}
+                        <div className="flex-shrink-0">
+                          {isUser ? (
+                            <div className="w-9 h-9 rounded-full overflow-hidden ring-2 ring-white shadow-sm">
+                              <UserAvatar userId={user?._id || 'current-user'} name={user?.name || 'You'} size={36} />
+                            </div>
+                          ) : (
+                            <div className="w-9 h-9 rounded-full flex items-center justify-center relative" style={{ background: 'var(--gradient-primary)', boxShadow: 'var(--shadow-btn)' }}>
+                              <Bot className="w-5 h-5 text-white" />
+                              <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-white" />
+                            </div>
+                          )}
+                        </div>
+
+                        <div className={`flex flex-col gap-1 max-w-[80%] ${isUser ? 'items-end' : 'items-start'}`}>
+                          {/* Sender + time */}
+                          <div className="flex items-center gap-2 text-[11px]">
+                            <span className="font-semibold text-[var(--color-text-primary)]">
+                              {isUser ? 'You' : 'MediHub AI'}
+                            </span>
+                            <span className="text-[var(--color-text-muted)]">·</span>
+                            <span className="text-[var(--color-text-muted)]">{formatTime(message.createdAt)}</span>
+                          </div>
+
+                          {/* Message bubble */}
+                          <div className={`px-4 py-3 ${isUser ? 'user-prompt-bubble shadow-sm' : 'ai-response-card'}`}>
+                            <div className="prose prose-sm max-w-none">
+                              {message.text.split('\n').map((line, i) => {
+                                const parts = line.split(/(\*\*.*?\*\*)/g);
+                                return (
+                                  <p key={i} className="mb-1.5 last:mb-0 text-sm leading-relaxed whitespace-pre-wrap">
+                                    {parts.map((part, j) => {
+                                      if (part.startsWith('**') && part.endsWith('**')) {
+                                        return <strong key={j} className="font-semibold">{part.slice(2, -2)}</strong>;
+                                      }
+                                      return <span key={j}>{part}</span>;
+                                    })}
+                                  </p>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          {/* Actions for assistant messages (skip the welcome) */}
+                          {!isUser && message.id !== 'm1' && (
+                            <div className="flex flex-wrap gap-2 mt-1">
+                              <button
+                                onClick={() => handleSaveToNotebook(message)}
+                                className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--color-blue-primary)] bg-[var(--color-accent-soft)] hover:bg-[var(--color-accent-hover)] px-2.5 py-1.5 rounded-lg transition-smooth"
+                              >
+                                <Save className="w-3 h-3" /> Save to Notebook
+                              </button>
+                              {message.relatedDocumentId && (
+                                <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--color-text-muted)] bg-white border border-[var(--color-border-light)] px-2.5 py-1.5 rounded-lg">
+                                  <Paperclip className="w-3 h-3" /> From document
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {/* Processing Indicator */}
+                  {isProcessing && (
+                    <div className="flex gap-3">
+                      <div className="flex-shrink-0">
+                        <div className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: 'var(--gradient-primary)', boxShadow: 'var(--shadow-btn)' }}>
+                          <Bot className="w-5 h-5 text-white" />
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-1 items-start">
+                        <div className="flex items-center gap-2 text-[11px]">
+                          <span className="font-semibold text-[var(--color-text-primary)]">MediHub AI</span>
+                          <span className="text-[var(--color-text-muted)]">·</span>
+                          <span className="text-[var(--color-text-muted)]">thinking</span>
+                        </div>
+                        <div className="ai-response-card px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <span className="flex gap-1">
+                              <span className="w-2 h-2 bg-[var(--color-blue-primary)] rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                              <span className="w-2 h-2 bg-[var(--color-blue-primary)] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                              <span className="w-2 h-2 bg-[var(--color-blue-primary)] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div ref={messagesEndRef} />
+                </div>
+              )}
+            </div>
+
+            {/* Input Area */}
+            <div className="border-t border-[var(--color-border-light)] bg-white px-4 md:px-6 py-4 flex-shrink-0">
+              <div className="max-w-3xl mx-auto">
+                {selectedDocument && (
+                  <div className="mb-2.5 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--color-accent-soft)] border border-[var(--color-border-mid)]">
+                    <FileIconBadge type={selectedDocument.type} size="sm" />
+                    <span className="text-xs font-medium text-[var(--color-blue-primary)] truncate max-w-[240px]">
+                      Asking about: {selectedDocument.name}
+                    </span>
+                    <button
+                      onClick={() => setSelectedDocument(null)}
+                      className="ml-1 text-[var(--color-blue-primary)] hover:text-red-500 transition-smooth"
+                      title="Deselect"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+                <div className="flex items-end gap-2">
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isProcessing}
+                    className="w-10 h-10 rounded-xl flex items-center justify-center text-[var(--color-text-muted)] hover:bg-[var(--color-accent-soft)] hover:text-[var(--color-blue-primary)] transition-smooth flex-shrink-0 disabled:opacity-50"
+                    title="Upload a document"
+                  >
+                    <Paperclip className="w-5 h-5" />
+                  </button>
+                  <textarea
+                    value={inputText}
+                    onChange={(e) => setInputText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendMessage();
+                      }
+                    }}
+                    placeholder={
+                      selectedDocument
+                        ? `Ask about "${selectedDocument.name}"...`
+                        : 'Ask a medical question, request a summary, or paste an idea...'
                     }
-                  }}
-                  placeholder={
-                    selectedDocument
-                      ? `Ask about "${selectedDocument.name}"...`
-                      : 'Ask a medical question...'
-                  }
-                  className="input flex-1 resize-none"
-                  rows={2}
-                  disabled={isProcessing}
-                />
-                <button onClick={handleSendMessage} disabled={!inputText.trim() || isProcessing} className="btn-primary px-8 rounded-xl font-semibold disabled:opacity-50 flex items-center gap-2">
-                  {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />} Send
-                </button>
-              </div>
-              <p className="text-xs text-slate-500 mt-2">
-                Press Enter to send, Shift+Enter for new line
-              </p>
-            </div>
-          </div>
-        </main>
-
-        {/* Right Sidebar - Info & Tips */}
-        <ResizableSidebar side="right" defaultWidth={320} minWidth={240} maxWidth={480} responsive>
-        <aside className="w-full h-full bg-[var(--color-surface-white)] border-l border-[var(--color-border-light)] overflow-y-auto">
-          <div className="p-6">
-            {/* Usage Stats */}
-            <div className="mb-6">
-              <h3 className="font-bold text-[var(--color-text-primary)] mb-3 flex items-center gap-2"><BarChart3 className="w-4 h-4 text-[var(--color-blue-primary)]" /> Your Activity</h3>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center p-3 bg-[var(--color-surface-muted)] rounded-lg">
-                  <span className="text-sm text-slate-500 flex items-center gap-1.5"><FileText className="w-3.5 h-3.5" /> Documents</span>
-                  <span className="font-bold text-[var(--color-blue-primary)]">{documents.length}</span>
+                    className="input flex-1 resize-none py-2.5 leading-snug max-h-40"
+                    rows={1}
+                    disabled={isProcessing}
+                  />
+                  <button
+                    onClick={handleSendMessage}
+                    disabled={!inputText.trim() || isProcessing}
+                    className="w-10 h-10 rounded-xl flex items-center justify-center text-white flex-shrink-0 transition-smooth disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90"
+                    style={{ background: 'var(--gradient-primary)', boxShadow: 'var(--shadow-btn)' }}
+                    title="Send"
+                  >
+                    {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                  </button>
                 </div>
-                <div className="flex justify-between items-center p-3 bg-[var(--color-blue-soft)] rounded-lg">
-                  <span className="text-sm text-slate-500 flex items-center gap-1.5"><MessageCircle className="w-3.5 h-3.5" /> Questions Asked</span>
-                  <span className="font-bold text-[var(--color-blue-primary)]">
-                    {messages.filter(m => m.sender === 'user').length}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center p-3 bg-[var(--color-surface-muted)] rounded-lg">
-                  <span className="text-sm text-slate-500 flex items-center gap-1.5"><Bot className="w-3.5 h-3.5" /> Responses</span>
-                  <span className="font-bold text-[var(--color-blue-primary)]">
-                    {messages.filter(m => m.sender === 'assistant').length}
-                  </span>
-                </div>
+                <p className="text-[10px] text-[var(--color-text-muted)] mt-1.5 ml-12">
+                  Press <kbd className="px-1 py-0.5 rounded bg-[var(--color-surface-muted)] border border-[var(--color-border-light)] text-[9px] font-mono">Enter</kbd> to send · <kbd className="px-1 py-0.5 rounded bg-[var(--color-surface-muted)] border border-[var(--color-border-light)] text-[9px] font-mono">Shift+Enter</kbd> for new line
+                </p>
               </div>
             </div>
+          </main>
 
-            {/* Quick Tips */}
-            <div className="mb-6">
-              <h3 className="font-bold text-[var(--color-text-primary)] mb-3 flex items-center gap-2"><Lightbulb className="w-4 h-4 text-[var(--color-blue-primary)]" /> Quick Tips</h3>
-              <div className="space-y-3 text-sm text-slate-500">
-                <div className="p-3 bg-[var(--color-surface-muted)] rounded-lg border border-[var(--color-border-light)]">
-                  <p className="font-semibold text-[var(--color-blue-primary)] mb-1 flex items-center gap-1.5"><Upload className="w-3.5 h-3.5" /> Upload Documents</p>
-                  <p className="text-xs">Upload PDFs, PPTs, images, CSVs, or Excel files for instant AI analysis</p>
-                </div>
-                <div className="p-3 bg-[var(--color-blue-soft)] rounded-lg border border-[var(--color-border-light)]">
-                  <p className="font-semibold text-[var(--color-blue-primary)] mb-1 flex items-center gap-1.5"><MessageCircle className="w-3.5 h-3.5" /> Ask Questions</p>
-                  <p className="text-xs">Get explanations on medical concepts, diseases, treatments, and more</p>
-                </div>
-                <div className="p-3 bg-[var(--color-surface-muted)] rounded-lg border border-[var(--color-border-light)]">
-                  <p className="font-semibold text-[var(--color-blue-primary)] mb-1 flex items-center gap-1.5"><Save className="w-3.5 h-3.5" /> Save Responses</p>
-                  <p className="text-xs">Save helpful AI responses directly to your Notebook for later review</p>
+          {/* Right Sidebar - Info & Tips */}
+          <ResizableSidebar side="right" defaultWidth={320} minWidth={260} maxWidth={480} responsive>
+            <aside className="w-full h-full bg-white border-l border-[var(--color-border-light)] overflow-y-auto">
+              {/* Hero */}
+              <div className="relative px-6 pt-6 pb-5 overflow-hidden border-b border-[var(--color-border-light)]" style={{ background: 'var(--gradient-bg)' }}>
+                <div aria-hidden className="pointer-events-none absolute -top-20 -right-20 w-48 h-48 rounded-full opacity-50 blur-3xl" style={{ background: 'radial-gradient(circle, var(--color-accent-soft) 0%, transparent 70%)' }} />
+                <div className="relative z-10 flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ background: 'var(--gradient-primary)', boxShadow: 'var(--shadow-btn)' }}>
+                    <BarChart3 className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <p className="label">Session</p>
+                    <h2 className="heading-3">Your Activity</h2>
+                  </div>
                 </div>
               </div>
-            </div>
 
-          </div>
-        </aside>
-        </ResizableSidebar>
+              <div className="px-5 py-5 space-y-6">
+                {/* Stats */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-3 p-3 rounded-2xl bg-[var(--color-surface-muted)] border border-[var(--color-border-light)]">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'var(--color-accent-soft)' }}>
+                      <FileText className="w-5 h-5 text-[var(--color-blue-primary)]" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="label">Documents</p>
+                      <p className="text-xs text-[var(--color-text-muted)]">In your library</p>
+                    </div>
+                    <span className="text-2xl font-bold gradient-text">{documents.length}</span>
+                  </div>
+                  <div className="flex items-center gap-3 p-3 rounded-2xl bg-[var(--color-surface-muted)] border border-[var(--color-border-light)]">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'var(--color-accent-soft)' }}>
+                      <MessageCircle className="w-5 h-5 text-[var(--color-blue-primary)]" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="label">Questions</p>
+                      <p className="text-xs text-[var(--color-text-muted)]">Asked this session</p>
+                    </div>
+                    <span className="text-2xl font-bold gradient-text">{questionsAsked}</span>
+                  </div>
+                  <div className="flex items-center gap-3 p-3 rounded-2xl bg-[var(--color-surface-muted)] border border-[var(--color-border-light)]">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'var(--color-accent-soft)' }}>
+                      <Bot className="w-5 h-5 text-[var(--color-blue-primary)]" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="label">Responses</p>
+                      <p className="text-xs text-[var(--color-text-muted)]">From AI assistant</p>
+                    </div>
+                    <span className="text-2xl font-bold gradient-text">{aiResponses}</span>
+                  </div>
+                </div>
+
+                {/* Tips */}
+                <div>
+                  <p className="label mb-3 inline-flex items-center gap-1.5"><Lightbulb className="w-3 h-3" /> Pro Tips</p>
+                  <div className="space-y-2.5">
+                    {[
+                      { Icon: Upload, title: 'Upload first', desc: 'Drop a PDF, PPT, image, or spreadsheet — I&apos;ll summarize it instantly.' },
+                      { Icon: Target, title: 'Focus a doc', desc: 'Click a document in your library to scope my answers to it.' },
+                      { Icon: Save, title: 'Save replies', desc: 'Useful answers can be saved straight to your Notebook.' },
+                    ].map(({ Icon, title, desc }, i) => (
+                      <div key={i} className="p-3 rounded-2xl border border-[var(--color-border-light)] bg-white hover:bg-[var(--color-surface-muted)] transition-smooth">
+                        <div className="flex items-start gap-3">
+                          <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'var(--color-accent-soft)' }}>
+                            <Icon className="w-4 h-4 text-[var(--color-blue-primary)]" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-[var(--color-text-primary)] mb-0.5">{title}</p>
+                            <p className="text-xs text-[var(--color-text-muted)] leading-relaxed" dangerouslySetInnerHTML={{ __html: desc }} />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Capabilities */}
+                <div className="relative rounded-2xl p-4 overflow-hidden" style={{ background: 'var(--gradient-primary)' }}>
+                  <div aria-hidden className="pointer-events-none absolute -top-10 -right-10 w-32 h-32 rounded-full opacity-20 blur-2xl bg-white" />
+                  <div className="relative z-10 text-white">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Sparkles className="w-4 h-4" />
+                      <p className="text-[10px] uppercase tracking-wider font-bold opacity-80">What I can do</p>
+                    </div>
+                    <ul className="space-y-1.5 text-xs text-white/90">
+                      <li className="flex gap-2"><span className="opacity-60">•</span><span>Answer medical questions</span></li>
+                      <li className="flex gap-2"><span className="opacity-60">•</span><span>Summarize uploaded files</span></li>
+                      <li className="flex gap-2"><span className="opacity-60">•</span><span>Explain complex concepts</span></li>
+                      <li className="flex gap-2"><span className="opacity-60">•</span><span>Suggest study strategies</span></li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </aside>
+          </ResizableSidebar>
+        </div>
       </div>
 
       {/* Delete Document Confirmation */}
@@ -833,7 +1051,6 @@ export default function AssistantPage() {
         onConfirm={handleClearChat}
         onCancel={() => setShowClearChat(false)}
       />
-    </div>
     </div>
   );
 }

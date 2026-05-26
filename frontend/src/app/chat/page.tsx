@@ -8,7 +8,8 @@ import { useNotifications } from '@/context/NotificationContext';
 import {
   Search, Pin, MessageCircle, Users, Paperclip, FileText,
   ImageIcon, Info, Send, X, CheckCheck, Plus, Trash2,
-  UserPlus, PinOff, Loader2, UserMinus
+  UserPlus, PinOff, Loader2, UserMinus, Sparkles, Download,
+  ShieldCheck
 } from 'lucide-react';
 import { UserAvatar } from '@/components/ui/user-avatar';
 import {
@@ -505,6 +506,19 @@ export default function ChatPage() {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
+  // Format day divider
+  const formatDayDivider = (dateString: string): string => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const msgDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const diffDays = Math.floor((today.getTime() - msgDay.getTime()) / 86400000);
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return date.toLocaleDateString('en-US', { weekday: 'long' });
+    return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  };
+
   // Get role color
   const getRoleColor = (role: string): string => {
     switch (role) {
@@ -529,61 +543,87 @@ export default function ChatPage() {
     }
   };
 
+  // Stats
+  const totalOnline = onlineUsers.length;
+  const totalChats = privateChats.length + pinnedChats.filter(c => !c.isGroup).length;
+  const totalGroups = groupChats.length + pinnedChats.filter(c => c.isGroup).length;
+
   // Render conversation item
   const renderConversationItem = (conv: ConversationType) => {
     const otherUser = !conv.isGroup ? getOtherUser(conv) : null;
     const isOnline = otherUser ? isUserOnline(otherUser.id) : false;
     const typing = typingUsers[conv.id];
+    const isActive = selectedConv?.id === conv.id;
 
     return (
       <button
         key={conv.id}
         onClick={() => setSelectedConv(conv)}
-        className={`w-full text-left p-4 border-b border-[var(--color-border-light)] hover:bg-[var(--color-accent-soft)]/40 transition-all group ${
-          selectedConv?.id === conv.id ? 'bg-[var(--color-accent-soft)]' : ''
+        className={`w-full text-left px-4 py-3 transition-smooth group relative border-l-[3px] ${
+          isActive
+            ? 'bg-[var(--color-accent-soft)] border-[var(--color-blue-primary)]'
+            : 'border-transparent hover:bg-[var(--color-surface-muted)]'
         }`}
       >
         <div className="flex items-start gap-3">
           {/* Avatar */}
-          <div className="relative">
-            <div className="w-12 h-12 rounded-lg flex items-center justify-center overflow-hidden">
-              {conv.isGroup ? (
-                <div className="w-12 h-12 bg-[var(--color-blue-primary)] rounded-lg flex items-center justify-center text-white">
-                  <Users className="w-5 h-5" />
-                </div>
-              ) : (
+          <div className="relative flex-shrink-0">
+            {conv.isGroup ? (
+              <div
+                className="w-12 h-12 rounded-2xl flex items-center justify-center text-white"
+                style={{ background: 'var(--gradient-primary)', boxShadow: 'var(--shadow-btn)' }}
+              >
+                <Users className="w-5 h-5" />
+              </div>
+            ) : (
+              <div className="w-12 h-12 rounded-full overflow-hidden ring-2 ring-white shadow-sm">
                 <UserAvatar userId={otherUser?.id || conv.id} name={otherUser?.name || conv.name} size={48} />
-              )}
-            </div>
+              </div>
+            )}
             {!conv.isGroup && isOnline && (
-              <div className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full"></div>
+              <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-white rounded-full shadow-sm" />
             )}
           </div>
 
           {/* Content */}
           <div className="flex-1 min-w-0">
-              <div className="flex justify-between items-start mb-1">
-              <h3 className="font-semibold text-[var(--color-text-primary)] truncate">{conv.name}</h3>
-              <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+            <div className="flex justify-between items-start mb-0.5 gap-2">
+              <h3 className="font-semibold text-[var(--color-text-primary)] truncate text-sm">{conv.name}</h3>
+              <div className="flex items-center gap-1 flex-shrink-0">
                 {conv.lastMessage && (
-                  <span className="text-xs text-slate-500">
+                  <span className="text-[11px] text-[var(--color-text-muted)] whitespace-nowrap">
                     {formatTime(conv.lastMessage.createdAt)}
                   </span>
                 )}
                 <button
                   onClick={(e) => handleTogglePin(conv.id, e)}
-                  className="opacity-0 group-hover:opacity-100 p-1 hover:bg-slate-200 rounded transition-all"
+                  className="opacity-0 group-hover:opacity-100 w-6 h-6 flex items-center justify-center rounded-md hover:bg-white transition-smooth"
                   title={conv.isPinned ? 'Unpin' : 'Pin'}
                 >
-                  {conv.isPinned ? <PinOff className="w-3 h-3 text-slate-400" /> : <Pin className="w-3 h-3 text-slate-400" />}
+                  {conv.isPinned
+                    ? <PinOff className="w-3 h-3 text-[var(--color-text-muted)]" />
+                    : <Pin className="w-3 h-3 text-[var(--color-text-muted)]" />}
                 </button>
               </div>
             </div>
-            <p className="text-sm text-slate-500 truncate">
-              {typing
-                ? <span className="text-[var(--color-blue-primary)] italic">{typing} is typing...</span>
-                : conv.lastMessage?.text || conv.lastMessage?.fileName || 'No messages yet'}
-            </p>
+            <div className="text-xs text-[var(--color-text-muted)] truncate min-h-[16px]">
+              {typing ? (
+                <span className="text-[var(--color-blue-primary)] italic font-medium inline-flex items-center gap-1.5">
+                  <span className="inline-flex gap-0.5">
+                    <span className="w-1 h-1 bg-[var(--color-blue-primary)] rounded-full animate-pulse" />
+                    <span className="w-1 h-1 bg-[var(--color-blue-primary)] rounded-full animate-pulse" style={{ animationDelay: '150ms' }} />
+                    <span className="w-1 h-1 bg-[var(--color-blue-primary)] rounded-full animate-pulse" style={{ animationDelay: '300ms' }} />
+                  </span>
+                  typing
+                </span>
+              ) : conv.lastMessage?.text ? (
+                <span>{conv.lastMessage.text}</span>
+              ) : conv.lastMessage?.fileName ? (
+                <span className="inline-flex items-center gap-1"><Paperclip className="w-3 h-3" />{conv.lastMessage.fileName}</span>
+              ) : (
+                <span className="italic opacity-70">No messages yet</span>
+              )}
+            </div>
           </div>
         </div>
       </button>
@@ -592,10 +632,10 @@ export default function ChatPage() {
 
   if (loading) {
     return (
-      <div className="h-screen flex items-center justify-center bg-slate-50">
+      <div className="min-h-screen gradient-subtle flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-10 h-10 animate-spin text-[var(--color-blue-primary)] mx-auto mb-3" />
-          <p className="text-slate-500">Loading conversations...</p>
+          <p className="text-[var(--color-text-muted)]">Loading conversations...</p>
         </div>
       </div>
     );
@@ -605,441 +645,588 @@ export default function ChatPage() {
     <div className="min-h-screen gradient-subtle">
       <div className="page-container">
         {/* Page Header */}
-        <div className="card rounded-3xl p-6 md:p-8 mb-6 animate-section">
-          <p className="label mb-2">Messaging</p>
-          <h1 className="heading-2 mb-2 fade-in-up">Messages</h1>
-          <p className="body-md fade-in-delay-1">Chat with colleagues and collaborate in group conversations</p>
+        <div className="relative card rounded-3xl p-6 md:p-8 mb-6 animate-section overflow-hidden">
+          <div aria-hidden className="pointer-events-none absolute -top-32 -right-32 w-80 h-80 rounded-full opacity-50 blur-3xl" style={{ background: 'radial-gradient(circle, var(--color-accent-soft) 0%, transparent 70%)' }} />
+          <div aria-hidden className="pointer-events-none absolute -bottom-32 -left-24 w-64 h-64 rounded-full opacity-30 blur-3xl" style={{ background: 'radial-gradient(circle, var(--color-blue-soft) 0%, transparent 70%)' }} />
+
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-5 md:gap-6">
+            <div className="flex items-start gap-4">
+              <div className="hidden sm:flex w-12 h-12 lg:w-14 lg:h-14 rounded-2xl items-center justify-center flex-shrink-0" style={{ background: 'var(--gradient-primary)', boxShadow: 'var(--shadow-btn)' }}>
+                <MessageCircle className="w-6 h-6 lg:w-7 lg:h-7 text-white" />
+              </div>
+              <div>
+                <p className="label mb-2">Messaging</p>
+                <h1 className="heading-2 mb-2 fade-in-up">Messages</h1>
+                <p className="body-md fade-in-delay-1">Stay connected — chat 1-on-1 or collaborate in groups.</p>
+              </div>
+            </div>
+
+            {/* Stat chips */}
+            <div className="flex flex-wrap gap-2.5 flex-shrink-0">
+              <div className="flex items-center gap-2.5 px-3.5 py-2 rounded-2xl bg-white/70 backdrop-blur border border-[var(--color-border-light)]">
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: 'var(--color-accent-soft)' }}>
+                  <MessageCircle className="w-4 h-4 text-[var(--color-blue-primary)]" />
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-wider font-bold text-[var(--color-text-muted)]">Chats</div>
+                  <div className="text-sm font-semibold text-[var(--color-text-primary)] leading-tight">{totalChats}</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2.5 px-3.5 py-2 rounded-2xl bg-white/70 backdrop-blur border border-[var(--color-border-light)]">
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: 'var(--color-accent-soft)' }}>
+                  <Users className="w-4 h-4 text-[var(--color-blue-primary)]" />
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-wider font-bold text-[var(--color-text-muted)]">Groups</div>
+                  <div className="text-sm font-semibold text-[var(--color-text-primary)] leading-tight">{totalGroups}</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2.5 px-3.5 py-2 rounded-2xl bg-white/70 backdrop-blur border border-[var(--color-border-light)]">
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-emerald-50">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-wider font-bold text-[var(--color-text-muted)]">Online</div>
+                  <div className="text-sm font-semibold text-[var(--color-text-primary)] leading-tight">{totalOnline}</div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Main Layout */}
         <div className="card rounded-3xl overflow-hidden flex flex-col lg:flex-row h-[calc(100vh-280px)] min-h-[560px]">
-        {/* Left Sidebar */}
-        <ResizableSidebar side="left" defaultWidth={320} minWidth={240} maxWidth={480} responsive>
-          <aside className="w-full h-full bg-[var(--color-surface-muted)] lg:border-r border-[var(--color-border-light)] flex flex-col">
-            {/* Search & Actions */}
-            <div className="p-4 border-b border-[var(--color-border-light)]">
-              <div className="relative mb-3">
-                  <input type="text" placeholder="Search conversations..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="input pl-10" />
-                  <span className="absolute left-3 top-2.5 text-slate-500"><Search className="w-4 h-4" /></span>
+          {/* Left Sidebar */}
+          <ResizableSidebar side="left" defaultWidth={340} minWidth={260} maxWidth={480} responsive>
+            <aside className="w-full h-full bg-white lg:border-r border-[var(--color-border-light)] flex flex-col">
+              {/* Search & Actions */}
+              <div className="p-4 border-b border-[var(--color-border-light)] space-y-3 flex-shrink-0">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-text-muted)] pointer-events-none" />
+                  <input
+                    type="text"
+                    placeholder="Search conversations..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="input pl-10"
+                  />
                 </div>
-                <div className="flex gap-2">
-                  <button onClick={() => setShowNewChatModal(true)} className="btn-primary flex-1 text-sm">
-                    <span className="flex items-center justify-center gap-1.5"><Plus className="w-4 h-4" /> New Chat</span>
+                <div className="grid grid-cols-2 gap-2">
+                  <button onClick={() => setShowNewChatModal(true)} className="btn-primary text-sm flex items-center justify-center gap-1.5">
+                    <Plus className="w-4 h-4" /> New Chat
                   </button>
-                  <button onClick={() => setShowNewGroupModal(true)} className="btn-secondary flex-1 text-sm">
-                    <span className="flex items-center justify-center gap-1.5"><Users className="w-4 h-4" /> New Group</span>
+                  <button onClick={() => setShowNewGroupModal(true)} className="btn-secondary text-sm flex items-center justify-center gap-1.5">
+                    <Users className="w-4 h-4" /> Group
                   </button>
                 </div>
-            </div>
+              </div>
 
-            {/* Conversations List */}
-            <div className="flex-1 overflow-y-auto">
-              {/* Pinned */}
-              {pinnedChats.length > 0 && (
-                <div>
-                  <div className="px-4 py-2 text-xs font-semibold text-slate-500 bg-slate-50 flex items-center gap-1">
-                    <Pin className="w-3 h-3" /> PINNED
-                  </div>
-                  {pinnedChats.map(renderConversationItem)}
-                </div>
-              )}
-
-              {/* Private Chats */}
-              {privateChats.length > 0 && (
-                <div>
-                  <div className="px-4 py-2 text-xs font-semibold text-slate-500 bg-slate-50 flex items-center gap-1">
-                    <MessageCircle className="w-3 h-3" /> PRIVATE CHATS
-                  </div>
-                  {privateChats.map(renderConversationItem)}
-                </div>
-              )}
-
-              {/* Groups */}
-              {groupChats.length > 0 && (
-                <div>
-                  <div className="px-4 py-2 text-xs font-semibold text-slate-500 bg-slate-50 flex items-center gap-1">
-                    <Users className="w-3 h-3" /> GROUPS
-                  </div>
-                  {groupChats.map(renderConversationItem)}
-                </div>
-              )}
-
-              {filteredConversations.length === 0 && !loading && (
-                <div className="p-8 text-center">
-                  <MessageCircle className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                  <p className="text-slate-400">No conversations yet</p>
-                  <p className="text-xs text-slate-400 mt-1">Start a new chat or create a group</p>
-                </div>
-              )}
-            </div>
-          </aside>
-        </ResizableSidebar>
-
-        {/* Center - Message Panel */}
-        <main className="flex-1 flex flex-col bg-slate-50">
-          {selectedConv ? (
-            <>
-              {/* Chat Header */}
-              <div className="card px-6 py-3 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg flex items-center justify-center overflow-hidden">
-                    {selectedConv.isGroup ? (
-                      <div className="w-10 h-10 bg-[var(--color-blue-primary)] rounded-lg flex items-center justify-center text-white">
-                        <Users className="w-4 h-4" />
-                      </div>
-                    ) : (
-                      <UserAvatar userId={getOtherUser(selectedConv)?.id || selectedConv.id} name={getOtherUser(selectedConv)?.name || selectedConv.name} size={40} />
-                    )}
-                  </div>
+              {/* Conversations List */}
+              <div className="flex-1 overflow-y-auto">
+                {pinnedChats.length > 0 && (
                   <div>
-                    <h2 className="heading-md">{selectedConv.name}</h2>
-                    <p className="text-xs text-slate-500">
-                      {selectedConv.isGroup
-                        ? `${selectedConv.members.length} members`
-                        : (() => {
-                            const other = getOtherUser(selectedConv);
-                            return other && isUserOnline(other.id)
-                              ? <span className="flex items-center gap-1"><span className="w-2 h-2 bg-emerald-500 rounded-full inline-block"></span> Online</span>
-                              : 'Offline';
-                          })()}
+                    <div className="sticky top-0 z-10 px-4 py-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] bg-[var(--color-surface-muted)]/95 backdrop-blur border-b border-[var(--color-border-light)]">
+                      <Pin className="w-3 h-3" /> Pinned
+                    </div>
+                    {pinnedChats.map(renderConversationItem)}
+                  </div>
+                )}
+
+                {privateChats.length > 0 && (
+                  <div>
+                    <div className="sticky top-0 z-10 px-4 py-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] bg-[var(--color-surface-muted)]/95 backdrop-blur border-b border-[var(--color-border-light)]">
+                      <MessageCircle className="w-3 h-3" /> Direct Messages
+                    </div>
+                    {privateChats.map(renderConversationItem)}
+                  </div>
+                )}
+
+                {groupChats.length > 0 && (
+                  <div>
+                    <div className="sticky top-0 z-10 px-4 py-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] bg-[var(--color-surface-muted)]/95 backdrop-blur border-b border-[var(--color-border-light)]">
+                      <Users className="w-3 h-3" /> Groups
+                    </div>
+                    {groupChats.map(renderConversationItem)}
+                  </div>
+                )}
+
+                {filteredConversations.length === 0 && !loading && (
+                  <div className="p-8 text-center">
+                    <div className="w-16 h-16 mx-auto mb-3 rounded-2xl flex items-center justify-center" style={{ background: 'var(--color-accent-soft)' }}>
+                      <MessageCircle className="w-8 h-8 text-[var(--color-blue-primary)]" />
+                    </div>
+                    <p className="text-sm font-semibold text-[var(--color-text-primary)] mb-1">
+                      {searchQuery ? 'No matches' : 'No conversations yet'}
+                    </p>
+                    <p className="text-xs text-[var(--color-text-muted)]">
+                      {searchQuery ? 'Try a different search term' : 'Start a new chat or create a group'}
                     </p>
                   </div>
-                </div>
-                <button onClick={() => setShowChatInfo(!showChatInfo)} className="btn-secondary p-2">
-                  <Info className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Messages Area */}
-              <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                  {messagesLoading ? (
-                  <div className="flex items-center justify-center h-full">
-                    <Loader2 className="w-8 h-8 animate-spin text-[var(--color-blue-primary)]" />
-                  </div>
-                ) : chatMessages.length === 0 ? (
-                  <div className="flex items-center justify-center h-full">
-                    <div className="text-center">
-                      <div className="w-20 h-20 bg-[var(--color-blue-soft)] rounded-full flex items-center justify-center mx-auto mb-4">
-                        <MessageCircle className="w-10 h-10 text-[var(--color-blue-primary)]" />
-                      </div>
-                      <h3 className="heading-md mb-2">No messages yet</h3>
-                      <p className="body-sm text-slate-500">Start a conversation!</p>
-                    </div>
-                  </div>
-                ) : (
-                  chatMessages.map((message) => {
-                    const isSentByMe = message.senderId === user?._id;
-                    const showSenderName = selectedConv.isGroup && !isSentByMe;
-
-                    return (
-                      <div
-                        key={message.id}
-                        className={`flex ${isSentByMe ? 'justify-end' : 'justify-start'}`}
-                      >
-                        <div className={`max-w-md ${isSentByMe ? 'items-end' : 'items-start'} flex flex-col gap-1`}>
-                          {showSenderName && (
-                            <span className="text-xs font-semibold text-[var(--color-text-primary)] ml-2">
-                              {message.senderName}
-                            </span>
-                          )}
-                          <div
-                            className={`px-4 py-2.5 shadow-premium ${
-                              isSentByMe ? 'message-sent' : 'message-received'
-                            }`}
-                          >
-                            {message.text && <p className="body-sm">{message.text}</p>}
-
-                            {message.fileName && (
-                              <div className="flex items-center gap-3 min-w-[250px]">
-                                <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${isSentByMe ? 'bg-[var(--color-blue-primary)/30]' : 'bg-slate-50'}`}>
-                                  {message.fileType === 'pdf' ? <FileText className="w-6 h-6" /> :
-                                   message.fileType === 'image' ? <ImageIcon className="w-6 h-6" /> :
-                                   <Paperclip className="w-6 h-6" />}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <div className="font-semibold truncate">{message.fileName}</div>
-                                  {message.fileUrl && (
-                                    <a
-                                      href={`http://localhost:5000${message.fileUrl}`}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className={`text-xs ${isSentByMe ? 'text-[var(--color-blue-soft)]' : 'text-[var(--color-blue-primary)]'} hover:underline`}
-                                    >
-                                      Download
-                                    </a>
-                                  )}
-                                </div>
-                              </div>
-                            )}
-
-                            <div className={`text-xs mt-1 flex items-center gap-1 ${isSentByMe ? 'text-[var(--color-blue-soft)]' : 'text-slate-500'}`}>
-                              {formatTime(message.createdAt)}
-                              {isSentByMe && <CheckCheck className="w-3.5 h-3.5 ml-1" />}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })
                 )}
-                {/* Typing indicator */}
-                {selectedConv && typingUsers[selectedConv.id] && (
-                  <div className="flex justify-start">
-                    <div className="card px-4 py-2">
-                      <p className="body-sm text-slate-500 italic">{typingUsers[selectedConv.id]} is typing...</p>
-                    </div>
-                  </div>
-                )}
-                <div ref={messagesEndRef} />
-              </div>
-
-              {/* Message Composer */}
-              <div className="card p-4 border-t">
-                <div className="flex items-end gap-3">
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    className="text-slate-500 hover:text-[var(--color-blue-primary)] transition-all p-2 rounded-lg hover:bg-slate-50"
-                  >
-                    <Paperclip className="w-5 h-5" />
-                  </button>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    onChange={handleFileUpload}
-                    className="hidden"
-                  />
-                  <textarea
-                    value={newMessageText}
-                    onChange={(e) => {
-                      setNewMessageText(e.target.value);
-                      handleTyping();
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        handleSendMessage();
-                      }
-                    }}
-                    placeholder="Type a message..."
-                    className="input flex-1 resize-none"
-                    rows={1}
-                  />
-                  <button onClick={handleSendMessage} disabled={!newMessageText.trim()} className="btn-primary w-12 h-12 rounded-xl flex items-center justify-center disabled:opacity-50">
-                    <Send className="w-5 h-5" />
-                  </button>
-                </div>
-                <p className="text-xs text-slate-500 mt-2 ml-14">
-                  Press Enter to send, Shift+Enter for new line
-                </p>
-              </div>
-            </>
-          ) : (
-            <div className="flex-1 flex items-center justify-center">
-              <div className="text-center">
-                <div className="w-24 h-24 bg-[var(--color-blue-soft)] rounded-full flex items-center justify-center mx-auto mb-4">
-                  <MessageCircle className="w-12 h-12 text-[var(--color-blue-primary)]" />
-                </div>
-                <h2 className="text-2xl font-semibold text-[var(--color-text-primary)] mb-2">Welcome to MediHub Chat</h2>
-                <p className="text-slate-500">Select a conversation or start a new one</p>
-              </div>
-            </div>
-          )}
-        </main>
-
-        {/* Right Panel - Chat Info */}
-        {selectedConv && showChatInfo && (
-          <ResizableSidebar side="right" defaultWidth={320} minWidth={240} maxWidth={480} responsive>
-            <aside className="w-full h-full bg-[var(--color-surface-muted)] border-l border-[var(--color-border-light)] overflow-y-auto">
-              <div className="p-6">
-                {/* Chat Info Header */}
-                <div className="text-center mb-6">
-                  <div className="w-24 h-24 rounded-lg flex items-center justify-center mx-auto mb-4 overflow-hidden">
-                    {selectedConv.isGroup ? (
-                      <div className="w-24 h-24 bg-[var(--color-blue-primary)] rounded-lg flex items-center justify-center text-white text-4xl font-bold">
-                        <Users className="w-10 h-10" />
-                      </div>
-                    ) : (
-                      <UserAvatar userId={getOtherUser(selectedConv)?.id || selectedConv.id} name={getOtherUser(selectedConv)?.name || selectedConv.name} size={96} />
-                    )}
-                  </div>
-                  <h2 className="text-xl font-bold text-[var(--color-text-primary)] mb-1">{selectedConv.name}</h2>
-                  <p className="text-sm text-slate-500">
-                    {selectedConv.isGroup
-                      ? `Group · ${selectedConv.members.length} members`
-                      : getOtherUser(selectedConv)?.role || 'User'}
-                  </p>
-                </div>
-
-                {/* Members */}
-                <div className="mb-6">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-semibold text-[var(--color-text-primary)]">
-                      {selectedConv.isGroup ? 'Members' : 'Info'}
-                    </h3>
-                    {selectedConv.isGroup && selectedConv.isAdmin && (
-                      <button
-                        onClick={() => setShowAddMemberModal(true)}
-                        className="flex items-center gap-1 text-xs font-medium text-[var(--color-blue-primary)] hover:text-[var(--color-blue-primary)] bg-[var(--color-blue-soft)] hover:bg-[var(--color-blue-soft)] px-2.5 py-1.5 rounded-lg transition-all"
-                      >
-                        <UserPlus className="w-3.5 h-3.5" />
-                        Add
-                      </button>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    {selectedConv.members.map(member => (
-                      <div key={member.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 transition-all group">
-                        <div className="relative">
-                          <div className="w-10 h-10 rounded-lg flex items-center justify-center overflow-hidden">
-                            <UserAvatar userId={member.id} name={member.name} size={40} />
-                          </div>
-                          {isUserOnline(member.id) && (
-                            <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full"></div>
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="font-semibold text-sm text-[var(--color-text-primary)]">
-                            {member.name} {member.id === user?._id && '(You)'}
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className={`text-xs px-2 py-0.5 rounded inline-block ${getRoleColor(member.role)}`}>
-                              {member.role}
-                            </span>
-                            {member.isAdmin && (
-                              <span className="text-xs px-2 py-0.5 rounded bg-yellow-100 text-yellow-700">Admin</span>
-                            )}
-                          </div>
-                        </div>
-                        {/* Remove button - visible to admins for non-self members */}
-                        {selectedConv.isGroup && selectedConv.isAdmin && member.id !== user?._id && (
-                          showRemoveConfirm === member.id ? (
-                            <div className="flex items-center gap-1">
-                              <button
-                                onClick={() => handleRemoveMember(member.id)}
-                                className="text-xs px-2 py-1 bg-red-500 text-white rounded font-medium hover:bg-red-600 transition-colors"
-                              >
-                                Yes
-                              </button>
-                              <button
-                                onClick={() => setShowRemoveConfirm(null)}
-                                className="text-xs px-2 py-1 bg-slate-200 text-slate-600 rounded font-medium hover:bg-slate-300 transition-colors"
-                              >
-                                No
-                              </button>
-                            </div>
-                          ) : (
-                            <button
-                              onClick={() => setShowRemoveConfirm(member.id)}
-                              className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 transition-all p-1"
-                              title="Remove member"
-                            >
-                              <UserMinus className="w-4 h-4" />
-                            </button>
-                          )
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Shared Files */}
-                <div className="mb-6">
-                  <h3 className="font-semibold text-[var(--color-text-primary)] mb-3">Shared Files</h3>
-                  <div className="space-y-2">
-                    {sharedFiles.map(file => (
-                        <div key={file.id} className="card p-3">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-[var(--color-blue-primary)]">
-                            {file.fileType === 'pdf' ? <FileText className="w-5 h-5" /> :
-                             file.fileType === 'image' ? <ImageIcon className="w-5 h-5" /> :
-                             <Paperclip className="w-5 h-5" />}
-                          </span>
-                          <span className="text-sm font-medium text-[var(--color-text-primary)] flex-1 truncate">{file.fileName}</span>
-                        </div>
-                        <p className="text-xs text-slate-400 mb-2">Shared by {file.senderName}</p>
-                        <button
-                          onClick={() => handleSaveToNotebook(file)}
-                          className="w-full text-[var(--color-blue-primary)] hover:text-[var(--color-blue-primary)] text-xs font-semibold"
-                        >
-                          Download File →
-                        </button>
-                      </div>
-                    ))}
-                    {sharedFiles.length === 0 && (
-                      <p className="text-sm text-slate-500 italic">No shared files yet</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Actions */}
-                <div className="space-y-2">
-                  <button
-                    onClick={() => handleTogglePin(selectedConv.id)}
-                    className="w-full bg-[var(--color-blue-soft)] text-[var(--color-blue-primary)] py-2 rounded-lg font-semibold hover:bg-[var(--color-blue-soft)] transition-all flex items-center justify-center gap-2"
-                  >
-                    {selectedConv.isPinned ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
-                    {selectedConv.isPinned ? 'Unpin Chat' : 'Pin Chat'}
-                  </button>
-                  <button
-                    onClick={() => setShowDeleteConfirm(true)}
-                    className="w-full bg-red-50 text-red-600 py-2 rounded-lg font-semibold hover:bg-red-100 transition-all flex items-center justify-center gap-2"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    {selectedConv.isGroup ? 'Delete Group' : 'Delete Chat'}
-                  </button>
-                </div>
               </div>
             </aside>
           </ResizableSidebar>
-        )}
+
+          {/* Center - Message Panel */}
+          <main className="flex-1 flex flex-col min-w-0 bg-[var(--color-bg-ivory)]">
+            {selectedConv ? (
+              <>
+                {/* Chat Header */}
+                <div className="px-4 md:px-6 py-3.5 bg-white border-b border-[var(--color-border-light)] flex items-center justify-between flex-shrink-0">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="relative flex-shrink-0">
+                      {selectedConv.isGroup ? (
+                        <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-white" style={{ background: 'var(--gradient-primary)', boxShadow: 'var(--shadow-btn)' }}>
+                          <Users className="w-5 h-5" />
+                        </div>
+                      ) : (
+                        <div className="w-11 h-11 rounded-full overflow-hidden ring-2 ring-white shadow-sm">
+                          <UserAvatar userId={getOtherUser(selectedConv)?.id || selectedConv.id} name={getOtherUser(selectedConv)?.name || selectedConv.name} size={44} />
+                        </div>
+                      )}
+                      {!selectedConv.isGroup && (() => {
+                        const other = getOtherUser(selectedConv);
+                        return other && isUserOnline(other.id) ? (
+                          <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-white rounded-full" />
+                        ) : null;
+                      })()}
+                    </div>
+                    <div className="min-w-0">
+                      <h2 className="font-semibold text-[var(--color-text-primary)] truncate">{selectedConv.name}</h2>
+                      <p className="text-xs text-[var(--color-text-muted)] flex items-center gap-1.5">
+                        {selectedConv.isGroup ? (
+                          <>
+                            <Users className="w-3 h-3" />
+                            {selectedConv.members.length} members
+                          </>
+                        ) : (() => {
+                          const other = getOtherUser(selectedConv);
+                          return other && isUserOnline(other.id) ? (
+                            <><span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" /> Active now</>
+                          ) : 'Offline';
+                        })()}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowChatInfo(!showChatInfo)}
+                    className={`w-9 h-9 rounded-xl flex items-center justify-center transition-smooth flex-shrink-0 ${
+                      showChatInfo
+                        ? 'bg-[var(--color-accent-soft)] text-[var(--color-blue-primary)]'
+                        : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)] hover:text-[var(--color-blue-primary)]'
+                    }`}
+                    title="Chat info"
+                  >
+                    <Info className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Messages Area */}
+                <div className="flex-1 overflow-y-auto px-4 md:px-6 py-5">
+                  {messagesLoading ? (
+                    <div className="flex items-center justify-center h-full">
+                      <Loader2 className="w-8 h-8 animate-spin text-[var(--color-blue-primary)]" />
+                    </div>
+                  ) : chatMessages.length === 0 ? (
+                    <div className="flex items-center justify-center h-full">
+                      <div className="text-center max-w-xs">
+                        <div className="w-20 h-20 mx-auto mb-4 rounded-2xl flex items-center justify-center" style={{ background: 'var(--color-accent-soft)' }}>
+                          <Sparkles className="w-10 h-10 text-[var(--color-blue-primary)]" />
+                        </div>
+                        <h3 className="heading-3 mb-2">Start the conversation</h3>
+                        <p className="body-md">Say hi to {selectedConv.name} — your message will appear here.</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      {chatMessages.map((message, idx) => {
+                        const isSentByMe = message.senderId === user?._id;
+                        const prev = idx > 0 ? chatMessages[idx - 1] : null;
+                        const next = idx < chatMessages.length - 1 ? chatMessages[idx + 1] : null;
+
+                        const sameSenderAsPrev = !!prev && prev.senderId === message.senderId &&
+                          (new Date(message.createdAt).getTime() - new Date(prev.createdAt).getTime()) < 5 * 60_000;
+                        const sameSenderAsNext = !!next && next.senderId === message.senderId &&
+                          (new Date(next.createdAt).getTime() - new Date(message.createdAt).getTime()) < 5 * 60_000;
+
+                        const showSenderName = selectedConv.isGroup && !isSentByMe && !sameSenderAsPrev;
+
+                        // Day divider
+                        const showDayDivider = !prev ||
+                          new Date(prev.createdAt).toDateString() !== new Date(message.createdAt).toDateString();
+
+                        return (
+                          <div key={message.id}>
+                            {showDayDivider && (
+                              <div className="flex items-center gap-3 my-4">
+                                <div className="flex-1 h-px bg-[var(--color-border-light)]" />
+                                <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)] bg-white px-3 py-1 rounded-full border border-[var(--color-border-light)]">
+                                  {formatDayDivider(message.createdAt)}
+                                </span>
+                                <div className="flex-1 h-px bg-[var(--color-border-light)]" />
+                              </div>
+                            )}
+                            <div className={`flex ${isSentByMe ? 'justify-end' : 'justify-start'} ${sameSenderAsPrev ? 'mt-0.5' : 'mt-3'}`}>
+                              <div className={`max-w-[78%] md:max-w-[65%] flex flex-col gap-1 ${isSentByMe ? 'items-end' : 'items-start'}`}>
+                                {showSenderName && (
+                                  <span className="text-[11px] font-semibold text-[var(--color-blue-primary)] ml-3">
+                                    {message.senderName}
+                                  </span>
+                                )}
+                                <div
+                                  className={`px-4 py-2.5 shadow-sm ${isSentByMe ? 'message-sent' : 'message-received'}`}
+                                  style={{
+                                    borderTopRightRadius: isSentByMe && sameSenderAsPrev ? '0.5rem' : undefined,
+                                    borderBottomRightRadius: isSentByMe && sameSenderAsNext ? '1rem' : (isSentByMe ? '0.25rem' : undefined),
+                                    borderTopLeftRadius: !isSentByMe && sameSenderAsPrev ? '0.5rem' : undefined,
+                                    borderBottomLeftRadius: !isSentByMe && sameSenderAsNext ? '1rem' : (!isSentByMe ? '0.25rem' : undefined),
+                                  }}
+                                >
+                                  {message.text && <p className="text-sm whitespace-pre-wrap break-words">{message.text}</p>}
+
+                                  {message.fileName && (
+                                    <div className={`flex items-center gap-3 min-w-[240px] ${message.text ? 'mt-2 pt-2 border-t' : ''} ${isSentByMe ? 'border-white/20' : 'border-[var(--color-border-light)]'}`}>
+                                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                                        isSentByMe ? 'bg-white/20' : 'bg-[var(--color-accent-soft)] text-[var(--color-blue-primary)]'
+                                      }`}>
+                                        {message.fileType === 'pdf' ? <FileText className="w-5 h-5" /> :
+                                         message.fileType === 'image' ? <ImageIcon className="w-5 h-5" /> :
+                                         <Paperclip className="w-5 h-5" />}
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <div className="text-sm font-semibold truncate">{message.fileName}</div>
+                                        {message.fileUrl && (
+                                          <a
+                                            href={`http://localhost:5000${message.fileUrl}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className={`text-xs inline-flex items-center gap-1 hover:underline ${
+                                              isSentByMe ? 'text-white/85' : 'text-[var(--color-blue-primary)]'
+                                            }`}
+                                          >
+                                            <Download className="w-3 h-3" /> Download
+                                          </a>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  <div className={`text-[10px] mt-1 flex items-center gap-1 ${isSentByMe ? 'text-white/70 justify-end' : 'text-[var(--color-text-muted)]'}`}>
+                                    {formatTime(message.createdAt)}
+                                    {isSentByMe && <CheckCheck className="w-3 h-3 ml-0.5" />}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {/* Typing indicator */}
+                      {selectedConv && typingUsers[selectedConv.id] && (
+                        <div className="flex justify-start mt-3">
+                          <div className="px-4 py-2.5 message-received inline-flex items-center gap-2">
+                            <span className="flex gap-1">
+                              <span className="w-1.5 h-1.5 bg-[var(--color-blue-primary)] rounded-full animate-pulse" />
+                              <span className="w-1.5 h-1.5 bg-[var(--color-blue-primary)] rounded-full animate-pulse" style={{ animationDelay: '150ms' }} />
+                              <span className="w-1.5 h-1.5 bg-[var(--color-blue-primary)] rounded-full animate-pulse" style={{ animationDelay: '300ms' }} />
+                            </span>
+                            <span className="text-xs text-[var(--color-text-muted)] italic">{typingUsers[selectedConv.id]} is typing</span>
+                          </div>
+                        </div>
+                      )}
+                      <div ref={messagesEndRef} />
+                    </div>
+                  )}
+                </div>
+
+                {/* Message Composer */}
+                <div className="bg-white border-t border-[var(--color-border-light)] px-4 md:px-6 py-3 flex-shrink-0">
+                  <div className="flex items-end gap-2">
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-10 h-10 rounded-xl flex items-center justify-center text-[var(--color-text-muted)] hover:bg-[var(--color-accent-soft)] hover:text-[var(--color-blue-primary)] transition-smooth flex-shrink-0"
+                      title="Attach file"
+                    >
+                      <Paperclip className="w-5 h-5" />
+                    </button>
+                    <input ref={fileInputRef} type="file" onChange={handleFileUpload} className="hidden" />
+                    <textarea
+                      value={newMessageText}
+                      onChange={(e) => {
+                        setNewMessageText(e.target.value);
+                        handleTyping();
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          handleSendMessage();
+                        }
+                      }}
+                      placeholder="Type a message..."
+                      className="input flex-1 resize-none py-2.5 leading-snug max-h-32"
+                      rows={1}
+                    />
+                    <button
+                      onClick={handleSendMessage}
+                      disabled={!newMessageText.trim()}
+                      className="w-10 h-10 rounded-xl flex items-center justify-center text-white flex-shrink-0 transition-smooth disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90"
+                      style={{ background: 'var(--gradient-primary)', boxShadow: 'var(--shadow-btn)' }}
+                      title="Send"
+                    >
+                      <Send className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-[var(--color-text-muted)] mt-1.5 ml-12">
+                    Press <kbd className="px-1 py-0.5 rounded bg-[var(--color-surface-muted)] border border-[var(--color-border-light)] text-[9px] font-mono">Enter</kbd> to send · <kbd className="px-1 py-0.5 rounded bg-[var(--color-surface-muted)] border border-[var(--color-border-light)] text-[9px] font-mono">Shift+Enter</kbd> for new line
+                  </p>
+                </div>
+              </>
+            ) : (
+              <div className="flex-1 flex items-center justify-center relative overflow-hidden">
+                <div aria-hidden className="pointer-events-none absolute -top-40 -right-40 w-96 h-96 rounded-full opacity-50 blur-3xl" style={{ background: 'radial-gradient(circle, var(--color-accent-soft) 0%, transparent 70%)' }} />
+                <div aria-hidden className="pointer-events-none absolute -bottom-40 -left-40 w-96 h-96 rounded-full opacity-40 blur-3xl" style={{ background: 'radial-gradient(circle, var(--color-blue-soft) 0%, transparent 70%)' }} />
+
+                <div className="relative z-10 text-center max-w-md px-6 fade-in-up">
+                  <div className="w-24 h-24 rounded-3xl mx-auto mb-6 flex items-center justify-center" style={{ background: 'var(--gradient-primary)', boxShadow: 'var(--shadow-btn)' }}>
+                    <MessageCircle className="w-12 h-12 text-white" />
+                  </div>
+                  <h2 className="heading-2 mb-3">Welcome to MediHub Chat</h2>
+                  <p className="body-md mb-6 max-w-sm mx-auto">Select a conversation from the sidebar — or start a new one to begin collaborating with colleagues.</p>
+                  <div className="flex flex-wrap gap-3 justify-center">
+                    <button onClick={() => setShowNewChatModal(true)} className="btn-primary">
+                      <span className="flex items-center gap-2"><Plus className="w-4 h-4" /> Start a Chat</span>
+                    </button>
+                    <button onClick={() => setShowNewGroupModal(true)} className="btn-secondary">
+                      <span className="flex items-center gap-2"><Users className="w-4 h-4" /> Create Group</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </main>
+
+          {/* Right Panel - Chat Info */}
+          {selectedConv && showChatInfo && (
+            <ResizableSidebar side="right" defaultWidth={320} minWidth={260} maxWidth={480} responsive>
+              <aside className="w-full h-full bg-white border-l border-[var(--color-border-light)] overflow-y-auto">
+                {/* Hero */}
+                <div className="relative px-6 pt-7 pb-5 text-center overflow-hidden border-b border-[var(--color-border-light)]" style={{ background: 'var(--gradient-bg)' }}>
+                  <div aria-hidden className="pointer-events-none absolute -top-24 -right-24 w-56 h-56 rounded-full opacity-50 blur-3xl" style={{ background: 'radial-gradient(circle, var(--color-accent-soft) 0%, transparent 70%)' }} />
+                  <div aria-hidden className="pointer-events-none absolute -bottom-24 -left-24 w-48 h-48 rounded-full opacity-30 blur-3xl" style={{ background: 'radial-gradient(circle, var(--color-blue-soft) 0%, transparent 70%)' }} />
+
+                  <div className="relative z-10">
+                    <div className="mb-3">
+                      {selectedConv.isGroup ? (
+                        <div className="w-24 h-24 mx-auto rounded-3xl flex items-center justify-center text-white" style={{ background: 'var(--gradient-primary)', boxShadow: 'var(--shadow-btn)' }}>
+                          <Users className="w-10 h-10" />
+                        </div>
+                      ) : (
+                        <div className="w-24 h-24 mx-auto rounded-full overflow-hidden ring-4 ring-white shadow-premium-md">
+                          <UserAvatar userId={getOtherUser(selectedConv)?.id || selectedConv.id} name={getOtherUser(selectedConv)?.name || selectedConv.name} size={96} />
+                        </div>
+                      )}
+                    </div>
+                    <h2 className="heading-3 mb-1">{selectedConv.name}</h2>
+                    <p className="body-sm">
+                      {selectedConv.isGroup
+                        ? `Group · ${selectedConv.members.length} members`
+                        : getOtherUser(selectedConv)?.role || 'User'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="px-5 py-5 space-y-6">
+                  {/* Members */}
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="label">{selectedConv.isGroup ? `Members · ${selectedConv.members.length}` : 'About'}</p>
+                      {selectedConv.isGroup && selectedConv.isAdmin && (
+                        <button
+                          onClick={() => setShowAddMemberModal(true)}
+                          className="flex items-center gap-1 text-xs font-semibold text-[var(--color-blue-primary)] bg-[var(--color-accent-soft)] hover:bg-[var(--color-accent-hover)] px-2.5 py-1.5 rounded-lg transition-smooth"
+                        >
+                          <UserPlus className="w-3.5 h-3.5" /> Add
+                        </button>
+                      )}
+                    </div>
+                    <div className="space-y-1">
+                      {selectedConv.members.map(member => (
+                        <div key={member.id} className="flex items-center gap-3 p-2 rounded-xl hover:bg-[var(--color-surface-muted)] transition-smooth group">
+                          <div className="relative flex-shrink-0">
+                            <div className="w-10 h-10 rounded-full overflow-hidden">
+                              <UserAvatar userId={member.id} name={member.name} size={40} />
+                            </div>
+                            {isUserOnline(member.id) && (
+                              <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium text-[var(--color-text-primary)] truncate">
+                              {member.name}{member.id === user?._id && <span className="text-[var(--color-text-muted)] font-normal"> (You)</span>}
+                            </div>
+                            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                              <span className={`text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded ${getRoleColor(member.role)}`}>
+                                {member.role}
+                              </span>
+                              {member.isAdmin && (
+                                <span className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 inline-flex items-center gap-0.5">
+                                  <ShieldCheck className="w-2.5 h-2.5" /> Admin
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          {selectedConv.isGroup && selectedConv.isAdmin && member.id !== user?._id && (
+                            showRemoveConfirm === member.id ? (
+                              <div className="flex items-center gap-1 flex-shrink-0">
+                                <button onClick={() => handleRemoveMember(member.id)} className="text-[10px] px-2 py-1 bg-red-500 text-white rounded-md font-semibold hover:bg-red-600 transition-smooth">Yes</button>
+                                <button onClick={() => setShowRemoveConfirm(null)} className="text-[10px] px-2 py-1 bg-slate-200 text-slate-600 rounded-md font-semibold hover:bg-slate-300 transition-smooth">No</button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => setShowRemoveConfirm(member.id)}
+                                className="opacity-0 group-hover:opacity-100 w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-red-50 hover:text-red-500 transition-smooth flex-shrink-0"
+                                title="Remove member"
+                              >
+                                <UserMinus className="w-4 h-4" />
+                              </button>
+                            )
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Shared Files */}
+                  <div>
+                    <p className="label mb-3">Shared Files {sharedFiles.length > 0 && <span className="text-[var(--color-text-muted)] font-normal normal-case tracking-normal">· {sharedFiles.length}</span>}</p>
+                    <div className="space-y-2">
+                      {sharedFiles.map(file => (
+                        <div key={file.id} className="p-3 rounded-xl border border-[var(--color-border-light)] bg-[var(--color-surface-muted)] hover:bg-white hover:border-[var(--color-border-mid)] transition-smooth">
+                          <div className="flex items-start gap-3">
+                            <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 text-[var(--color-blue-primary)]" style={{ background: 'var(--color-accent-soft)' }}>
+                              {file.fileType === 'pdf' ? <FileText className="w-5 h-5" /> :
+                               file.fileType === 'image' ? <ImageIcon className="w-5 h-5" /> :
+                               <Paperclip className="w-5 h-5" />}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-medium text-[var(--color-text-primary)] truncate">{file.fileName}</div>
+                              <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">By {file.senderName}</p>
+                              <button onClick={() => handleSaveToNotebook(file)} className="text-xs font-semibold text-[var(--color-blue-primary)] hover:underline mt-1 inline-flex items-center gap-1">
+                                <Download className="w-3 h-3" /> Download
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      {sharedFiles.length === 0 && (
+                        <div className="text-center py-6 border border-dashed border-[var(--color-border-light)] rounded-xl">
+                          <Paperclip className="w-6 h-6 text-[var(--color-text-muted)] mx-auto mb-1.5 opacity-50" />
+                          <p className="text-xs text-[var(--color-text-muted)]">No shared files yet</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="space-y-2 pt-2 border-t border-[var(--color-border-light)]">
+                    <button onClick={() => handleTogglePin(selectedConv.id)} className="btn-secondary w-full flex items-center justify-center gap-2 text-sm">
+                      {selectedConv.isPinned ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
+                      {selectedConv.isPinned ? 'Unpin Chat' : 'Pin Chat'}
+                    </button>
+                    <button
+                      onClick={() => setShowDeleteConfirm(true)}
+                      className="w-full py-2.5 px-4 rounded-xl bg-red-50 text-red-600 font-semibold text-sm hover:bg-red-100 transition-smooth flex items-center justify-center gap-2 border border-red-100"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      {selectedConv.isGroup ? 'Delete Group' : 'Delete Chat'}
+                    </button>
+                  </div>
+                </div>
+              </aside>
+            </ResizableSidebar>
+          )}
+        </div>
       </div>
 
       {/* New Chat Modal */}
       {showNewChatModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-[var(--color-surface-muted)] rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-[var(--color-text-primary)]">New Conversation</h2>
-              <button onClick={() => { setShowNewChatModal(false); setUserSearchQuery(''); setSearchResults([]); }}
-                className="text-slate-400 hover:text-slate-600">
-                <X className="w-5 h-5 text-[var(--color-text-primary)]" />
+        <div
+          onClick={() => { setShowNewChatModal(false); setUserSearchQuery(''); setSearchResults([]); }}
+          className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 fade-in"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="card rounded-3xl w-full max-w-md shadow-premium-xl overflow-hidden fade-in-up relative"
+          >
+            <div aria-hidden className="pointer-events-none absolute -top-20 -right-20 w-56 h-56 rounded-full opacity-50 blur-3xl" style={{ background: 'radial-gradient(circle, var(--color-accent-soft) 0%, transparent 70%)' }} />
+
+            <div className="relative z-10 px-6 pt-6 pb-4 border-b border-[var(--color-border-light)] flex items-start justify-between gap-4">
+              <div>
+                <p className="label mb-1">Messaging</p>
+                <h2 className="heading-3">New Conversation</h2>
+                <p className="text-sm text-[var(--color-text-muted)] mt-1">Search for a colleague by name or email.</p>
+              </div>
+              <button
+                onClick={() => { setShowNewChatModal(false); setUserSearchQuery(''); setSearchResults([]); }}
+                className="w-9 h-9 rounded-xl flex items-center justify-center text-[var(--color-text-muted)] hover:bg-[var(--color-accent-soft)] hover:text-[var(--color-blue-primary)] transition-smooth flex-shrink-0"
+              >
+                <X className="w-5 h-5" />
               </button>
             </div>
-            <p className="text-slate-500 mb-4 text-sm">Search for a user by name or email to start chatting.</p>
-            <div className="relative mb-4">
-              <input type="text" placeholder="Search users by name or email..." value={userSearchQuery} onChange={(e) => handleUserSearch(e.target.value)} className="input pl-10" autoFocus />
-              <Search className="absolute left-3 top-3.5 w-4 h-4 text-slate-400" />
-            </div>
-            <div className="max-h-64 overflow-y-auto space-y-2 bg-white">
-              {searchingUsers && (
-                <div className="text-center py-4">
-                  <Loader2 className="w-6 h-6 animate-spin text-[var(--color-blue-primary)] mx-auto" />
-                </div>
-              )}
-              {!searchingUsers && searchResults.length === 0 && userSearchQuery && (
-                <p className="text-center text-slate-400 py-4">No users found</p>
-              )}
-              {searchResults.map(u => (
-                <button
-                  key={u.id}
-                  onClick={() => handleStartPrivateChat(u)}
-                  className="w-full flex items-center gap-3 p-3 rounded-lg card transition-all"
-                >
-                  <div className="relative">
-                    <div className="w-10 h-10 rounded-lg flex items-center justify-center overflow-hidden">
-                      <UserAvatar userId={u.id} name={u.name} size={40} />
+
+            <div className="relative z-10 px-6 py-5">
+              <div className="relative mb-4">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-text-muted)] pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="Search users by name or email..."
+                  value={userSearchQuery}
+                  onChange={(e) => handleUserSearch(e.target.value)}
+                  className="input pl-10"
+                  autoFocus
+                />
+              </div>
+
+              <div className="max-h-72 overflow-y-auto space-y-1.5">
+                {searchingUsers && (
+                  <div className="text-center py-6">
+                    <Loader2 className="w-6 h-6 animate-spin text-[var(--color-blue-primary)] mx-auto" />
+                  </div>
+                )}
+                {!searchingUsers && searchResults.length === 0 && userSearchQuery && (
+                  <div className="text-center py-6">
+                    <p className="text-sm text-[var(--color-text-muted)]">No users found for &ldquo;{userSearchQuery}&rdquo;</p>
+                  </div>
+                )}
+                {!searchingUsers && !userSearchQuery && (
+                  <div className="text-center py-6">
+                    <Search className="w-6 h-6 text-[var(--color-text-muted)] mx-auto mb-2 opacity-50" />
+                    <p className="text-sm text-[var(--color-text-muted)]">Start typing to search</p>
+                  </div>
+                )}
+                {searchResults.map(u => (
+                  <button
+                    key={u.id}
+                    onClick={() => handleStartPrivateChat(u)}
+                    className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-[var(--color-surface-muted)] border border-transparent hover:border-[var(--color-border-light)] transition-smooth"
+                  >
+                    <div className="relative flex-shrink-0">
+                      <div className="w-10 h-10 rounded-full overflow-hidden">
+                        <UserAvatar userId={u.id} name={u.name} size={40} />
+                      </div>
+                      {isUserOnline(u.id) && (
+                        <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full" />
+                      )}
                     </div>
-                    {isUserOnline(u.id) && (
-                      <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full"></div>
-                    )}
-                  </div>
-                  <div className="text-left flex-1">
-                    <div className="font-semibold text-[var(--color-text-primary)]">{u.name}</div>
-                    <div className="text-xs text-slate-400">{u.email}</div>
-                  </div>
-                  <span className={`text-xs px-2 py-0.5 rounded ${getRoleColor(u.role)}`}>{u.role}</span>
-                </button>
-              ))}
+                    <div className="text-left flex-1 min-w-0">
+                      <div className="font-semibold text-sm text-[var(--color-text-primary)] truncate">{u.name}</div>
+                      <div className="text-xs text-[var(--color-text-muted)] truncate">{u.email}</div>
+                    </div>
+                    <span className={`text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded flex-shrink-0 ${getRoleColor(u.role)}`}>{u.role}</span>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -1047,93 +1234,147 @@ export default function ChatPage() {
 
       {/* New Group Modal */}
       {showNewGroupModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-[var(--color-surface-muted)] rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-[var(--color-text-primary)]">Create Group</h2>
-              <button onClick={() => {
-                setShowNewGroupModal(false); setGroupName('');
-                setSelectedGroupMembers([]); setGroupSearchQuery(''); setGroupSearchResults([]);
-              }}>
-                <X className="w-5 h-5 text-slate-400 hover:text-slate-600" />
+        <div
+          onClick={() => { setShowNewGroupModal(false); setGroupName(''); setSelectedGroupMembers([]); setGroupSearchQuery(''); setGroupSearchResults([]); }}
+          className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 fade-in"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="card rounded-3xl w-full max-w-md shadow-premium-xl overflow-hidden fade-in-up relative max-h-[90vh] flex flex-col"
+          >
+            <div aria-hidden className="pointer-events-none absolute -top-20 -right-20 w-56 h-56 rounded-full opacity-50 blur-3xl" style={{ background: 'radial-gradient(circle, var(--color-accent-soft) 0%, transparent 70%)' }} />
+
+            <div className="relative z-10 px-6 pt-6 pb-4 border-b border-[var(--color-border-light)] flex items-start justify-between gap-4 flex-shrink-0">
+              <div>
+                <p className="label mb-1">Messaging</p>
+                <h2 className="heading-3">Create Group</h2>
+                <p className="text-sm text-[var(--color-text-muted)] mt-1">Name your group and invite colleagues.</p>
+              </div>
+              <button
+                onClick={() => { setShowNewGroupModal(false); setGroupName(''); setSelectedGroupMembers([]); setGroupSearchQuery(''); setGroupSearchResults([]); }}
+                className="w-9 h-9 rounded-xl flex items-center justify-center text-[var(--color-text-muted)] hover:bg-[var(--color-accent-soft)] hover:text-[var(--color-blue-primary)] transition-smooth flex-shrink-0"
+              >
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <input type="text" placeholder="Group name..." value={groupName} onChange={(e) => setGroupName(e.target.value)} className="input mb-4" autoFocus />
+            <div className="relative z-10 px-6 py-5 overflow-y-auto flex-1">
+              <label className="label block mb-1.5">Group Name</label>
+              <input
+                type="text"
+                placeholder="e.g. Cardiology Residents 2026"
+                value={groupName}
+                onChange={(e) => setGroupName(e.target.value)}
+                className="input mb-4"
+                autoFocus
+              />
 
-            {/* Selected Members */}
-            {selectedGroupMembers.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-4">
-                {selectedGroupMembers.map(m => (
-                  <div key={m.id} className="flex items-center gap-1 bg-[var(--color-blue-soft)] rounded-full px-3 py-1 text-sm">
-                    <span className="text-[var(--color-blue-primary)]">{m.name}</span>
-                    <button onClick={() => setSelectedGroupMembers(prev => prev.filter(p => p.id !== m.id))}>
-                      <X className="w-3 h-3 text-[var(--color-blue-primary)]" />
-                    </button>
+              {selectedGroupMembers.length > 0 && (
+                <div className="mb-4">
+                  <p className="label mb-2">Selected · {selectedGroupMembers.length}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedGroupMembers.map(m => (
+                      <div key={m.id} className="flex items-center gap-1.5 bg-[var(--color-accent-soft)] rounded-lg px-2.5 py-1 text-xs font-medium text-[var(--color-blue-primary)]">
+                        <span className="w-4 h-4 rounded-full overflow-hidden flex-shrink-0">
+                          <UserAvatar userId={m.id} name={m.name} size={16} />
+                        </span>
+                        {m.name}
+                        <button onClick={() => setSelectedGroupMembers(prev => prev.filter(p => p.id !== m.id))} className="hover:text-red-500 transition-smooth">
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                </div>
+              )}
+
+              <label className="label block mb-1.5">Add Members</label>
+              <div className="relative mb-3">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-text-muted)] pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="Search users..."
+                  value={groupSearchQuery}
+                  onChange={(e) => handleGroupSearch(e.target.value)}
+                  className="input pl-10"
+                />
               </div>
-            )}
 
-            {/* Search Members */}
-            <div className="relative mb-4">
-              <input type="text" placeholder="Search users to add..." value={groupSearchQuery} onChange={(e) => handleGroupSearch(e.target.value)} className="input pl-10" />
-              <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
+              <div className="max-h-44 overflow-y-auto space-y-1">
+                {groupSearchResults.map(u => (
+                  <button
+                    key={u.id}
+                    onClick={() => {
+                      setSelectedGroupMembers(prev => [...prev, u]);
+                      setGroupSearchResults(prev => prev.filter(p => p.id !== u.id));
+                      setGroupSearchQuery('');
+                    }}
+                    className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-[var(--color-surface-muted)] border border-transparent hover:border-[var(--color-border-light)] transition-smooth"
+                  >
+                    <div className="w-9 h-9 rounded-full overflow-hidden flex-shrink-0">
+                      <UserAvatar userId={u.id} name={u.name} size={36} />
+                    </div>
+                    <div className="text-left flex-1 min-w-0">
+                      <div className="font-semibold text-sm text-[var(--color-text-primary)] truncate">{u.name}</div>
+                      <div className="text-xs text-[var(--color-text-muted)] truncate">{u.email}</div>
+                    </div>
+                    <UserPlus className="w-4 h-4 text-[var(--color-blue-primary)] flex-shrink-0" />
+                  </button>
+                ))}
+                {groupSearchQuery && groupSearchResults.length === 0 && (
+                  <p className="text-sm text-[var(--color-text-muted)] text-center py-3">No users found</p>
+                )}
+              </div>
             </div>
 
-            <div className="max-h-48 overflow-y-auto space-y-2 mb-4">
-              {groupSearchResults.map(u => (
-                <button
-                  key={u.id}
-                  onClick={() => {
-                    setSelectedGroupMembers(prev => [...prev, u]);
-                    setGroupSearchResults(prev => prev.filter(p => p.id !== u.id));
-                    setGroupSearchQuery('');
-                  }}
-                  className="w-full flex items-center gap-3 p-2 rounded-lg card transition-all"
-                >
-                  <div className="w-8 h-8 rounded-lg overflow-hidden">
-                    <UserAvatar userId={u.id} name={u.name} size={32} />
-                  </div>
-                  <div className="text-left flex-1">
-                    <div className="font-semibold text-sm text-[var(--color-text-primary)]">{u.name}</div>
-                    <div className="text-xs text-slate-400">{u.email}</div>
-                  </div>
-                  <UserPlus className="w-4 h-4 text-[var(--color-blue-primary)]" />
-                </button>
-              ))}
+            <div className="relative z-10 px-6 py-4 border-t border-[var(--color-border-light)] bg-white/80 backdrop-blur flex gap-3 flex-shrink-0">
+              <button
+                onClick={() => { setShowNewGroupModal(false); setGroupName(''); setSelectedGroupMembers([]); setGroupSearchQuery(''); setGroupSearchResults([]); }}
+                className="btn-secondary flex-1"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateGroup}
+                disabled={!groupName.trim()}
+                className="btn-primary flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Create Group ({selectedGroupMembers.length + 1})
+              </button>
             </div>
-
-            <button onClick={handleCreateGroup} disabled={!groupName.trim()} className="btn-primary w-full py-3 text-sm font-semibold disabled:opacity-50">
-              Create Group ({selectedGroupMembers.length + 1} members)
-            </button>
           </div>
         </div>
       )}
 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && selectedConv && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-[var(--color-surface-muted)] rounded-xl p-6 max-w-sm w-full mx-4 shadow-2xl">
-            <div className="text-center mb-6">
-              <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+        <div
+          onClick={() => setShowDeleteConfirm(false)}
+          className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 fade-in"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="card rounded-3xl w-full max-w-sm shadow-premium-xl overflow-hidden fade-in-up relative"
+          >
+            <div className="px-6 pt-7 pb-5 text-center">
+              <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
                 <Trash2 className="w-8 h-8 text-red-500" />
               </div>
-              <h2 className="text-xl font-bold text-[var(--color-text-primary)] mb-2">Are you sure?</h2>
-              <p className="text-slate-500 text-sm">
-                This will permanently delete {selectedConv.isGroup ? `the group "${selectedConv.name}"` : `your chat with ${selectedConv.name}`} and all messages. This action cannot be undone.
+              <h2 className="heading-3 mb-2">Are you sure?</h2>
+              <p className="text-sm text-[var(--color-text-muted)]">
+                This will permanently delete {selectedConv.isGroup ? <>the group <span className="font-semibold text-[var(--color-text-primary)]">&ldquo;{selectedConv.name}&rdquo;</span></> : <>your chat with <span className="font-semibold text-[var(--color-text-primary)]">{selectedConv.name}</span></>} and all messages. This action cannot be undone.
               </p>
             </div>
-            <div className="flex gap-3">
+            <div className="px-6 py-4 border-t border-[var(--color-border-light)] bg-[var(--color-surface-muted)] flex gap-3">
               <button
                 onClick={() => setShowDeleteConfirm(false)}
-                className="flex-1 bg-slate-100 text-[var(--color-text-primary)] py-2.5 rounded-xl font-semibold hover:bg-slate-200 transition-all"
+                className="btn-secondary flex-1"
               >
                 Cancel
               </button>
               <button
                 onClick={handleDeleteConversation}
-                className="flex-1 bg-red-500 text-white py-2.5 rounded-xl font-semibold hover:bg-red-600 transition-all"
+                className="flex-1 bg-red-500 text-white py-2.5 rounded-xl font-semibold hover:bg-red-600 transition-smooth shadow-sm"
               >
                 Delete
               </button>
@@ -1144,81 +1385,102 @@ export default function ChatPage() {
 
       {/* Add Member Modal */}
       {showAddMemberModal && selectedConv?.isGroup && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-[var(--color-surface-muted)] rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-[var(--color-text-primary)]">Add Members</h2>
-              <button onClick={() => { setShowAddMemberModal(false); setAddMemberSelected([]); setAddMemberSearchQuery(''); setAddMemberSearchResults([]); }}
-                className="text-slate-400 hover:text-slate-600">
+        <div
+          onClick={() => { setShowAddMemberModal(false); setAddMemberSelected([]); setAddMemberSearchQuery(''); setAddMemberSearchResults([]); }}
+          className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 fade-in"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="card rounded-3xl w-full max-w-md shadow-premium-xl overflow-hidden fade-in-up relative max-h-[90vh] flex flex-col"
+          >
+            <div aria-hidden className="pointer-events-none absolute -top-20 -right-20 w-56 h-56 rounded-full opacity-50 blur-3xl" style={{ background: 'radial-gradient(circle, var(--color-accent-soft) 0%, transparent 70%)' }} />
+
+            <div className="relative z-10 px-6 pt-6 pb-4 border-b border-[var(--color-border-light)] flex items-start justify-between gap-4 flex-shrink-0">
+              <div>
+                <p className="label mb-1">Group settings</p>
+                <h2 className="heading-3">Add Members</h2>
+                <p className="text-sm text-[var(--color-text-muted)] mt-1">Invite users to &ldquo;{selectedConv.name}&rdquo;.</p>
+              </div>
+              <button
+                onClick={() => { setShowAddMemberModal(false); setAddMemberSelected([]); setAddMemberSearchQuery(''); setAddMemberSearchResults([]); }}
+                className="w-9 h-9 rounded-xl flex items-center justify-center text-[var(--color-text-muted)] hover:bg-[var(--color-accent-soft)] hover:text-[var(--color-blue-primary)] transition-smooth flex-shrink-0"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <p className="text-slate-500 mb-4 text-sm">Search for users to add to &quot;{selectedConv.name}&quot;.</p>
 
-            {/* Selected members chips */}
-            {addMemberSelected.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-3">
-                {addMemberSelected.map(m => (
-                  <span key={m.id} className="flex items-center gap-1 bg-[var(--color-blue-soft)] text-[var(--color-blue-primary)] px-3 py-1.5 rounded-lg text-sm font-medium">
-                    {m.name}
-                    <button onClick={() => setAddMemberSelected(prev => prev.filter(p => p.id !== m.id))} className="hover:text-red-500">
-                      <X className="w-3.5 h-3.5 text-[var(--color-blue-primary)]" />
-                    </button>
-                  </span>
-                ))}
-              </div>
-            )}
-
-            <div className="relative mb-4">
-              <input
-                type="text"
-                placeholder="Search users by name or email..."
-                value={addMemberSearchQuery}
-                onChange={(e) => handleAddMemberSearch(e.target.value)}
-                className="input pl-10"
-                autoFocus
-              />
-              <Search className="absolute left-3 top-3.5 w-4 h-4 text-slate-400" />
-            </div>
-
-            <div className="max-h-48 overflow-y-auto space-y-2 mb-4">
-              {addMemberSearchResults.map(u => (
-                <button
-                  key={u.id}
-                  onClick={() => {
-                    setAddMemberSelected(prev => [...prev, u]);
-                    setAddMemberSearchResults(prev => prev.filter(p => p.id !== u.id));
-                    setAddMemberSearchQuery('');
-                  }}
-                  className="w-full flex items-center gap-3 p-2 rounded-lg card transition-all"
-                >
-                  <div className="w-8 h-8 rounded-lg overflow-hidden">
-                    <UserAvatar userId={u.id} name={u.name} size={32} />
+            <div className="relative z-10 px-6 py-5 overflow-y-auto flex-1">
+              {addMemberSelected.length > 0 && (
+                <div className="mb-4">
+                  <p className="label mb-2">Selected · {addMemberSelected.length}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {addMemberSelected.map(m => (
+                      <span key={m.id} className="flex items-center gap-1.5 bg-[var(--color-accent-soft)] text-[var(--color-blue-primary)] px-2.5 py-1 rounded-lg text-xs font-medium">
+                        <span className="w-4 h-4 rounded-full overflow-hidden">
+                          <UserAvatar userId={m.id} name={m.name} size={16} />
+                        </span>
+                        {m.name}
+                        <button onClick={() => setAddMemberSelected(prev => prev.filter(p => p.id !== m.id))} className="hover:text-red-500 transition-smooth">
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
                   </div>
-                  <div className="text-left flex-1">
-                    <div className="font-semibold text-sm text-[var(--color-text-primary)]">{u.name}</div>
-                    <div className="text-xs text-slate-400">{u.email}</div>
-                  </div>
-                  <UserPlus className="w-4 h-4 text-[var(--color-blue-primary)]" />
-                </button>
-              ))}
-              {addMemberSearchQuery && addMemberSearchResults.length === 0 && (
-                <p className="text-sm text-slate-400 text-center py-3">No users found</p>
+                </div>
               )}
+
+              <div className="relative mb-3">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-text-muted)] pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="Search users by name or email..."
+                  value={addMemberSearchQuery}
+                  onChange={(e) => handleAddMemberSearch(e.target.value)}
+                  className="input pl-10"
+                  autoFocus
+                />
+              </div>
+
+              <div className="max-h-56 overflow-y-auto space-y-1">
+                {addMemberSearchResults.map(u => (
+                  <button
+                    key={u.id}
+                    onClick={() => {
+                      setAddMemberSelected(prev => [...prev, u]);
+                      setAddMemberSearchResults(prev => prev.filter(p => p.id !== u.id));
+                      setAddMemberSearchQuery('');
+                    }}
+                    className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-[var(--color-surface-muted)] border border-transparent hover:border-[var(--color-border-light)] transition-smooth"
+                  >
+                    <div className="w-9 h-9 rounded-full overflow-hidden flex-shrink-0">
+                      <UserAvatar userId={u.id} name={u.name} size={36} />
+                    </div>
+                    <div className="text-left flex-1 min-w-0">
+                      <div className="font-semibold text-sm text-[var(--color-text-primary)] truncate">{u.name}</div>
+                      <div className="text-xs text-[var(--color-text-muted)] truncate">{u.email}</div>
+                    </div>
+                    <UserPlus className="w-4 h-4 text-[var(--color-blue-primary)] flex-shrink-0" />
+                  </button>
+                ))}
+                {addMemberSearchQuery && addMemberSearchResults.length === 0 && (
+                  <p className="text-sm text-[var(--color-text-muted)] text-center py-3">No users found</p>
+                )}
+              </div>
             </div>
 
-            <button
-              onClick={handleAddMembersToGroup}
-              disabled={addMemberSelected.length === 0 || addingMembers}
-              className="w-full gradient-primary text-white py-3 rounded-xl font-semibold hover:opacity-90 transition-smooth disabled:opacity-50 disabled:cursor-not-allowed shadow-premium-md flex items-center justify-center gap-2"
-            >
-              {addingMembers ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
-              Add {addMemberSelected.length} Member{addMemberSelected.length !== 1 ? 's' : ''}
-            </button>
+            <div className="relative z-10 px-6 py-4 border-t border-[var(--color-border-light)] bg-white/80 backdrop-blur flex-shrink-0">
+              <button
+                onClick={handleAddMembersToGroup}
+                disabled={addMemberSelected.length === 0 || addingMembers}
+                className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {addingMembers ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
+                Add {addMemberSelected.length} Member{addMemberSelected.length !== 1 ? 's' : ''}
+              </button>
+            </div>
           </div>
         </div>
       )}
-    </div>
     </div>
   );
 }
