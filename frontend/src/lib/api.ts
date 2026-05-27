@@ -260,6 +260,17 @@ export const refreshEventbriteCacheAPI = async () => {
   return res.data
 }
 
+// Aggregated external events (Eventbrite + Hack Club + Devpost), filtered to health/medical
+export const getExternalEventsAPI = async () => {
+  const res = await api.get('/events/external')
+  return res.data
+}
+
+export const refreshExternalEventsAPI = async () => {
+  const res = await api.post('/events/external/refresh')
+  return res.data
+}
+
 export const createEventAPI = async (data: any) => {
   const res = await api.post('/events', data)
   return res.data

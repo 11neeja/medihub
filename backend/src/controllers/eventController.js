@@ -198,6 +198,250 @@ export const refreshEventbriteCache = async (req, res) => {
   }
 }
 
+// ─── Multi-source external event aggregation (24-hour cache) ───────
+// Sources: Eventbrite (above) + Hack Club + Devpost. Each fetcher is
+// independent and failure-isolated, so one bad source can't break the
+// page. To add another source (paid API, RSS, etc.), write a fetcher
+// that returns this same normalised shape and add it to the
+// Promise.allSettled list in fetchExternalEvents().
+
+// A realistic browser UA — some endpoints (Devpost) reject non-browser agents.
+const BROWSER_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+
+// Coarse region buckets used by the "Region" filter on the events page.
+const COUNTRY_REGION = {
+  IN: 'India',
+  US: 'North America', CA: 'North America',
+  MX: 'Latin America', BR: 'Latin America', AR: 'Latin America', CL: 'Latin America',
+  CO: 'Latin America', PE: 'Latin America', UY: 'Latin America', EC: 'Latin America',
+  GB: 'Europe', IE: 'Europe', FR: 'Europe', DE: 'Europe', ES: 'Europe', IT: 'Europe',
+  NL: 'Europe', SE: 'Europe', NO: 'Europe', FI: 'Europe', DK: 'Europe', PL: 'Europe',
+  PT: 'Europe', CH: 'Europe', AT: 'Europe', BE: 'Europe', CZ: 'Europe', GR: 'Europe',
+  RO: 'Europe', HU: 'Europe', UA: 'Europe', RS: 'Europe', SK: 'Europe', BG: 'Europe',
+  CN: 'Asia-Pacific', JP: 'Asia-Pacific', KR: 'Asia-Pacific', SG: 'Asia-Pacific',
+  MY: 'Asia-Pacific', ID: 'Asia-Pacific', TH: 'Asia-Pacific', VN: 'Asia-Pacific',
+  PH: 'Asia-Pacific', AU: 'Asia-Pacific', NZ: 'Asia-Pacific', HK: 'Asia-Pacific',
+  TW: 'Asia-Pacific', BD: 'Asia-Pacific', PK: 'Asia-Pacific', LK: 'Asia-Pacific', NP: 'Asia-Pacific',
+  AE: 'Middle East & Africa', SA: 'Middle East & Africa', QA: 'Middle East & Africa',
+  IL: 'Middle East & Africa', TR: 'Middle East & Africa', EG: 'Middle East & Africa',
+  ZA: 'Middle East & Africa', NG: 'Middle East & Africa', KE: 'Middle East & Africa',
+  MA: 'Middle East & Africa', GH: 'Middle East & Africa',
+}
+
+// Fallback when we only have a free-text location string (no country code).
+const REGION_KEYWORDS = [
+  { region: 'India', re: /\b(india|bengaluru|bangalore|mumbai|delhi|hyderabad|chennai|pune|kolkata|gurgaon|gurugram|noida|ahmedabad|jaipur)\b/i },
+  { region: 'North America', re: /\b(usa|u\.s\.a|united states|america|new york|san francisco|boston|chicago|seattle|los angeles|texas|california|canada|toronto|vancouver|ontario)\b/i },
+  { region: 'Europe', re: /\b(uk|united kingdom|england|london|france|paris|germany|berlin|munich|spain|madrid|barcelona|italy|rome|netherlands|amsterdam|sweden|stockholm|europe|ireland|dublin|poland|portugal|lisbon|switzerland|zurich)\b/i },
+  { region: 'Asia-Pacific', re: /\b(china|beijing|shanghai|japan|tokyo|korea|seoul|singapore|malaysia|indonesia|thailand|bangkok|vietnam|philippines|australia|sydney|melbourne|new zealand|hong kong|taiwan|bangladesh|pakistan|sri lanka|nepal)\b/i },
+  { region: 'Middle East & Africa', re: /\b(uae|dubai|abu dhabi|saudi|qatar|doha|israel|tel aviv|turkey|istanbul|egypt|cairo|africa|nigeria|lagos|kenya|nairobi|south africa|morocco)\b/i },
+  { region: 'Latin America', re: /\b(mexico|brazil|sao paulo|argentina|buenos aires|chile|santiago|colombia|bogota|peru|lima)\b/i },
+]
+
+// Resolve an event to a region bucket. Prefers an ISO country code, then
+// keyword-matches a location string, then defaults to "Other".
+const deriveRegion = (countryCode, location, isOnline) => {
+  if (isOnline) return 'Online'
+  if (countryCode && COUNTRY_REGION[countryCode.toUpperCase()]) {
+    return COUNTRY_REGION[countryCode.toUpperCase()]
+  }
+  const text = location || ''
+  for (const { region, re } of REGION_KEYWORDS) {
+    if (re.test(text)) return region
+  }
+  return 'Other'
+}
+
+// Format an HH:MM time slice out of an ISO timestamp (UTC).
+const isoTimeUTC = (iso) => {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return ''
+  return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' })
+}
+
+// Medical/healthcare relevance filter. General sources (Hack Club, Devpost)
+// list every kind of event, so we keep only those whose title/themes match
+// these terms. Eventbrite is already health-scoped by its search queries.
+const HEALTH_RE = /\b(health|healthcare|medical|medicine|med-?tech|clinic|clinical|hospital|patient|biotech|bio-?medical|life ?science|pharma|pharmaceutical|wellness|mental health|telemedicine|telehealth|nursing|nurse|surgery|surgical|disease|genom|genetic|diagnos|therapy|therapeutic|neuro|cardio|oncolog|cancer|covid|vaccine|epidemic|pandemic|public health|disability|assistive|accessib|aging|elder|nutrition|mhealth|ehealth|digital health)\b/i
+
+// ── Hack Club: free, no-auth JSON of upcoming hackathons worldwide ──
+const HACKCLUB_URL = 'https://hackathons.hackclub.com/api/events/upcoming'
+
+const fetchHackClubEvents = async () => {
+  try {
+    const res = await fetch(HACKCLUB_URL, { headers: { 'User-Agent': BROWSER_UA } })
+    if (!res.ok) { console.error(`[HackClub] status ${res.status}`); return [] }
+    const data = await res.json()
+    if (!Array.isArray(data)) return []
+    return data
+      .filter(e => HEALTH_RE.test(e.name || ''))
+      .map(e => {
+      const isOnline = !!e.virtual
+      const mode = isOnline ? 'Online' : e.hybrid ? 'Hybrid' : 'On-campus'
+      const location = isOnline
+        ? 'Online'
+        : [e.city, e.state, e.country].filter(Boolean).join(', ') || 'TBA'
+      const start = isoTimeUTC(e.start)
+      const end = isoTimeUTC(e.end)
+      return {
+        _id: `hc-${e.id}`,
+        id: `hc-${e.id}`,
+        title: e.name || 'Untitled Hackathon',
+        organizer: e.hack_club_event ? 'Hack Club' : 'Community Hackathon',
+        date: e.start || '',
+        time: start && end ? `${start} – ${end} UTC` : start ? `${start} UTC` : 'TBA',
+        location,
+        mode,
+        type: 'Hackathon',
+        shortDescription: location === 'Online' ? 'Online hackathon.' : `Hackathon in ${location}.`,
+        longDescription: `${e.name} — a hackathon ${location === 'Online' ? 'held online' : `taking place in ${location}`}. Visit the official site for the schedule, eligibility, and registration.`,
+        imageUrl: e.banner || e.logo || '',
+        featured: false,
+        capacity: null,
+        registered: 0,
+        isRegistered: false,
+        source: 'hackclub',
+        region: deriveRegion(e.countryCode, location, isOnline),
+        externalUrl: e.website || '',
+      }
+    })
+  } catch (err) {
+    console.error('[HackClub] fetch failed:', err.message)
+    return []
+  }
+}
+
+// ── Devpost: unofficial but stable JSON of hackathons (filtered to health-tech) ──
+const DEVPOST_URL = 'https://devpost.com/api/hackathons'
+
+// Parse Devpost date strings like "May 05 - Jun 11, 2026" → ISO start date.
+const parseDevpostDate = (str) => {
+  if (!str) return ''
+  const yearMatch = str.match(/\b(20\d{2})\b/)
+  const year = yearMatch ? yearMatch[1] : new Date().getFullYear()
+  const firstPart = str.split('-')[0].trim().replace(/,.*$/, '')
+  const d = new Date(`${firstPart} ${year}`)
+  return isNaN(d.getTime()) ? '' : d.toISOString()
+}
+
+const fetchDevpostEvents = async () => {
+  const collected = []
+  try {
+    for (const page of [1, 2]) {
+      const res = await fetch(`${DEVPOST_URL}?status[]=open&status[]=upcoming&page=${page}`, {
+        headers: { 'User-Agent': BROWSER_UA, Accept: 'application/json' },
+      })
+      if (!res.ok) { console.error(`[Devpost] page ${page} status ${res.status}`); continue }
+      const data = await res.json()
+      if (data.hackathons?.length) collected.push(...data.hackathons)
+    }
+  } catch (err) {
+    console.error('[Devpost] fetch failed:', err.message)
+  }
+  return collected
+    .filter(h => HEALTH_RE.test(`${h.title || ''} ${(h.themes || []).map(t => t.name).join(' ')}`))
+    .map(h => {
+    const location = h.displayed_location?.location || 'Online'
+    const isOnline = /online|everywhere|virtual/i.test(location)
+    const themeText = (h.themes || []).map(t => t.name).join(' ')
+    const thumb = h.thumbnail_url
+      ? (h.thumbnail_url.startsWith('//') ? `https:${h.thumbnail_url}` : h.thumbnail_url)
+      : ''
+    const prize = h.prize_amount ? String(h.prize_amount).replace(/<[^>]+>/g, '') : ''
+    return {
+      _id: `dp-${h.id}`,
+      id: `dp-${h.id}`,
+      title: h.title || 'Untitled Hackathon',
+      organizer: h.organization_name || 'Devpost',
+      date: parseDevpostDate(h.submission_period_dates),
+      time: h.submission_period_dates || 'TBA',
+      location,
+      mode: isOnline ? 'Online' : 'On-campus',
+      type: 'Hackathon',
+      shortDescription: `${h.submission_period_dates || ''}${themeText ? ` · ${themeText}` : ''}`.trim() || 'Hackathon on Devpost.',
+      longDescription: `${h.title} hosted by ${h.organization_name || 'Devpost'}. ${prize ? `Prizes: ${prize}. ` : ''}${h.registrations_count ? `${h.registrations_count} participants registered. ` : ''}Visit Devpost for full details and registration.`,
+      imageUrl: thumb,
+      featured: false,
+      capacity: null,
+      registered: h.registrations_count || 0,
+      isRegistered: false,
+      source: 'devpost',
+      region: deriveRegion(null, location, isOnline),
+      externalUrl: h.url || '',
+    }
+  })
+}
+
+// ── Aggregator: merge every source behind one 24hr in-memory cache ──
+let externalCache = { events: [], fetchedAt: 0 }
+
+const fetchExternalEvents = async () => {
+  const now = Date.now()
+  if (externalCache.events.length > 0 && now - externalCache.fetchedAt < CACHE_TTL_MS) {
+    console.log(`[External] Returning ${externalCache.events.length} cached events`)
+    return externalCache.events
+  }
+
+  const [ebRes, hcRes, dpRes] = await Promise.allSettled([
+    fetchEventbriteEvents(),
+    fetchHackClubEvents(),
+    fetchDevpostEvents(),
+  ])
+
+  // Eventbrite events predate the region/externalUrl fields — backfill them.
+  const eb = (ebRes.status === 'fulfilled' ? ebRes.value : []).map(e => ({
+    ...e,
+    externalUrl: e.externalUrl || e.eventbriteUrl || '',
+    region: e.region || deriveRegion(null, e.location, e.mode === 'Online'),
+  }))
+  const hc = hcRes.status === 'fulfilled' ? hcRes.value : []
+  const dp = dpRes.status === 'fulfilled' ? dpRes.value : []
+
+  // Merge + dedupe by id
+  const seen = new Set()
+  const merged = [...eb, ...hc, ...dp].filter(e => {
+    if (!e || seen.has(e.id)) return false
+    seen.add(e.id)
+    return true
+  })
+
+  // Sort by date ascending; undated events sink to the bottom.
+  merged.sort((a, b) => {
+    const da = a.date ? new Date(a.date).getTime() : Infinity
+    const db = b.date ? new Date(b.date).getTime() : Infinity
+    return da - db
+  })
+
+  externalCache = { events: merged, fetchedAt: Date.now() }
+  console.log(`[External] Cached ${merged.length} events (EB:${eb.length} HC:${hc.length} DP:${dp.length})`)
+  return merged
+}
+
+// @desc    Get aggregated external events (Eventbrite + Hack Club + Devpost), cached 24hr
+// @route   GET /api/events/external
+export const getExternalEvents = async (req, res) => {
+  try {
+    res.json(await fetchExternalEvents())
+  } catch (error) {
+    console.error('External events error:', error)
+    res.status(500).json({ message: 'Failed to fetch external events', error: error.message })
+  }
+}
+
+// @desc    Force refresh the external event cache
+// @route   POST /api/events/external/refresh
+export const refreshExternalEvents = async (req, res) => {
+  externalCache = { events: [], fetchedAt: 0 }
+  eventbriteCache = { events: [], fetchedAt: 0 }
+  try {
+    const events = await fetchExternalEvents()
+    res.json({ message: `Refreshed ${events.length} external events`, events })
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to refresh external events', error: error.message })
+  }
+}
+
 // @desc    Get all events
 // @route   GET /api/events
 export const getEvents = async (req, res) => {
@@ -211,6 +455,7 @@ export const getEvents = async (req, res) => {
       return {
         ...rest,
         _id: event.id,
+        region: deriveRegion(null, event.location, event.mode === 'Online'),
         registered: registeredUsers.length,
         isRegistered: req.user
           ? registeredUsers.some(u => u.id === req.user.id)

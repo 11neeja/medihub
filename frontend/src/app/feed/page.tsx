@@ -592,62 +592,77 @@ export default function FeedPage() {
   return (
     <div className="min-h-screen gradient-subtle">
       <div className="page-container">
-        {/* Page Header */}
-        <div className="relative card rounded-3xl p-6 md:p-8 mb-6 animate-section overflow-hidden">
-          <div aria-hidden className="pointer-events-none absolute -top-32 -right-32 w-80 h-80 rounded-full opacity-50 blur-3xl" style={{ background: 'radial-gradient(circle, var(--color-accent-soft) 0%, transparent 70%)' }} />
-          <div aria-hidden className="pointer-events-none absolute -bottom-32 -left-24 w-64 h-64 rounded-full opacity-30 blur-3xl" style={{ background: 'radial-gradient(circle, var(--color-blue-soft) 0%, transparent 70%)' }} />
-
-          <div className="relative z-10 flex items-start gap-4">
-            <div className="hidden sm:flex w-12 h-12 lg:w-14 lg:h-14 rounded-2xl items-center justify-center flex-shrink-0" style={{ background: 'var(--gradient-primary)', boxShadow: 'var(--shadow-btn)' }}>
-              <Heart className="w-6 h-6 lg:w-7 lg:h-7 text-white" />
-            </div>
-            <div>
-              <p className="label mb-2">Community</p>
-              <h1 className="heading-2 mb-2 fade-in-up">Medical Feed</h1>
-              <p className="body-md fade-in-delay-1">Share insights and stay connected with your MediHub community</p>
+        {/* Editorial masthead */}
+        <header className="relative mb-10 pb-10 border-b border-[var(--color-border-rule)] animate-section">
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+            <div className="flex-1 max-w-3xl">
+              <div className="flex items-center gap-4 mb-5">
+                <p className="label !mb-0">The Common Room</p>
+                <span className="hidden md:inline text-[10px] uppercase tracking-[0.2em] text-[var(--color-text-soft)] font-semibold">
+                  {posts.length} posts · live
+                </span>
+              </div>
+              <h1 className="heading-hero mb-4">
+                Where colleagues <span className="serif-accent">speak</span>.
+              </h1>
+              <p className="body-lg max-w-xl text-[var(--color-text-secondary)]">
+                Share cases, ideas, papers, and small wins — a feed by clinicians, for clinicians.
+              </p>
             </div>
           </div>
-        </div>
+        </header>
 
         <div className="flex flex-col lg:flex-row gap-6">
           {/* Left Sidebar */}
           <ResizableSidebar side="left" defaultWidth={280} minWidth={200} maxWidth={400} responsive>
             <aside className="w-full">
-              <div className="card p-6 lg:sticky lg:top-20">
-                <div className="text-center mb-6 pb-6 border-b border-[var(--color-border-light)]">
-                  <div className="mx-auto mb-3 ring-2 ring-[var(--color-border-light)] rounded-full w-fit hover-scale transition-transform">
-                    <UserAvatar userId={currentUserId} name={currentUserName} size={80} />
+              <div className="card p-7 lg:sticky lg:top-24">
+                <div className="text-center mb-6 pb-6 border-b border-[var(--color-border-hairline)]">
+                  <div className="mx-auto mb-4 w-fit hover-scale transition-transform">
+                    <UserAvatar userId={currentUserId} name={currentUserName} size={84} />
                   </div>
-                  <h2 className="font-bold text-[var(--color-text-primary)]">{currentUserName}</h2>
-                  <p className="text-sm text-gray-500 mb-2">{currentUserHandle}</p>
-                  <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-[var(--color-blue-soft)] text-[var(--color-blue-primary)]">
-                    {user?.role || 'Doctor'}
+                  <h2
+                    className="text-[var(--color-navy)] mb-1"
+                    style={{
+                      fontFamily: 'var(--font-fraunces), serif',
+                      fontSize: '1.125rem',
+                      fontWeight: 500,
+                      letterSpacing: '-0.02em',
+                    }}
+                  >
+                    {currentUserName}
+                  </h2>
+                  <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--color-text-soft)] font-semibold mb-3">
+                    {currentUserHandle}
+                  </p>
+                  <span className="badge">{user?.role || 'Doctor'}</span>
+                </div>
+                <div className="flex items-baseline justify-between mb-7 px-1">
+                  <span className="text-[11px] uppercase tracking-[0.18em] text-[var(--color-text-muted)] font-semibold">Posts</span>
+                  <span
+                    className="text-[var(--color-navy)] tabular-nums"
+                    style={{ fontFamily: 'var(--font-fraunces), serif', fontSize: '1.5rem', fontWeight: 500 }}
+                  >
+                    {posts.filter(p => p.author._id === currentUserId).length}
                   </span>
                 </div>
-                <div className="space-y-3 mb-6">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Posts</span>
-                    <span className="font-semibold text-[var(--color-text-primary)]">{posts.filter(p => p.author._id === currentUserId).length}</span>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Quick Access</h3>
-                  <a href="/home" className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-[var(--color-surface-muted)] transition text-sm text-slate-700 group">
-                    <Newspaper className="w-4 h-4 text-slate-400 group-hover:text-[var(--color-blue-primary)] transition" />
-                    <span>News Feed</span>
-                  </a>
-                  <a href="/events" className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-[var(--color-surface-muted)] transition text-sm text-slate-700 group">
-                    <Calendar className="w-4 h-4 text-slate-400 group-hover:text-[var(--color-blue-primary)] transition" />
-                    <span>Events</span>
-                  </a>
-                  <a href="/groups" className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-[var(--color-surface-muted)] transition text-sm text-slate-700 group">
-                    <Users className="w-4 h-4 text-slate-400 group-hover:text-[var(--color-blue-primary)] transition" />
-                    <span>Groups</span>
-                  </a>
-                  <a href="/notebook" className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-[var(--color-surface-muted)] transition text-sm text-slate-700 group">
-                    <BookOpen className="w-4 h-4 text-slate-400 group-hover:text-[var(--color-blue-primary)] transition" />
-                    <span>Notebook</span>
-                  </a>
+                <div className="space-y-0.5 -mx-2">
+                  <p className="label !mb-2 px-2">Quick Access</p>
+                  {[
+                    { href: '/home', icon: Newspaper, label: 'News Feed' },
+                    { href: '/events', icon: Calendar, label: 'Events' },
+                    { href: '/groups', icon: Users, label: 'Groups' },
+                    { href: '/notebook', icon: BookOpen, label: 'Notebook' },
+                  ].map(({ href, icon: Icon, label }) => (
+                    <a
+                      key={href}
+                      href={href}
+                      className="flex items-center gap-3 px-2.5 py-2 rounded-md hover:bg-[var(--color-accent-soft)] transition-smooth text-sm text-[var(--color-text-body)] hover:text-[var(--color-navy)] group"
+                    >
+                      <Icon className="w-4 h-4 text-[var(--color-text-soft)] group-hover:text-[var(--color-navy)] transition" strokeWidth={1.5} />
+                      <span className="font-medium">{label}</span>
+                    </a>
+                  ))}
                 </div>
               </div>
             </aside>

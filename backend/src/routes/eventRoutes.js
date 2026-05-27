@@ -1,10 +1,14 @@
 import express from 'express'
-import { getEvents, createEvent, toggleRegistration, deleteEvent, getEventbriteEvents, refreshEventbriteCache } from '../controllers/eventController.js'
+import { getEvents, createEvent, toggleRegistration, deleteEvent, getEventbriteEvents, refreshEventbriteCache, getExternalEvents, refreshExternalEvents } from '../controllers/eventController.js'
 import { protect } from '../middleware/auth.js'
 
 const router = express.Router()
 
-// Eventbrite routes (specific routes BEFORE parameterized ones)
+// External-source routes (specific routes BEFORE parameterized ones)
+router.get('/external', protect, getExternalEvents)
+router.post('/external/refresh', protect, refreshExternalEvents)
+
+// Eventbrite routes (kept for backward compatibility)
 router.get('/eventbrite', protect, getEventbriteEvents)
 router.post('/eventbrite/refresh', protect, refreshEventbriteCache)
 

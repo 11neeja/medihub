@@ -5,7 +5,8 @@ import {
   FolderOpen, Folder, FileText, Search, Trash2, CheckSquare, BookOpen,
   Upload, Eye, X, Inbox, PenLine, Bot, Tag, Heading, Type, List, Minus,
   Paperclip, Presentation, FileEdit, Calendar, Loader2, Plus, FolderPlus,
-  Image, Table, File, Pencil, ChevronUp, ChevronDown
+  Image, Table, File, Pencil, ChevronUp, ChevronDown, Download,
+  ArrowLeft, Wrench
 } from 'lucide-react';
 import { getNotesAPI, createNoteAPI, updateNoteAPI, deleteNoteAPI, getTasksAPI, createTaskAPI, toggleTaskAPI, deleteTaskAPI, getSubjectsAPI, createSubjectAPI, renameSubjectAPI, deleteSubjectAPI, getDocumentsAPI, uploadDocumentAPI, downloadDocumentAPI, deleteDocumentAPI, getAiMessagesAPI, reorderNotesAPI } from '@/lib/api';
 import ResizableSidebar from '@/components/ResizableSidebar';
@@ -49,6 +50,24 @@ interface UploadedFile {
 
 // Mock data - Initial pages organized by subject
 const initialPages: NotePage[] = [];
+
+// Muted, on-brand accent colors assigned deterministically per subject name.
+const SUBJECT_ACCENTS = [
+  { dot: '#0B3B91', soft: '#E6F0FF' }, // blue
+  { dot: '#047857', soft: '#E7F6F0' }, // emerald
+  { dot: '#B45309', soft: '#FBF0DD' }, // amber
+  { dot: '#6D28D9', soft: '#F1E9FB' }, // violet
+  { dot: '#BE123C', soft: '#FBE6EA' }, // rose
+  { dot: '#0F766E', soft: '#E2F4F2' }, // teal
+];
+
+const accentForSubject = (subject: string) => {
+  let hash = 0;
+  for (let i = 0; i < subject.length; i++) {
+    hash = (hash * 31 + subject.charCodeAt(i)) >>> 0;
+  }
+  return SUBJECT_ACCENTS[hash % SUBJECT_ACCENTS.length];
+};
 
 // CSV Preview component
 function CsvPreview({ url }: { url: string }) {
@@ -119,6 +138,9 @@ export default function NotebookPage() {
   const [showAiPicker, setShowAiPicker] = useState(false);
   const [aiMessages, setAiMessages] = useState<{ id: string; sender: string; text: string; createdAt: string; question: string }[]>([]);
   const [isLoadingAi, setIsLoadingAi] = useState(false);
+  // Mobile-only view switcher: 'list' = subjects/pages, 'editor' = page editor, 'tools' = tasks/documents.
+  // Desktop ignores this (panels render side-by-side via lg: classes).
+  const [mobileView, setMobileView] = useState<'list' | 'editor' | 'tools'>('list');
 
   // Helper to map API note to frontend NotePage shape
   const mapAPINote = (apiNote: any): NotePage => ({
@@ -297,6 +319,7 @@ export default function NotebookPage() {
       const newPage = mapAPINote(apiNote);
       setPages([...pages, newPage]);
       setSelectedPage(newPage);
+      setMobileView('editor');
     } catch (err) {
       console.error('Failed to create note:', err);
     }
@@ -611,6 +634,7 @@ export default function NotebookPage() {
       setPages(prev => [...prev, newPage]);
       setSelectedSubject('AI Assistant');
       setSelectedPage(newPage);
+      setMobileView('editor');
       setShowAiPicker(false);
     } catch (err) {
       console.error('Failed to save AI note:', err);
@@ -621,57 +645,63 @@ export default function NotebookPage() {
   return (
     <div className="min-h-screen gradient-subtle">
       <div className="page-container">
-        {/* Page Header */}
-        <div className="relative card rounded-3xl p-6 md:p-8 mb-6 animate-section overflow-hidden">
-          <div aria-hidden className="pointer-events-none absolute -top-32 -right-32 w-80 h-80 rounded-full opacity-50 blur-3xl" style={{ background: 'radial-gradient(circle, var(--color-accent-soft) 0%, transparent 70%)' }} />
-          <div aria-hidden className="pointer-events-none absolute -bottom-32 -left-24 w-64 h-64 rounded-full opacity-30 blur-3xl" style={{ background: 'radial-gradient(circle, var(--color-blue-soft) 0%, transparent 70%)' }} />
-
-          <div className="relative z-10 flex items-start gap-4">
-            <div className="hidden sm:flex w-12 h-12 lg:w-14 lg:h-14 rounded-2xl items-center justify-center flex-shrink-0" style={{ background: 'var(--gradient-primary)', boxShadow: 'var(--shadow-btn)' }}>
-              <BookOpen className="w-6 h-6 lg:w-7 lg:h-7 text-white" />
-            </div>
-            <div>
-              <p className="label mb-2">Workspace</p>
-              <h1 className="heading-2 mb-2 fade-in-up">My Workspace</h1>
-              <p className="body-md fade-in-delay-1">Organize your medical study notes, tasks, and resources</p>
+        {/* Editorial masthead — hidden on mobile when editing so the editor fills the screen */}
+        <header className={`relative mb-8 pb-8 border-b border-[var(--color-border-rule)] animate-section ${mobileView !== 'list' ? 'hidden lg:block' : ''}`}>
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+            <div className="flex-1 max-w-3xl">
+              <p className="label !mb-3">Workspace</p>
+              <h1 className="heading-hero mb-4">
+                Your <span className="serif-accent">study</span>, kept close.
+              </h1>
+              <p className="body-lg max-w-xl text-[var(--color-text-secondary)]">
+                Notes, tasks, and reference documents — organized by subject, ready when you are.
+              </p>
             </div>
           </div>
-        </div>
+        </header>
 
-        {/* Main Layout */}
-        <div className="card rounded-3xl overflow-hidden flex flex-col lg:flex-row h-[calc(100vh-280px)] min-h-[560px]">
+        {/* Main Layout — calm three-pane workspace */}
+        <div className="workspace-shell rounded-2xl overflow-hidden flex flex-col lg:flex-row h-[calc(100vh-280px)] min-h-[560px] bg-[var(--color-surface-white)] border border-[var(--color-border-hairline)]" style={{ boxShadow: 'var(--shadow-card)' }}>
         {/* Left Sidebar */}
-        <ResizableSidebar side="left" defaultWidth={256} minWidth={200} maxWidth={400} responsive>
-        <aside className="w-full h-full card flex flex-col">
-          {/* Search */}
-          <div className="p-4 border-b border-[var(--color-border-light)]">
+        <ResizableSidebar side="left" defaultWidth={272} minWidth={220} maxWidth={420} className="lg:border-r border-[var(--color-border-hairline)] bg-[var(--color-surface-elevated)]" responsive mobileVisible={mobileView === 'list'}>
+        <aside className="w-full h-full flex flex-col">
+          {/* Search — quiet bar */}
+          <div className="px-4 pt-5 pb-3">
             <div className="relative">
-              <input type="text" placeholder="Search pages..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="input pl-8" />
-              <Search className="absolute left-2.5 top-2.5 w-4 h-4 text-slate-500" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--color-text-soft)]" strokeWidth={1.75} />
+              <input
+                type="text"
+                placeholder="Search pages…"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 text-[0.8125rem] rounded-md bg-[var(--color-surface-white)] border border-[var(--color-border-hairline)] outline-none focus:border-[var(--color-navy)] transition-colors"
+              />
             </div>
           </div>
 
           {/* Subjects & Pages */}
-          <div className="flex-1 overflow-y-auto p-4">
-            <div className="mb-4">
-              <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
-                My Workspace
-              </div>
+          <div className="flex-1 overflow-y-auto px-2 pb-4">
+            <div className="flex items-center justify-between px-3 mb-2 mt-1">
+              <span className="text-[10px] uppercase tracking-[0.18em] font-semibold text-[var(--color-text-soft)]">Workspace</span>
+              <button
+                onClick={() => setShowNewSubjectInput(!showNewSubjectInput)}
+                className="text-[var(--color-text-soft)] hover:text-[var(--color-navy)] p-1 rounded hover:bg-[var(--color-accent-soft)] transition"
+                title="Add new subject"
+              >
+                <FolderPlus className="w-3.5 h-3.5" strokeWidth={1.75} />
+              </button>
             </div>
 
-            <div className="mb-4">
-                <div className="flex items-center justify-between mb-2">
-                <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Subjects</div>
-                <button onClick={() => setShowNewSubjectInput(!showNewSubjectInput)} className="btn-secondary p-1" title="Add new subject">
-                  <FolderPlus className="w-4 h-4" />
-                </button>
-              </div>
-
-              {/* New Subject Input */}
+              {/* New Subject Input — slides in */}
               {showNewSubjectInput && (
-                      <div className="mb-3">
-                  <div className="flex gap-1">
-                    <input type="text" value={newSubjectName} onChange={(e) => setNewSubjectName(e.target.value)} onKeyDown={async (e) => {
+                <div className="mb-2 px-2 fade-in">
+                  <div className="flex gap-1 items-center bg-[var(--color-surface-white)] border border-[var(--color-navy)] rounded-md px-2 py-1.5">
+                    <FolderPlus className="w-3.5 h-3.5 text-[var(--color-text-soft)] shrink-0" strokeWidth={1.75} />
+                    <input
+                      type="text"
+                      value={newSubjectName}
+                      onChange={(e) => setNewSubjectName(e.target.value)}
+                      onKeyDown={async (e) => {
                         if (e.key === 'Enter' && newSubjectName.trim()) {
                           try {
                             await createSubjectAPI(newSubjectName.trim());
@@ -686,9 +716,16 @@ export default function NotebookPage() {
                           setNewSubjectName('');
                           setShowNewSubjectInput(false);
                         }
-                      }} placeholder="Subject name..." className="input" autoFocus />
-                    <button onClick={async () => { if (!newSubjectName.trim()) return; try { await createSubjectAPI(newSubjectName.trim()); setSubjects([...subjects, newSubjectName.trim()]); setNewSubjectName(''); setShowNewSubjectInput(false); } catch (err: any) { console.error('Failed to create subject:', err); alert(err?.response?.data?.message || 'Failed to create subject'); } }} className="btn-primary px-2 py-1.5">
-                      <Plus className="w-4 h-4" />
+                      }}
+                      placeholder="New subject"
+                      className="flex-1 bg-transparent border-none outline-none text-[0.8125rem] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-soft)]"
+                      autoFocus
+                    />
+                    <button
+                      onClick={() => { setNewSubjectName(''); setShowNewSubjectInput(false); }}
+                      className="text-[var(--color-text-soft)] hover:text-red-500 p-0.5"
+                    >
+                      <X className="w-3 h-3" />
                     </button>
                   </div>
                 </div>
@@ -698,12 +735,14 @@ export default function NotebookPage() {
                 const subjectPageCount = filteredPages.filter(p => p.subject === subject).length;
                 const isExpanded = selectedSubject === subject;
                 const isRenaming = renamingSubject === subject;
+                const accent = accentForSubject(subject);
+                const accentVars = { '--nb-accent': accent.dot, '--nb-accent-soft': accent.soft } as React.CSSProperties;
 
                 return (
-                  <div key={subject} className="mb-2 group/subject">
+                  <div key={subject} className="mb-2" style={accentVars}>
                     {isRenaming ? (
-                      <div className="flex items-center gap-1 px-3 py-1.5">
-                        <Folder className="w-4 h-4 text-[var(--color-blue-primary)] flex-shrink-0" />
+                      <div className="flex items-center gap-2 px-3 py-2.5 bg-[var(--color-surface-white)] rounded-xl border" style={{ borderColor: accent.dot }}>
+                        <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: accent.dot }} />
                         <input
                           ref={renameInputRef}
                           type="text"
@@ -743,341 +782,471 @@ export default function NotebookPage() {
                             }
                             setRenamingSubject(null);
                           }}
-                          className="flex-1 min-w-0 px-2 py-0.5 text-sm input"
+                          className="flex-1 min-w-0 bg-transparent border-none outline-none text-[0.8125rem] font-semibold text-[var(--color-text-primary)]"
                         />
                       </div>
                     ) : (
-                    <button
-                      onClick={() => setSelectedSubject(subject)}
-                      className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition ${isExpanded ? 'bg-[var(--color-blue-soft)] text-[var(--color-blue-primary)]' : 'text-[var(--color-text-primary)] hover:bg-slate-50'
-                        }`}
-                    >
-                      <span className="flex items-center gap-2 text-sm font-medium">
-                        {isExpanded ? <FolderOpen className="w-4 h-4" /> : <Folder className="w-4 h-4" />}
-                        {subject}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <span className="text-xs text-gray-500">{subjectPageCount}</span>
-                        <span
-                          role="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setRenamingSubject(subject);
-                            setRenameValue(subject);
-                            setTimeout(() => renameInputRef.current?.focus(), 50);
-                          }}
-                          className="opacity-0 group-hover/subject:opacity-100 text-slate-400 hover:text-[var(--color-blue-primary)] transition ml-1"
-                          title="Rename subject"
-                        >
-                          <Pencil className="w-3.5 h-3.5" />
+                    <div className="nb-card group/subject" data-active={isExpanded}>
+                      <div onClick={() => setSelectedSubject(subject)} className="nb-card-head">
+                        <span className="nb-card-icon">
+                          {isExpanded
+                            ? <FolderOpen className="w-3.5 h-3.5" strokeWidth={1.75} />
+                            : <Folder className="w-3.5 h-3.5" strokeWidth={1.75} />}
                         </span>
-                        <span
-                          role="button"
-                          onClick={async (e) => {
-                            e.stopPropagation();
-                            setDeleteSubjectTarget(subject);
-                          }}
-                          className="opacity-0 group-hover/subject:opacity-100 text-slate-400 hover:text-red-600 transition"
-                          title="Delete subject"
-                        >
-                          <X className="w-3.5 h-3.5" />
+                        <span className="nb-card-title">{subject}</span>
+                        <span className="nb-card-actions">
+                          <span
+                            role="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setRenamingSubject(subject);
+                              setRenameValue(subject);
+                              setTimeout(() => renameInputRef.current?.focus(), 50);
+                            }}
+                            className="nb-handle-btn"
+                            title="Rename"
+                          >
+                            <Pencil className="w-3 h-3" strokeWidth={1.75} />
+                          </span>
+                          <span
+                            role="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteSubjectTarget(subject);
+                            }}
+                            className="nb-handle-btn hover:!text-red-500"
+                            title="Delete"
+                          >
+                            <X className="w-3 h-3" strokeWidth={1.75} />
+                          </span>
                         </span>
-                      </span>
-                    </button>
-                    )}
-
-                    {/* Pages under this subject */}
-                    {isExpanded && (
-                      <div className="ml-6 mt-1 space-y-1">
-                        {subjectPages.map((page, idx) => (
-                          <div key={page.id} className="group/page flex items-center">
-                            <button
-                              onClick={() => setSelectedPage(page)}
-                              className={`flex-1 text-left px-3 py-1.5 rounded text-sm transition flex items-center gap-1.5 ${selectedPage?.id === page.id
-                                  ? 'bg-[var(--color-blue-primary)] text-white font-medium'
-                                  : 'text-slate-500 hover:bg-slate-50'
-                                }`}
-                            >
-                              <FileText className="w-3.5 h-3.5 flex-shrink-0" /> {page.title}
-                            </button>
-                            {/* Move up/down arrows */}
-                            <span className="opacity-0 group-hover/page:opacity-100 flex flex-col ml-0.5 transition">
-                              <span
-                                role="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  movePageUp(page, idx);
-                                }}
-                                className={`p-0.5 rounded hover:bg-slate-100 ${idx === 0 ? 'pointer-events-none opacity-30' : ''} ${
-                                  selectedPage?.id === page.id ? 'text-white/60 hover:text-[var(--color-blue-primary)] hover:bg-white/10' : 'text-slate-400 hover:text-[var(--color-blue-primary)]'
-                                }`}
-                                title="Move up"
-                              >
-                                <ChevronUp className="w-3 h-3" />
-                              </span>
-                              <span
-                                role="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  movePageDown(page, idx, subjectPages.length);
-                                }}
-                                className={`p-0.5 rounded hover:bg-slate-100 ${idx === subjectPages.length - 1 ? 'pointer-events-none opacity-30' : ''} ${
-                                  selectedPage?.id === page.id ? 'text-white/60 hover:text-[var(--color-blue-primary)] hover:bg-white/10' : 'text-slate-400 hover:text-[var(--color-blue-primary)]'
-                                }`}
-                                title="Move down"
-                              >
-                                <ChevronDown className="w-3 h-3" />
-                              </span>
-                            </span>
-                            <span
-                              role="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setDeletePageTarget(page);
-                              }}
-                              className={`opacity-0 group-hover/page:opacity-100 transition ml-0.5 p-0.5 rounded hover:bg-red-50 ${
-                                selectedPage?.id === page.id ? 'text-white/60 hover:text-red-400 hover:bg-white/10' : 'text-slate-400 hover:text-red-600'
-                              }`}
-                              title="Delete page"
-                            >
-                              <X className="w-3.5 h-3.5" />
-                            </span>
-                          </div>
-                        ))}
-
-                        <button
-                          onClick={createNewPage}
-                          className="w-full text-left px-3 py-1.5 rounded text-sm text-slate-500 hover:bg-slate-50 hover:text-[var(--color-text-primary)] transition"
-                        >
-                          + New Page
-                        </button>
+                        <span className="nb-card-count group-hover/subject:hidden">{subjectPageCount}</span>
+                        <ChevronDown className="nb-card-chev w-3.5 h-3.5" data-expanded={isExpanded} strokeWidth={2} />
                       </div>
+
+                      {/* Pages under this subject */}
+                      {isExpanded && (
+                        <div className="nb-card-body fade-in">
+                          {subjectPages.map((page, idx) => {
+                            const isPageActive = selectedPage?.id === page.id;
+                            return (
+                            <div
+                              key={page.id}
+                              onClick={() => { setSelectedPage(page); setMobileView('editor'); }}
+                              data-active={isPageActive}
+                              className="nb-row group/page"
+                            >
+                              <FileText className="w-3.5 h-3.5 text-[var(--color-text-soft)] shrink-0" strokeWidth={1.5} />
+                              <span className="text-[0.8125rem] truncate flex-1 tracking-tight">
+                                {page.title || 'Untitled'}
+                              </span>
+                              <span className="nb-row-actions">
+                                <span
+                                  role="button"
+                                  onClick={(e) => { e.stopPropagation(); movePageUp(page, idx); }}
+                                  className={`nb-handle-btn ${idx === 0 ? 'pointer-events-none opacity-30' : ''}`}
+                                  title="Move up"
+                                >
+                                  <ChevronUp className="w-3 h-3" strokeWidth={2} />
+                                </span>
+                                <span
+                                  role="button"
+                                  onClick={(e) => { e.stopPropagation(); movePageDown(page, idx, subjectPages.length); }}
+                                  className={`nb-handle-btn ${idx === subjectPages.length - 1 ? 'pointer-events-none opacity-30' : ''}`}
+                                  title="Move down"
+                                >
+                                  <ChevronDown className="w-3 h-3" strokeWidth={2} />
+                                </span>
+                                <span
+                                  role="button"
+                                  onClick={(e) => { e.stopPropagation(); setDeletePageTarget(page); }}
+                                  className="nb-handle-btn hover:!text-red-500"
+                                  title="Delete page"
+                                >
+                                  <X className="w-3 h-3" strokeWidth={2} />
+                                </span>
+                              </span>
+                            </div>
+                            );
+                          })}
+
+                          {subjectPages.length === 0 && (
+                            <p className="px-2 py-1.5 text-[11px] text-[var(--color-text-soft)] italic" style={{ fontFamily: 'var(--font-fraunces), serif' }}>
+                              No pages yet.
+                            </p>
+                          )}
+
+                          <div
+                            onClick={createNewPage}
+                            className="nb-row text-[var(--color-text-soft)] hover:text-[var(--color-navy)]"
+                          >
+                            <Plus className="w-3.5 h-3.5 shrink-0" strokeWidth={1.75} />
+                            <span className="text-[0.8125rem] italic" style={{ fontFamily: 'var(--font-fraunces), serif' }}>New page</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                     )}
                   </div>
                 );
               })}
-            </div>
           </div>
 
-          {/* Add Note from AI Button */}
-          <div className="p-4 border-t border-[var(--color-border-light)]">
+          {/* Add Note from AI Button — refined inline */}
+          <div className="px-3 pb-4 pt-3 border-t border-[var(--color-border-hairline)] space-y-2">
             <button
               onClick={openAiPicker}
-              className="w-full gradient-primary text-white px-4 py-2 rounded-xl text-sm font-semibold hover:opacity-90 transition-smooth flex items-center justify-center gap-2 shadow-premium-md hover:shadow-premium-lg hover-scale"
+              className="w-full px-3 py-2.5 rounded-md text-[0.8125rem] font-semibold flex items-center justify-center gap-2 transition-all gradient-ink text-white hover:brightness-110"
+              style={{ boxShadow: 'var(--shadow-btn), var(--shadow-inset)' }}
             >
-              <Bot className="w-4 h-4" /> Add Note from AI
+              <Bot className="w-3.5 h-3.5" strokeWidth={1.75} /> Add note from AI
+            </button>
+            {/* Mobile-only shortcut to tasks/documents pane */}
+            <button
+              onClick={() => setMobileView('tools')}
+              className="lg:hidden w-full px-3 py-2 rounded-md text-[0.8125rem] font-semibold flex items-center justify-center gap-2 bg-[var(--color-surface-white)] border border-[var(--color-border-hairline)] text-[var(--color-text-secondary)] hover:bg-[var(--color-accent-soft)] hover:text-[var(--color-navy)] transition-smooth"
+            >
+              <Wrench className="w-3.5 h-3.5" strokeWidth={1.75} /> Tasks & documents
             </button>
           </div>
         </aside>
         </ResizableSidebar>
 
-        {/* Main Editor Area */}
-        <main className="flex-1 overflow-y-auto">
-          <div className="p-6">
-            {selectedPage ? (
-              <div className="card rounded-2xl p-8">
-                {/* Editable Page Title */}
-                <input type="text" value={selectedPage.title} onChange={(e) => updatePageTitle(e.target.value)} className="w-full heading-lg mb-2 border-none outline-none focus:ring-0 text-[var(--color-text-primary)]" placeholder="Untitled" />
-
-                {/* Metadata */}
-                <div className="flex gap-4 body-sm text-slate-500 mb-6 pb-6 border-b border-[var(--color-border-light)]">
-                  <span className="flex items-center gap-1"><Folder className="w-3.5 h-3.5" /> {selectedPage.subject}</span>
-                  <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> {new Date(selectedPage.updatedAt).toLocaleDateString()}</span>
-                  {selectedPage.tags && selectedPage.tags.length > 0 && (
-                    <span className="flex items-center gap-1"><Tag className="w-3.5 h-3.5" /> {selectedPage.tags.join(', ')}</span>
-                  )}
-                </div>
-
-                {/* Blocks */}
-                <div className="space-y-3">
-                  {selectedPage.blocks.map((block) => (
-                    <div key={block.id} className="group relative">
-                      {/* Delete button */}
-                      <button
-                        onClick={() => deleteBlock(block.id)}
-                        className="absolute -left-8 top-2 opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-600 transition"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-
-                      {/* Block rendering */}
-                      {block.type === 'heading' && (
-                        <input type="text" value={block.text} onChange={(e) => updateBlockText(block.id, e.target.value)} className="w-full heading-md border-none outline-none focus:ring-0 text-[var(--color-text-primary)] py-2" placeholder="Heading" />
-                      )}
-
-                      {block.type === 'text' && (
-                        <textarea value={block.text} onChange={(e) => updateBlockText(block.id, e.target.value)} className="w-full body-md border-none outline-none focus:ring-0 text-[var(--color-text-primary)] resize-none py-2" placeholder="Type something..." rows={2} />
-                      )}
-
-                      {block.type === 'checklist' && (
-                        <div className="flex items-start gap-3 py-2">
-                          <input type="checkbox" checked={block.checked || false} onChange={() => toggleChecklist(block.id)} className="mt-1 w-4 h-4 text-[var(--color-blue-primary)] rounded focus:ring-2 focus:ring-[var(--color-blue-primary)]" />
-                            <input type="text" value={block.text} onChange={(e) => updateBlockText(block.id, e.target.value)} className={`flex-1 body-md border-none outline-none focus:ring-0 ${block.checked ? 'line-through text-slate-400' : 'text-[var(--color-text-primary)]'} `} placeholder="Checklist item" />
-                        </div>
-                      )}
-
-                      {block.type === 'bullet' && (
-                        <div className="flex items-start gap-3 py-2">
-                          <span className="text-slate-500 mt-1">•</span>
-                          <input type="text" value={block.text} onChange={(e) => updateBlockText(block.id, e.target.value)} className="flex-1 body-md border-none outline-none focus:ring-0 text-[var(--color-text-primary)]" placeholder="List item" />
-                        </div>
-                      )}
-
-                      {block.type === 'divider' && (
-                        <hr className="my-4 border-[var(--color-border-light)]" />
-                      )}
-                    </div>
-                  ))}
-                </div>
-
-                {/* Add Block Menu */}
-                <div className="mt-6 relative">
-                  <button
-                    onClick={() => setShowBlockMenu(!showBlockMenu)}
-                    className="text-slate-500 hover:text-[var(--color-text-primary)] text-sm font-medium flex items-center gap-2 py-2"
-                  >
-                    <span className="text-lg">+</span>
-                    Add block
-                  </button>
-
-                  {showBlockMenu && (
-                    <div className="absolute left-0 top-full mt-2 card rounded-lg py-2 z-10 w-56">
-                      <button onClick={() => addBlock('heading')} className="w-full text-left px-4 py-2 hover:bg-slate-50 transition flex items-center gap-3">
-                        <Heading className="w-5 h-5 text-slate-500" />
-                        <span className="text-sm">Heading</span>
-                      </button>
-                      <button
-                        onClick={() => addBlock('text')}
-                        className="w-full text-left px-4 py-2 hover:bg-slate-50 transition flex items-center gap-3"
-                      >
-                        <Type className="w-5 h-5 text-slate-500" />
-                        <span className="text-sm">Text</span>
-                      </button>
-                      <button
-                        onClick={() => addBlock('checklist')}
-                        className="w-full text-left px-4 py-2 hover:bg-slate-50 transition flex items-center gap-3"
-                      >
-                        <CheckSquare className="w-5 h-5 text-slate-500" />
-                        <span className="text-sm">Checklist</span>
-                      </button>
-                      <button
-                        onClick={() => addBlock('bullet')}
-                        className="w-full text-left px-4 py-2 hover:bg-slate-50 transition flex items-center gap-3"
-                      >
-                        <List className="w-5 h-5 text-slate-500" />
-                        <span className="text-sm">Bullet List</span>
-                      </button>
-                      <button
-                        onClick={() => addBlock('divider')}
-                        className="w-full text-left px-4 py-2 hover:bg-slate-50 transition flex items-center gap-3"
-                      >
-                        <Minus className="w-5 h-5 text-slate-500" />
-                        <span className="text-sm">Divider</span>
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div className="card p-12 text-center">
-                <PenLine className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-                <h2 className="heading-md mb-2">No page selected</h2>
-                <p className="body-md text-slate-500 mb-6">Select a page from the sidebar or create a new one</p>
-                <button onClick={createNewPage} className="btn-primary">
-                  Create New Page
-                </button>
-              </div>
-            )}
+        {/* Main Editor Area — calm paper canvas */}
+        <main className={`flex-1 overflow-y-auto bg-[var(--color-surface-white)] ${mobileView === 'editor' ? 'block' : 'hidden'} lg:block`}>
+          {/* Mobile back-bar */}
+          <div className="lg:hidden sticky top-0 z-30 flex items-center justify-between gap-2 px-3 py-2.5 bg-white/95 backdrop-blur border-b border-[var(--color-border-hairline)]">
+            <button
+              onClick={() => setMobileView('list')}
+              className="w-9 h-9 rounded-lg flex items-center justify-center text-[var(--color-text-secondary)] bg-[var(--color-surface-muted)] hover:bg-[var(--color-accent-soft)] hover:text-[var(--color-navy)] transition-smooth"
+              aria-label="Back to pages"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <span className="text-sm font-semibold text-[var(--color-text-primary)] truncate flex-1 text-center px-2">
+              {selectedPage?.title || 'Untitled'}
+            </span>
+            <button
+              onClick={() => setMobileView('tools')}
+              className="w-9 h-9 rounded-lg flex items-center justify-center text-[var(--color-text-secondary)] bg-[var(--color-surface-muted)] hover:bg-[var(--color-accent-soft)] hover:text-[var(--color-navy)] transition-smooth"
+              aria-label="Tasks and documents"
+              title="Tasks & documents"
+            >
+              <Wrench className="w-4 h-4" />
+            </button>
           </div>
+          {selectedPage ? (
+            <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-14 py-6 lg:py-16 fade-in">
+              {/* Editable Page Title */}
+              <input
+                type="text"
+                value={selectedPage.title}
+                onChange={(e) => updatePageTitle(e.target.value)}
+                className="nb-title nb-input mb-3 placeholder:opacity-40"
+                placeholder="Untitled"
+              />
+
+              {/* Metadata — quiet editorial spec */}
+              <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 mb-10 pb-6 border-b border-[var(--color-border-hairline)] text-[11px] uppercase tracking-[0.16em] font-semibold text-[var(--color-text-soft)]">
+                <span className="flex items-center gap-1.5">
+                  <Folder className="w-3 h-3" strokeWidth={1.75} /> {selectedPage.subject}
+                </span>
+                <span className="w-1 h-1 rounded-full bg-[var(--color-border-strong)]" />
+                <span className="flex items-center gap-1.5">
+                  <Calendar className="w-3 h-3" strokeWidth={1.75} /> Updated {new Date(selectedPage.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                </span>
+                {selectedPage.tags && selectedPage.tags.length > 0 && (
+                  <>
+                    <span className="w-1 h-1 rounded-full bg-[var(--color-border-strong)]" />
+                    <span className="flex items-center gap-1.5">
+                      <Tag className="w-3 h-3" strokeWidth={1.75} /> {selectedPage.tags.join(' · ')}
+                    </span>
+                  </>
+                )}
+              </div>
+
+              {/* Blocks — Notion-style with hover handles */}
+              <div className="space-y-1">
+                {selectedPage.blocks.map((block) => (
+                  <div key={block.id} className="nb-block">
+                    <div className="nb-handle">
+                      <span
+                        role="button"
+                        onClick={() => deleteBlock(block.id)}
+                        className="nb-handle-btn hover:!text-red-500"
+                        title="Delete block"
+                      >
+                        <Trash2 className="w-3 h-3" strokeWidth={1.75} />
+                      </span>
+                    </div>
+
+                    {block.type === 'heading' && (
+                      <input
+                        type="text"
+                        value={block.text}
+                        onChange={(e) => updateBlockText(block.id, e.target.value)}
+                        className="nb-input nb-h"
+                        placeholder="Heading"
+                      />
+                    )}
+
+                    {block.type === 'text' && (
+                      <textarea
+                        value={block.text}
+                        onChange={(e) => updateBlockText(block.id, e.target.value)}
+                        className="nb-textarea nb-body resize-none"
+                        placeholder="Type ‘/’ or just start writing…"
+                        rows={Math.max(2, (block.text.match(/\n/g) || []).length + 1)}
+                      />
+                    )}
+
+                    {block.type === 'checklist' && (
+                      <div className="flex items-center gap-3 py-0.5">
+                        <input
+                          type="checkbox"
+                          checked={block.checked || false}
+                          onChange={() => toggleChecklist(block.id)}
+                          className="nb-checkbox"
+                        />
+                        <input
+                          type="text"
+                          value={block.text}
+                          onChange={(e) => updateBlockText(block.id, e.target.value)}
+                          className={`nb-input nb-body flex-1 ${block.checked ? 'line-through text-[var(--color-text-soft)]' : ''}`}
+                          placeholder="To-do"
+                        />
+                      </div>
+                    )}
+
+                    {block.type === 'bullet' && (
+                      <div className="flex items-baseline gap-3 py-0.5">
+                        <span className="text-[var(--color-text-muted)] font-bold leading-none mt-1.5 shrink-0">·</span>
+                        <input
+                          type="text"
+                          value={block.text}
+                          onChange={(e) => updateBlockText(block.id, e.target.value)}
+                          className="nb-input nb-body flex-1"
+                          placeholder="List item"
+                        />
+                      </div>
+                    )}
+
+                    {block.type === 'divider' && (
+                      <div className="my-5 flex items-center justify-center" aria-hidden>
+                        <span className="text-[var(--color-text-soft)] text-xs tracking-[0.4em] select-none">· · ·</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Add Block Menu — slash-command vibe */}
+              <div className="mt-8 relative">
+                <button
+                  onClick={() => setShowBlockMenu(!showBlockMenu)}
+                  className="text-[var(--color-text-soft)] hover:text-[var(--color-navy)] text-sm flex items-center gap-2 py-2 px-2 -mx-2 rounded-md hover:bg-[var(--color-surface-elevated)] transition group/add"
+                >
+                  <span className="w-5 h-5 rounded border border-[var(--color-border-rule)] flex items-center justify-center group-hover/add:border-[var(--color-navy)] transition">
+                    <Plus className="w-3 h-3" strokeWidth={2.25} />
+                  </span>
+                  <span className="text-[0.8125rem]">Add a block</span>
+                  <kbd className="nb-kbd ml-1">/</kbd>
+                </button>
+
+                {showBlockMenu && (
+                  <div className="absolute left-0 top-full mt-2 nb-menu z-10 fade-in">
+                    <div className="px-3 py-2 border-b border-[var(--color-border-hairline)]">
+                      <p className="label !mb-0">Basic blocks</p>
+                    </div>
+                    {[
+                      { type: 'heading' as const, label: 'Heading', desc: 'Section title', Icon: Heading, kbd: 'H' },
+                      { type: 'text' as const, label: 'Text', desc: 'Plain paragraph', Icon: Type, kbd: 'T' },
+                      { type: 'checklist' as const, label: 'To-do list', desc: 'Track tasks', Icon: CheckSquare, kbd: '☐' },
+                      { type: 'bullet' as const, label: 'Bullet list', desc: 'Simple list', Icon: List, kbd: '·' },
+                      { type: 'divider' as const, label: 'Divider', desc: 'Visual break', Icon: Minus, kbd: '—' },
+                    ].map(({ type, label, desc, Icon, kbd }) => (
+                      <button
+                        key={type}
+                        onClick={() => addBlock(type)}
+                        className="nb-menu-item"
+                      >
+                        <span className="nb-menu-icon">
+                          <Icon className="w-3.5 h-3.5" strokeWidth={1.75} />
+                        </span>
+                        <span className="flex-1 min-w-0">
+                          <span className="block text-[0.8125rem] font-semibold text-[var(--color-navy)] tracking-tight">{label}</span>
+                          <span className="block text-[11px] text-[var(--color-text-soft)]">{desc}</span>
+                        </span>
+                        <kbd className="nb-kbd">{kbd}</kbd>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="max-w-md mx-auto px-6 py-24 text-center fade-in">
+              <div className="w-16 h-16 mx-auto mb-6 rounded-full border border-[var(--color-border-rule)] flex items-center justify-center dot-grid">
+                <PenLine className="w-6 h-6 text-[var(--color-text-muted)]" strokeWidth={1.25} />
+              </div>
+              <h2
+                className="mb-2 text-[var(--color-navy)]"
+                style={{
+                  fontFamily: 'var(--font-fraunces), serif',
+                  fontSize: '1.5rem',
+                  fontWeight: 500,
+                  letterSpacing: '-0.025em',
+                }}
+              >
+                A <span className="serif-accent">blank</span> page awaits.
+              </h2>
+              <p className="body-md mb-7 max-w-xs mx-auto">
+                Pick a page from the side, or start something new — your study, organized.
+              </p>
+              <button onClick={createNewPage} className="btn-primary inline-flex items-center gap-2">
+                <Plus className="w-3.5 h-3.5" strokeWidth={2} />
+                New page
+              </button>
+            </div>
+          )}
         </main>
 
-        {/* Right Sidebar - Tasks & Uploads */}
-        <ResizableSidebar side="right" defaultWidth={320} minWidth={240} maxWidth={500} responsive>
-        <aside className="w-full h-full card flex flex-col overflow-y-auto">
+        {/* Right Sidebar — Tasks & Uploads */}
+        <ResizableSidebar side="right" defaultWidth={320} minWidth={240} maxWidth={500} className="lg:border-l border-[var(--color-border-hairline)] bg-[var(--color-surface-elevated)]" responsive mobileVisible={mobileView === 'tools'}>
+        <aside className="w-full h-full flex flex-col overflow-y-auto">
+          {/* Mobile back-bar */}
+          <div className="lg:hidden sticky top-0 z-20 flex items-center gap-2 px-3 py-2.5 bg-[var(--color-surface-elevated)] border-b border-[var(--color-border-hairline)]">
+            <button
+              onClick={() => setMobileView(selectedPage ? 'editor' : 'list')}
+              className="w-9 h-9 rounded-lg flex items-center justify-center text-[var(--color-text-secondary)] bg-[var(--color-surface-white)] hover:bg-[var(--color-accent-soft)] hover:text-[var(--color-navy)] transition-smooth border border-[var(--color-border-hairline)]"
+              aria-label="Back"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <span className="text-sm font-semibold text-[var(--color-text-primary)]">Tasks & documents</span>
+          </div>
+
           {/* Tasks Section */}
-          <div className="p-6 border-b border-[var(--color-border-light)]">
-            <h2 className="heading-md mb-4 flex items-center gap-2">
-              <CheckSquare className="w-5 h-5 text-[var(--color-blue-primary)]" />
-              Tasks
-            </h2>
+          <div className="px-5 pt-5 pb-6 border-b border-[var(--color-border-hairline)]">
+            <div className="flex items-baseline justify-between mb-4">
+              <div>
+                <p className="label !mb-0.5">Today</p>
+                <h2
+                  className="text-[var(--color-navy)]"
+                  style={{ fontFamily: 'var(--font-fraunces), serif', fontSize: '1.125rem', fontWeight: 500, letterSpacing: '-0.02em' }}
+                >
+                  Tasks
+                </h2>
+              </div>
+              <span
+                className="text-[var(--color-text-soft)] tabular-nums"
+                style={{ fontFamily: 'var(--font-fraunces), serif', fontSize: '0.9375rem', fontStyle: 'italic' }}
+              >
+                {tasks.filter(t => !t.completed).length}/{tasks.length}
+              </span>
+            </div>
 
             {/* Task List */}
-            <div className="space-y-2 mb-4">
-              {tasks.map(task => (
-                <div key={task.id} className="flex items-start gap-2 group">
-                  <input
-                    type="checkbox"
-                    checked={task.completed}
-                    onChange={() => toggleTask(task.id)}
-                    className="mt-1 w-4 h-4 text-[var(--color-blue-primary)] rounded focus:ring-2 focus:ring-[var(--color-blue-primary)]"
-                  />
-                  <span className={`flex-1 text-sm ${task.completed ? 'line-through text-slate-400' : 'text-[var(--color-text-primary)]'}`}>
-                    {task.title}
-                  </span>
-                  <button
-                    onClick={() => deleteTask(task.id)}
-                    className="opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-700"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ))}
+            <div className="space-y-1 mb-4">
+              {tasks.length === 0 ? (
+                <p className="text-[0.8125rem] text-[var(--color-text-soft)] italic px-1 py-2" style={{ fontFamily: 'var(--font-fraunces), serif' }}>
+                  Nothing to do — yet.
+                </p>
+              ) : (
+                tasks.map(task => (
+                  <div key={task.id} className="flex items-center gap-2.5 group py-1 px-1 -mx-1 rounded-md hover:bg-[var(--color-surface-white)] transition">
+                    <input
+                      type="checkbox"
+                      checked={task.completed}
+                      onChange={() => toggleTask(task.id)}
+                      className="nb-checkbox"
+                    />
+                    <span className={`flex-1 text-[0.8125rem] tracking-tight ${task.completed ? 'line-through text-[var(--color-text-soft)]' : 'text-[var(--color-text-primary)]'}`}>
+                      {task.title}
+                    </span>
+                    <button
+                      onClick={() => deleteTask(task.id)}
+                      className="opacity-0 group-hover:opacity-100 text-[var(--color-text-soft)] hover:text-red-500 transition p-0.5 rounded"
+                    >
+                      <X className="w-3 h-3" strokeWidth={2} />
+                    </button>
+                  </div>
+                ))
+              )}
             </div>
+
             {/* Add Task */}
-            <div className="flex gap-2">
-              <input type="text" value={newTaskTitle} onChange={(e) => setNewTaskTitle(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && addTask()} placeholder="New task..." className="input" />
-              <button onClick={addTask} className="btn-primary px-4 py-2">+
-              </button>
+            <div className="flex gap-1.5 items-center bg-[var(--color-surface-white)] border border-[var(--color-border-hairline)] rounded-md px-2.5 py-1.5 focus-within:border-[var(--color-navy)] transition-colors">
+              <Plus className="w-3.5 h-3.5 text-[var(--color-text-soft)] shrink-0" strokeWidth={1.75} />
+              <input
+                type="text"
+                value={newTaskTitle}
+                onChange={(e) => setNewTaskTitle(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && addTask()}
+                placeholder="Add a task…"
+                className="flex-1 bg-transparent border-none outline-none text-[0.8125rem] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-soft)]"
+              />
+              {newTaskTitle && (
+                <button
+                  onClick={addTask}
+                  className="text-[10px] uppercase tracking-wider font-bold text-[var(--color-blue-primary)] hover:text-[var(--color-navy)] transition"
+                >
+                  Add
+                </button>
+              )}
             </div>
           </div>
 
           {/* Documents Section */}
-          <div className="p-6">
-              <h2 className="text-lg font-bold text-[var(--color-text-primary)] mb-4 flex items-center gap-2">
-                <BookOpen className="w-5 h-5 text-[var(--color-blue-primary)]" />
-              Documents
-            </h2>
-
-            {/* File Upload */}
+          <div className="px-5 pt-6 pb-5 flex-1">
             <div className="mb-4">
-              <label className="card border-dashed p-4 text-center cursor-pointer hover:border-[var(--color-blue-primary)] hover:bg-[var(--color-blue-soft)]/10 transition">
-                {isUploading ? (
-                  <span className="text-sm text-slate-500 flex items-center justify-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Uploading...</span>
-                ) : (
-                  <span className="text-sm text-slate-500 flex items-center justify-center gap-2"><Upload className="w-4 h-4" /> Click to upload files</span>
-                )}
-                <input type="file" multiple onChange={handleFileUpload} className="hidden" accept=".pdf,.ppt,.pptx,.doc,.docx,.jpg,.jpeg,.png,.gif,.webp,.svg,.bmp,.csv,.xls,.xlsx,.txt,.rtf,.odt,.ods,.odp" disabled={isUploading} />
-              </label>
+              <p className="label !mb-0.5">Reference</p>
+              <h2
+                className="text-[var(--color-navy)]"
+                style={{ fontFamily: 'var(--font-fraunces), serif', fontSize: '1.125rem', fontWeight: 500, letterSpacing: '-0.02em' }}
+              >
+                Documents
+              </h2>
             </div>
 
+            {/* File Upload — refined dropzone */}
+            <label className="nb-dropzone mb-4">
+              {isUploading ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" strokeWidth={1.75} />
+                  <span>Uploading…</span>
+                </>
+              ) : (
+                <>
+                  <Upload className="w-3.5 h-3.5" strokeWidth={1.75} />
+                  <span>Drop files or click to upload</span>
+                </>
+              )}
+              <input type="file" multiple onChange={handleFileUpload} className="hidden" accept=".pdf,.ppt,.pptx,.doc,.docx,.jpg,.jpeg,.png,.gif,.webp,.svg,.bmp,.csv,.xls,.xlsx,.txt,.rtf,.odt,.ods,.odp" disabled={isUploading} />
+            </label>
+
             {/* Documents List */}
-            <div className="space-y-2">
+            <div className="space-y-1">
               {uploadedFiles.map(file => (
-                <div
-                  key={file.id}
-                  className="relative group"
-                >
-                  <button onClick={() => openDocumentPreview(file)} className="card p-3 hover:border-[var(--color-blue-primary)] transition cursor-pointer text-left">
-                    <span className="flex-shrink-0">
+                <div key={file.id} className="relative group">
+                  <button
+                    onClick={() => openDocumentPreview(file)}
+                    className="nb-doc w-full"
+                  >
+                    <span className="nb-doc-icon">
                       {getFileIcon(file.type)}
                     </span>
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium text-gray-900 truncate">
+                      <div className="text-[0.8125rem] font-semibold text-[var(--color-text-primary)] truncate tracking-tight">
                         {file.name}
                       </div>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-xs text-gray-500 uppercase font-semibold">
-                          {file.type}
-                        </span>
-                        <span className="text-xs text-gray-400">•</span>
-                        <span className="text-xs text-gray-500">
-                          {file.uploadedAt}
-                        </span>
+                      <div className="flex items-center gap-1.5 mt-0.5 text-[10px] uppercase tracking-[0.16em] text-[var(--color-text-soft)] font-semibold">
+                        <span>{file.type}</span>
+                        <span className="w-0.5 h-0.5 rounded-full bg-[var(--color-border-strong)]" />
+                        <span>{file.uploadedAt}</span>
                       </div>
                     </div>
-                    <span className="text-[var(--color-blue-primary)] opacity-0 group-hover:opacity-100 transition">
-                      <Eye className="w-4 h-4" />
-                    </span>
+                    <Eye className="w-3.5 h-3.5 text-[var(--color-text-soft)] opacity-0 group-hover:opacity-100 transition shrink-0" strokeWidth={1.5} />
                   </button>
                   <button
                     onClick={async (e) => {
@@ -1089,17 +1258,19 @@ export default function NotebookPage() {
                         console.error('Failed to delete document:', err);
                       }
                     }}
-                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-600 transition bg-white rounded p-1"
+                    className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 text-[var(--color-text-soft)] hover:text-red-500 transition bg-[var(--color-surface-white)] border border-[var(--color-border-hairline)] rounded p-0.5"
                   >
-                    <X className="w-3.5 h-3.5" />
+                    <X className="w-3 h-3" strokeWidth={2} />
                   </button>
                 </div>
               ))}
 
               {uploadedFiles.length === 0 && (
-                <div className="text-center py-8 text-slate-400">
-                  <Inbox className="w-10 h-10 mx-auto mb-2" />
-                  <p className="text-sm">No documents yet</p>
+                <div className="text-center py-8">
+                  <Inbox className="w-8 h-8 mx-auto mb-2 text-[var(--color-border-strong)]" strokeWidth={1.25} />
+                  <p className="text-[0.8125rem] text-[var(--color-text-soft)] italic" style={{ fontFamily: 'var(--font-fraunces), serif' }}>
+                    No documents — yet.
+                  </p>
                 </div>
               )}
             </div>
@@ -1110,54 +1281,68 @@ export default function NotebookPage() {
 
       {/* Document Preview Modal */}
       {previewDocument && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-[var(--color-surface-muted)] rounded-lg w-full max-w-5xl h-[90vh] flex flex-col">
+        <div
+          className="fixed inset-0 bg-[rgba(0,11,51,0.4)] backdrop-blur-sm flex items-center justify-center z-50 p-4 fade-in"
+          onClick={closeDocumentPreview}
+        >
+          <div
+            className="bg-[var(--color-surface-white)] rounded-2xl w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden border border-[var(--color-border-hairline)]"
+            style={{ boxShadow: 'var(--shadow-modal)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Modal Header */}
-            <div className="flex items-center justify-between p-4 border-b border-[var(--color-border-light)]">
-              <div className="flex items-center gap-3">
-                <span>{getFileIcon(previewDocument.type)}</span>
-                <div>
-                  <h3 className="font-bold text-gray-900">{previewDocument.name}</h3>
-                  <p className="text-sm text-gray-500">
-                    {previewDocument.type.toUpperCase()} • {previewDocument.uploadedAt}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--color-border-hairline)] bg-[var(--color-surface-elevated)]">
+              <div className="flex items-center gap-3 min-w-0">
+                <span className="nb-doc-icon shrink-0">{getFileIcon(previewDocument.type)}</span>
+                <div className="min-w-0">
+                  <h3
+                    className="text-[var(--color-navy)] truncate"
+                    style={{ fontFamily: 'var(--font-fraunces), serif', fontSize: '1.125rem', fontWeight: 500, letterSpacing: '-0.02em' }}
+                  >
+                    {previewDocument.name}
+                  </h3>
+                  <p className="text-[11px] uppercase tracking-[0.16em] font-semibold text-[var(--color-text-soft)] mt-0.5">
+                    {previewDocument.type.toUpperCase()} · {previewDocument.uploadedAt}
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0">
                 {previewDocument.url && (
-                  <a href={previewDocument.url} download={previewDocument.name} className="btn-primary">
-                    Download →
+                  <a href={previewDocument.url} download={previewDocument.name} className="btn-primary inline-flex items-center gap-1.5 !py-2 !px-3.5">
+                    <Download className="w-3.5 h-3.5" strokeWidth={2} /> Download
                   </a>
                 )}
-                <button onClick={closeDocumentPreview} className="btn-secondary">
-                  Close
+                <button onClick={closeDocumentPreview} className="btn-secondary inline-flex items-center gap-1.5 !py-2 !px-3.5">
+                  <X className="w-3.5 h-3.5" strokeWidth={2} /> Close
                 </button>
               </div>
             </div>
 
-            {/* Modal Body - Document Preview */}
-            <div className="flex-1 overflow-hidden">
+            {/* Modal Body */}
+            <div className="flex-1 overflow-hidden bg-[var(--color-surface-elevated)]">
               {previewDocument.url && previewDocument.type === 'pdf' ? (
-                <embed
-                  src={previewDocument.url}
-                  type="application/pdf"
-                  className="w-full h-full"
-                  title={previewDocument.name}
-                />
+                <embed src={previewDocument.url} type="application/pdf" className="w-full h-full" title={previewDocument.name} />
               ) : previewDocument.url && previewDocument.type === 'image' ? (
-                <div className="flex items-center justify-center h-full p-4 overflow-auto bg-gray-50">
-                  <img src={previewDocument.url} alt={previewDocument.name} className="max-w-full max-h-full object-contain rounded shadow-premium-md" />
+                <div className="flex items-center justify-center h-full p-6 overflow-auto">
+                  <img src={previewDocument.url} alt={previewDocument.name} className="max-w-full max-h-full object-contain rounded-lg" style={{ boxShadow: 'var(--shadow-card)' }} />
                 </div>
               ) : previewDocument.url && previewDocument.type === 'csv' ? (
                 <CsvPreview url={previewDocument.url} />
               ) : (
-                <div className="flex items-center justify-center h-full text-slate-500">
-                  <div className="text-center">
-                    <div className="mb-4 flex justify-center [&_svg]:w-16 [&_svg]:h-16">{getFileIcon(previewDocument.type)}</div>
-                    <p className="text-lg font-semibold mb-2">{previewDocument.name}</p>
-                    <p className="text-sm text-slate-400 mb-6">This file type cannot be previewed inline</p>
+                <div className="flex items-center justify-center h-full text-[var(--color-text-muted)]">
+                  <div className="text-center max-w-md">
+                    <div className="mb-5 flex justify-center [&_svg]:w-12 [&_svg]:h-12">{getFileIcon(previewDocument.type)}</div>
+                    <h3
+                      className="text-[var(--color-navy)] mb-2"
+                      style={{ fontFamily: 'var(--font-fraunces), serif', fontSize: '1.25rem', fontWeight: 500, letterSpacing: '-0.022em' }}
+                    >
+                      Preview unavailable
+                    </h3>
+                    <p className="body-md mb-6">This file type can&apos;t be shown inline — but you can grab it.</p>
                     {previewDocument.url && (
-                      <a href={previewDocument.url} download={previewDocument.name} className="btn-primary">Download File</a>
+                      <a href={previewDocument.url} download={previewDocument.name} className="btn-primary inline-flex items-center gap-2">
+                        <Download className="w-4 h-4" strokeWidth={2} /> Download file
+                      </a>
                     )}
                   </div>
                 </div>
@@ -1180,6 +1365,7 @@ export default function NotebookPage() {
             setPages(pages.filter(p => p.id !== deletePageTarget.id));
             if (selectedPage?.id === deletePageTarget.id) {
               setSelectedPage(null);
+              setMobileView('list');
             }
           } catch (err) {
             console.error('Failed to delete page:', err);
@@ -1192,45 +1378,89 @@ export default function NotebookPage() {
 
       {/* AI Messages Picker Modal */}
       {showAiPicker && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="card rounded-2xl w-full max-w-lg mx-4 max-h-[70vh] flex flex-col">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--color-border-light)]">
-              <h3 className="text-lg font-bold text-[var(--color-text-primary)] flex items-center gap-2">
-                <Bot className="w-5 h-5" /> Add Note from AI
-              </h3>
-              <button onClick={() => setShowAiPicker(false)} className="text-slate-400 hover:text-slate-600 transition">
-                <X className="w-5 h-5" />
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(0,11,51,0.4)] backdrop-blur-sm p-4 fade-in"
+          onClick={() => setShowAiPicker(false)}
+        >
+          <div
+            className="bg-[var(--color-surface-white)] rounded-2xl w-full max-w-xl max-h-[75vh] flex flex-col overflow-hidden border border-[var(--color-border-hairline)]"
+            style={{ boxShadow: 'var(--shadow-modal)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-7 pt-6 pb-5 border-b border-[var(--color-border-hairline)] flex items-start justify-between gap-4">
+              <div>
+                <p className="label !mb-2">From the AI</p>
+                <h3
+                  className="text-[var(--color-navy)] mb-1"
+                  style={{
+                    fontFamily: 'var(--font-fraunces), serif',
+                    fontSize: '1.625rem',
+                    fontWeight: 500,
+                    letterSpacing: '-0.03em',
+                    lineHeight: 1.1,
+                  }}
+                >
+                  Save a <span className="serif-accent">response</span> as a note.
+                </h3>
+                <p className="text-[0.8125rem] text-[var(--color-text-muted)] mt-2">
+                  Picks land in the &ldquo;AI Assistant&rdquo; section, formatted as blocks.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowAiPicker(false)}
+                className="text-[var(--color-text-soft)] hover:text-[var(--color-navy)] hover:bg-[var(--color-surface-elevated)] p-2 rounded-md transition shrink-0"
+              >
+                <X className="w-4 h-4" strokeWidth={2} />
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+
+            <div className="flex-1 overflow-y-auto p-5 space-y-2">
               {isLoadingAi ? (
-                <div className="flex flex-col items-center justify-center py-12 text-slate-400">
-                  <Loader2 className="w-8 h-8 animate-spin mb-3" />
-                  <p className="text-sm">Loading AI conversations...</p>
+                <div className="flex flex-col items-center justify-center py-14 text-[var(--color-text-soft)]">
+                  <Loader2 className="w-6 h-6 animate-spin mb-3" strokeWidth={1.5} />
+                  <p className="text-[0.8125rem]">Loading AI conversations…</p>
                 </div>
               ) : aiMessages.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 text-slate-400">
-                  <Bot className="w-10 h-10 mb-3" />
-                  <p className="text-sm font-medium">No AI responses found</p>
-                  <p className="text-xs mt-1">Chat with the AI Assistant first to generate notes</p>
+                <div className="flex flex-col items-center justify-center py-14 text-center">
+                  <div className="w-14 h-14 mb-4 rounded-full border border-[var(--color-border-rule)] flex items-center justify-center dot-grid">
+                    <Bot className="w-5 h-5 text-[var(--color-text-muted)]" strokeWidth={1.25} />
+                  </div>
+                  <p
+                    className="text-[var(--color-navy)] mb-1"
+                    style={{ fontFamily: 'var(--font-fraunces), serif', fontSize: '1.0625rem', fontWeight: 500 }}
+                  >
+                    No conversations yet.
+                  </p>
+                  <p className="text-[0.8125rem] text-[var(--color-text-soft)] max-w-xs">
+                    Chat with the AI Assistant first to generate responses you can save here.
+                  </p>
                 </div>
               ) : (
                 aiMessages.map((msg) => (
-                  <button key={msg.id} onClick={() => addNoteFromAI(msg)} className="card p-4 rounded-xl">
-                    <div className="flex items-start justify-between gap-2">
+                  <button
+                    key={msg.id}
+                    onClick={() => addNoteFromAI(msg)}
+                    className="w-full text-left p-4 rounded-lg border border-[var(--color-border-hairline)] hover:border-[var(--color-navy)] bg-[var(--color-surface-white)] hover:bg-[var(--color-surface-elevated)] transition-all group"
+                  >
+                    <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-[var(--color-text-primary)] truncate">
+                        <p
+                          className="text-[var(--color-navy)] mb-1.5 truncate"
+                          style={{ fontFamily: 'var(--font-fraunces), serif', fontSize: '0.9375rem', fontWeight: 500, letterSpacing: '-0.018em' }}
+                        >
                           {msg.question || 'AI Response'}
                         </p>
-                        <p className="text-xs text-slate-500 mt-1 line-clamp-3">
+                        <p className="text-[0.8125rem] text-[var(--color-text-body)] line-clamp-2 leading-relaxed">
                           {msg.text.replace(/[#*_~`>]/g, '').substring(0, 200)}
-                          {msg.text.length > 200 ? '...' : ''}
+                          {msg.text.length > 200 ? '…' : ''}
                         </p>
-                        <p className="text-xs text-slate-400 mt-2">
-                          {new Date(msg.createdAt).toLocaleDateString()} {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        <p className="text-[10px] uppercase tracking-[0.16em] text-[var(--color-text-soft)] mt-2 font-semibold">
+                          {new Date(msg.createdAt).toLocaleDateString()} · {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </p>
                       </div>
-                      <Plus className="w-5 h-5 text-slate-300 group-hover:text-[var(--color-blue-primary)] transition flex-shrink-0 mt-1" />
+                      <span className="w-7 h-7 rounded-md border border-[var(--color-border-hairline)] flex items-center justify-center text-[var(--color-text-soft)] group-hover:bg-[var(--color-navy)] group-hover:text-white group-hover:border-[var(--color-navy)] transition shrink-0">
+                        <Plus className="w-3.5 h-3.5" strokeWidth={2} />
+                      </span>
                     </div>
                   </button>
                 ))
@@ -1256,6 +1486,7 @@ export default function NotebookPage() {
               const remaining = subjects.filter(s => s !== deleteSubjectTarget);
               setSelectedSubject(remaining[0] || '');
               setSelectedPage(null);
+              setMobileView('list');
             }
           } catch (err) {
             console.error('Failed to delete subject:', err);

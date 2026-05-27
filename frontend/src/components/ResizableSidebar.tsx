@@ -12,6 +12,8 @@ interface ResizableSidebarProps {
   className?: string;
   collapsedWidth?: number;
   responsive?: boolean;
+  /** When false, the sidebar is hidden on small screens (<lg). Desktop is unaffected. */
+  mobileVisible?: boolean;
 }
 
 export default function ResizableSidebar({
@@ -23,6 +25,7 @@ export default function ResizableSidebar({
   className = '',
   collapsedWidth = 0,
   responsive = false,
+  mobileVisible = true,
 }: ResizableSidebarProps) {
   const [width, setWidth] = useState(defaultWidth);
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -88,7 +91,7 @@ export default function ResizableSidebar({
       ref={sidebarRef}
       className={`relative transition-[width] ${isResizing ? 'duration-0' : 'duration-300'} ease-in-out ${
         responsive
-          ? 'w-full lg:flex-shrink-0 lg:w-[var(--sb-w)]'
+          ? `w-full lg:flex-shrink-0 lg:w-[var(--sb-w)] lg:flex-none ${mobileVisible ? 'flex-1 min-h-0 flex flex-col' : 'hidden lg:block'}`
           : 'flex-shrink-0'
       } ${className}`}
       style={sidebarStyle}
@@ -139,9 +142,10 @@ export default function ResizableSidebar({
         </div>
       )}
 
-      {/* Collapse/Expand toggle button */}
+      {/* Collapse/Expand toggle button (desktop only when responsive) */}
       <button
         onClick={toggleCollapse}
+        aria-hidden={responsive ? undefined : false}
         className={`absolute top-1/2 -translate-y-1/2 z-30 w-6 h-12 bg-[var(--color-surface-white)] border transition-all ${responsive ? 'hidden lg:flex' : 'flex'} items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-ivory)] shadow-sm rounded-[12px] ${
           side === 'left'
             ? isCollapsed

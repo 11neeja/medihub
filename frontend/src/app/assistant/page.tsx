@@ -7,7 +7,7 @@ import { UserAvatar } from '@/components/ui/user-avatar';
 import {
   Bot, BookOpen, FileText, BarChart3, Lightbulb, MessageCircle, Save, Target,
   Send, Trash2, X, Upload, Loader2, Image, Table, File, Presentation,
-  CheckCircle2, AlertCircle, Sparkles, Paperclip, ArrowRight
+  CheckCircle2, AlertCircle, Sparkles, Paperclip, ArrowRight, ArrowLeft, Library
 } from 'lucide-react';
 import ConfirmModal from '@/components/ConfirmModal';
 import ResizableSidebar from '@/components/ResizableSidebar';
@@ -106,6 +106,9 @@ export default function AssistantPage() {
   const [deleteDocId, setDeleteDocId] = useState<string | null>(null);
   const [showClearChat, setShowClearChat] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  // Mobile-only view switcher: 'chat' shows the conversation, 'library' shows the document library.
+  // Desktop ignores this (panels render side-by-side via lg: classes).
+  const [mobileView, setMobileView] = useState<'chat' | 'library'>('chat');
   const toastTimer = useRef<NodeJS.Timeout | null>(null);
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
@@ -535,70 +538,75 @@ export default function AssistantPage() {
       )}
 
       <div className="page-container">
-        {/* Page Header */}
-        <div className="relative card rounded-3xl p-6 md:p-8 mb-6 animate-section overflow-hidden">
-          <div aria-hidden className="pointer-events-none absolute -top-32 -right-32 w-80 h-80 rounded-full opacity-50 blur-3xl" style={{ background: 'radial-gradient(circle, var(--color-accent-soft) 0%, transparent 70%)' }} />
-          <div aria-hidden className="pointer-events-none absolute -bottom-32 -left-24 w-64 h-64 rounded-full opacity-30 blur-3xl" style={{ background: 'radial-gradient(circle, var(--color-blue-soft) 0%, transparent 70%)' }} />
-
-          <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-5 md:gap-6">
-            <div className="flex items-start gap-4">
-              <div className="hidden sm:flex w-12 h-12 lg:w-14 lg:h-14 rounded-2xl items-center justify-center flex-shrink-0 relative" style={{ background: 'var(--gradient-primary)', boxShadow: 'var(--shadow-btn)' }}>
-                <Bot className="w-6 h-6 lg:w-7 lg:h-7 text-white" />
-                <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white" />
+        {/* Editorial masthead — hidden on mobile so chat fills the screen */}
+        <header className="relative mb-8 pb-8 border-b border-[var(--color-border-rule)] animate-section hidden lg:block">
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+            <div className="flex-1 max-w-3xl">
+              <div className="flex items-center gap-3 mb-3">
+                <p className="label !mb-0 inline-flex items-center gap-1.5"><Sparkles className="w-3 h-3" /> The AI</p>
+                <span className="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.2em] text-emerald-600 font-semibold">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> online
+                </span>
               </div>
-              <div>
-                <p className="label mb-2 inline-flex items-center gap-1.5"><Sparkles className="w-3 h-3" /> AI Assistant</p>
-                <h1 className="heading-2 mb-2 fade-in-up">Your Study Companion</h1>
-                <p className="body-md fade-in-delay-1">Upload documents, ask questions, get instant medical knowledge.</p>
-              </div>
+              <h1 className="heading-hero mb-4">
+                A studious <span className="serif-accent">companion</span>.
+              </h1>
+              <p className="body-lg max-w-xl text-[var(--color-text-secondary)]">
+                Upload documents, ask questions, summarize papers — built to think alongside you.
+              </p>
             </div>
 
-            {/* Stat chips + clear button */}
-            <div className="flex flex-wrap items-center gap-2.5 flex-shrink-0">
-              <div className="flex items-center gap-2.5 px-3.5 py-2 rounded-2xl bg-white/70 backdrop-blur border border-[var(--color-border-light)]">
-                <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: 'var(--color-accent-soft)' }}>
-                  <FileText className="w-4 h-4 text-[var(--color-blue-primary)]" />
+            <div className="flex flex-wrap items-end gap-x-7 gap-y-3 shrink-0">
+              {[
+                { label: 'Documents', value: documents.length },
+                { label: 'Questions', value: questionsAsked },
+                { label: 'Replies', value: aiResponses },
+              ].map(({ label, value }) => (
+                <div key={label} className="flex flex-col">
+                  <span className="text-[10px] uppercase tracking-[0.2em] font-semibold text-[var(--color-text-soft)]">{label}</span>
+                  <span
+                    className="text-[var(--color-navy)] tabular-nums"
+                    style={{
+                      fontFamily: 'var(--font-fraunces), serif',
+                      fontSize: '1.75rem',
+                      fontWeight: 400,
+                      lineHeight: 1,
+                      letterSpacing: '-0.025em',
+                    }}
+                  >
+                    {value}
+                  </span>
                 </div>
-                <div>
-                  <div className="text-[10px] uppercase tracking-wider font-bold text-[var(--color-text-muted)]">Docs</div>
-                  <div className="text-sm font-semibold text-[var(--color-text-primary)] leading-tight">{documents.length}</div>
-                </div>
-              </div>
-              <div className="flex items-center gap-2.5 px-3.5 py-2 rounded-2xl bg-white/70 backdrop-blur border border-[var(--color-border-light)]">
-                <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: 'var(--color-accent-soft)' }}>
-                  <MessageCircle className="w-4 h-4 text-[var(--color-blue-primary)]" />
-                </div>
-                <div>
-                  <div className="text-[10px] uppercase tracking-wider font-bold text-[var(--color-text-muted)]">Asked</div>
-                  <div className="text-sm font-semibold text-[var(--color-text-primary)] leading-tight">{questionsAsked}</div>
-                </div>
-              </div>
-              <div className="flex items-center gap-2.5 px-3.5 py-2 rounded-2xl bg-white/70 backdrop-blur border border-[var(--color-border-light)]">
-                <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: 'var(--color-accent-soft)' }}>
-                  <Bot className="w-4 h-4 text-[var(--color-blue-primary)]" />
-                </div>
-                <div>
-                  <div className="text-[10px] uppercase tracking-wider font-bold text-[var(--color-text-muted)]">Replies</div>
-                  <div className="text-sm font-semibold text-[var(--color-text-primary)] leading-tight">{aiResponses}</div>
-                </div>
-              </div>
+              ))}
               {!onlyWelcome && (
                 <button
                   onClick={() => setShowClearChat(true)}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-2xl text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 border border-red-100 transition-smooth"
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 border border-red-100 transition-smooth self-end"
                 >
-                  <Trash2 className="w-4 h-4" /> Clear
+                  <Trash2 className="w-3.5 h-3.5" /> Clear
                 </button>
               )}
             </div>
           </div>
-        </div>
+        </header>
 
         {/* Main Layout */}
-        <div className="card rounded-3xl overflow-hidden flex flex-col lg:flex-row h-[calc(100vh-280px)] min-h-[560px]">
+        <div className="card workspace-shell rounded-3xl overflow-hidden flex flex-col lg:flex-row h-[calc(100vh-280px)] min-h-[560px]">
           {/* Left Sidebar - Documents */}
-          <ResizableSidebar side="left" defaultWidth={340} minWidth={260} maxWidth={480} responsive>
+          <ResizableSidebar side="left" defaultWidth={340} minWidth={260} maxWidth={480} responsive mobileVisible={mobileView === 'library'}>
             <aside className="w-full h-full bg-white lg:border-r border-[var(--color-border-light)] flex flex-col">
+              {/* Mobile back-bar */}
+              <div className="lg:hidden flex items-center gap-2 px-3 py-2.5 border-b border-[var(--color-border-light)] bg-white">
+                <button
+                  onClick={() => setMobileView('chat')}
+                  className="w-9 h-9 rounded-lg flex items-center justify-center text-[var(--color-text-secondary)] bg-[var(--color-surface-muted)] hover:bg-[var(--color-accent-soft)] hover:text-[var(--color-blue-primary)] transition-smooth"
+                  aria-label="Back to chat"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                </button>
+                <span className="text-sm font-semibold text-[var(--color-text-primary)]">Library</span>
+              </div>
+
               {/* Upload Zone */}
               <div className="p-4 border-b border-[var(--color-border-light)] flex-shrink-0">
                 <div className="flex items-center justify-between mb-3">
@@ -639,7 +647,7 @@ export default function AssistantPage() {
               </div>
 
               {/* Documents List */}
-              <div className="flex-1 overflow-y-auto px-3 py-3">
+              <div className="flex-1 min-h-0 overflow-y-auto px-3 py-3">
                 {isLoadingDocs ? (
                   <div className="flex items-center justify-center py-12">
                     <Loader2 className="w-8 h-8 animate-spin text-[var(--color-blue-primary)]" />
@@ -659,7 +667,13 @@ export default function AssistantPage() {
                       return (
                         <div
                           key={doc.id}
-                          onClick={() => setSelectedDocument(isActive ? null : doc)}
+                          onClick={() => {
+                            setSelectedDocument(isActive ? null : doc);
+                            // On mobile, return to the chat view so the user sees the active doc badge.
+                            if (typeof window !== 'undefined' && window.matchMedia('(max-width: 1023.98px)').matches) {
+                              setMobileView('chat');
+                            }
+                          }}
                           className={`group relative rounded-2xl p-3 cursor-pointer transition-smooth border ${
                             isActive
                               ? 'bg-[var(--color-accent-soft)] border-[var(--color-blue-primary)] shadow-premium'
@@ -726,9 +740,39 @@ export default function AssistantPage() {
           </ResizableSidebar>
 
           {/* Center - Chat Interface */}
-          <main className="flex-1 flex flex-col bg-[var(--color-bg-ivory)] min-w-0 transition-all duration-300">
+          <main className={`flex-1 flex-col bg-[var(--color-bg-ivory)] min-w-0 min-h-0 transition-all duration-300 ${mobileView === 'chat' ? 'flex' : 'hidden'} lg:flex`}>
+            {/* Mobile-only top bar — gives Library access and visual identity on phones */}
+            <div className="lg:hidden flex items-center justify-between gap-2 px-3 py-2.5 bg-white border-b border-[var(--color-border-light)]">
+              <button
+                onClick={() => setMobileView('library')}
+                className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-[var(--color-surface-muted)] border border-[var(--color-border-light)] text-[var(--color-text-secondary)] hover:bg-[var(--color-accent-soft)] hover:text-[var(--color-blue-primary)] transition-smooth"
+                aria-label="Open library"
+              >
+                <Library className="w-4 h-4" />
+                <span className="text-xs font-semibold">Library</span>
+                {documents.length > 0 && (
+                  <span className="text-[10px] font-bold bg-[var(--color-accent-soft)] text-[var(--color-blue-primary)] px-1.5 py-0.5 rounded-full">{documents.length}</span>
+                )}
+              </button>
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'var(--gradient-primary)' }}>
+                  <Bot className="w-4 h-4 text-white" />
+                </div>
+                <span className="text-sm font-semibold text-[var(--color-text-primary)] truncate">MediHub AI</span>
+              </div>
+              {!onlyWelcome && (
+                <button
+                  onClick={() => setShowClearChat(true)}
+                  className="w-9 h-9 rounded-lg flex items-center justify-center text-red-600 bg-red-50 hover:bg-red-100 border border-red-100 transition-smooth"
+                  aria-label="Clear chat"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+
             {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto px-4 md:px-8 py-6">
+            <div className="flex-1 min-h-0 overflow-y-auto px-3 sm:px-4 md:px-8 py-4 md:py-6">
               {isLoadingMessages ? (
                 <div className="flex items-center justify-center h-full">
                   <Loader2 className="w-8 h-8 animate-spin text-[var(--color-blue-primary)]" />
@@ -872,7 +916,7 @@ export default function AssistantPage() {
             </div>
 
             {/* Input Area */}
-            <div className="border-t border-[var(--color-border-light)] bg-white px-4 md:px-6 py-4 flex-shrink-0">
+            <div className="border-t border-[var(--color-border-light)] bg-white px-3 sm:px-4 md:px-6 py-3 md:py-4 flex-shrink-0 mobile-safe-bottom">
               <div className="max-w-3xl mx-auto">
                 {selectedDocument && (
                   <div className="mb-2.5 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--color-accent-soft)] border border-[var(--color-border-mid)]">
@@ -933,8 +977,8 @@ export default function AssistantPage() {
             </div>
           </main>
 
-          {/* Right Sidebar - Info & Tips */}
-          <ResizableSidebar side="right" defaultWidth={320} minWidth={260} maxWidth={480} responsive>
+          {/* Right Sidebar - Info & Tips (desktop only) */}
+          <ResizableSidebar side="right" defaultWidth={320} minWidth={260} maxWidth={480} responsive mobileVisible={false}>
             <aside className="w-full h-full bg-white border-l border-[var(--color-border-light)] overflow-y-auto">
               {/* Hero */}
               <div className="relative px-6 pt-6 pb-5 overflow-hidden border-b border-[var(--color-border-light)]" style={{ background: 'var(--gradient-bg)' }}>
@@ -982,30 +1026,6 @@ export default function AssistantPage() {
                       <p className="text-xs text-[var(--color-text-muted)]">From AI assistant</p>
                     </div>
                     <span className="text-2xl font-bold gradient-text">{aiResponses}</span>
-                  </div>
-                </div>
-
-                {/* Tips */}
-                <div>
-                  <p className="label mb-3 inline-flex items-center gap-1.5"><Lightbulb className="w-3 h-3" /> Pro Tips</p>
-                  <div className="space-y-2.5">
-                    {[
-                      { Icon: Upload, title: 'Upload first', desc: 'Drop a PDF, PPT, image, or spreadsheet — I&apos;ll summarize it instantly.' },
-                      { Icon: Target, title: 'Focus a doc', desc: 'Click a document in your library to scope my answers to it.' },
-                      { Icon: Save, title: 'Save replies', desc: 'Useful answers can be saved straight to your Notebook.' },
-                    ].map(({ Icon, title, desc }, i) => (
-                      <div key={i} className="p-3 rounded-2xl border border-[var(--color-border-light)] bg-white hover:bg-[var(--color-surface-muted)] transition-smooth">
-                        <div className="flex items-start gap-3">
-                          <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'var(--color-accent-soft)' }}>
-                            <Icon className="w-4 h-4 text-[var(--color-blue-primary)]" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-[var(--color-text-primary)] mb-0.5">{title}</p>
-                            <p className="text-xs text-[var(--color-text-muted)] leading-relaxed" dangerouslySetInnerHTML={{ __html: desc }} />
-                          </div>
-                        </div>
-                      </div>
-                    ))}
                   </div>
                 </div>
 

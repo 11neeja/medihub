@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(npx tsc *)",
-      "Bash(echo \"EXIT:$?\")"
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(curl -s -o /dev/null -w \"assistant:%{http_code}\\\\n\" http://localhost:3001/assistant)",
+      "Bash(curl -s -o /dev/null -w \"notebook:%{http_code}\\\\n\" http://localhost:3001/notebook)"
     ]
   }
 }

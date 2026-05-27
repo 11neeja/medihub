@@ -129,6 +129,9 @@ export default function GroupsPage() {
   // Data
   const [communities, setCommunities] = useState<Community[]>([]);
   const [selectedCommunity, setSelectedCommunity] = useState<Community | null>(null);
+  // Mobile-only view switcher: 'list' = communities list, 'main' = community detail / thread.
+  // Desktop ignores this (panels render side-by-side via lg: classes).
+  const [mobileView, setMobileView] = useState<'list' | 'main'>('list');
   const [threads, setThreads] = useState<ThreadItem[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [resources, setResources] = useState<Resource[]>([]);
@@ -231,6 +234,7 @@ export default function GroupsPage() {
     setSelectedThread(null);
     setReplies([]);
     setReplyText('');
+    setMobileView('main');
   };
 
   const handleCreateCommunity = async () => {
@@ -436,26 +440,24 @@ export default function GroupsPage() {
         </div>
       )}
       <div className="page-container">
-        {/* Page Header */}
-        <div className="relative card rounded-3xl p-6 md:p-8 mb-6 animate-section overflow-hidden">
-          <div aria-hidden className="pointer-events-none absolute -top-32 -right-32 w-80 h-80 rounded-full opacity-50 blur-3xl" style={{ background: 'radial-gradient(circle, var(--color-accent-soft) 0%, transparent 70%)' }} />
-          <div aria-hidden className="pointer-events-none absolute -bottom-32 -left-24 w-64 h-64 rounded-full opacity-30 blur-3xl" style={{ background: 'radial-gradient(circle, var(--color-blue-soft) 0%, transparent 70%)' }} />
-
-          <div className="relative z-10 flex items-start gap-4">
-            <div className="hidden sm:flex w-12 h-12 lg:w-14 lg:h-14 rounded-2xl items-center justify-center flex-shrink-0" style={{ background: 'var(--gradient-primary)', boxShadow: 'var(--shadow-btn)' }}>
-              <Users className="w-6 h-6 lg:w-7 lg:h-7 text-white" />
-            </div>
-            <div>
-              <p className="label mb-2">Communities</p>
-              <h1 className="heading-2 mb-2 fade-in-up">Communities</h1>
-              <p className="body-md fade-in-delay-1">Join groups, discuss cases, and share resources with peers</p>
+        {/* Editorial masthead — hidden on mobile when a community is open */}
+        <header className={`relative mb-8 pb-8 border-b border-[var(--color-border-rule)] animate-section ${mobileView === 'main' ? 'hidden lg:block' : ''}`}>
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+            <div className="flex-1 max-w-3xl">
+              <p className="label !mb-3">Communities</p>
+              <h1 className="heading-hero mb-4">
+                Smaller <span className="serif-accent">circles</span>, deeper talk.
+              </h1>
+              <p className="body-lg max-w-xl text-[var(--color-text-secondary)]">
+                Join groups around your specialty, exam prep, or research. Discuss cases, share resources, and find your people.
+              </p>
             </div>
           </div>
-        </div>
+        </header>
 
-        <div className="card rounded-3xl overflow-hidden flex flex-col lg:flex-row h-[calc(100vh-280px)] min-h-[560px]">
+        <div className="card workspace-shell rounded-3xl overflow-hidden flex flex-col lg:flex-row h-[calc(100vh-280px)] min-h-[560px]">
       {/* Left Sidebar — Communities List */}
-      <ResizableSidebar side="left" defaultWidth={280} minWidth={240} maxWidth={360} className="bg-[var(--color-surface-muted)] lg:border-r border-[var(--color-border-light)]" responsive>
+      <ResizableSidebar side="left" defaultWidth={280} minWidth={240} maxWidth={360} className="bg-[var(--color-surface-muted)] lg:border-r border-[var(--color-border-light)]" responsive mobileVisible={mobileView === 'list'}>
         <div className="flex flex-col h-full">
             <div className="p-4 border-b border-[var(--color-border-light)]">
             <h2 className="heading-md mb-3">Communities</h2>
@@ -498,7 +500,20 @@ export default function GroupsPage() {
       </ResizableSidebar>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className={`flex-1 flex-col overflow-hidden ${mobileView === 'main' ? 'flex' : 'hidden'} lg:flex`}>
+        {/* Mobile back-bar (only when a community is selected) */}
+        {selectedCommunity && (
+          <div className="lg:hidden flex items-center gap-2 px-3 py-2.5 bg-white border-b border-[var(--color-border-light)]">
+            <button
+              onClick={() => { setMobileView('list'); }}
+              className="w-9 h-9 rounded-lg flex items-center justify-center text-[var(--color-text-secondary)] bg-[var(--color-surface-muted)] hover:bg-[var(--color-accent-soft)] hover:text-[var(--color-blue-primary)] transition-smooth"
+              aria-label="Back to communities"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <span className="text-sm font-semibold text-[var(--color-text-primary)] truncate">{selectedCommunity.name}</span>
+          </div>
+        )}
         {!selectedCommunity ? (
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">

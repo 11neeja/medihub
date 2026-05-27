@@ -9,7 +9,7 @@ import {
   Search, Pin, MessageCircle, Users, Paperclip, FileText,
   ImageIcon, Info, Send, X, CheckCheck, Plus, Trash2,
   UserPlus, PinOff, Loader2, UserMinus, Sparkles, Download,
-  ShieldCheck
+  ShieldCheck, ArrowLeft
 } from 'lucide-react';
 import { UserAvatar } from '@/components/ui/user-avatar';
 import {
@@ -88,6 +88,9 @@ export default function ChatPage() {
   const [newMessageText, setNewMessageText] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [showChatInfo, setShowChatInfo] = useState(true);
+  // Mobile-only view switcher: 'list' = conversations, 'chat' = messages, 'info' = chat info.
+  // Desktop ignores this (all panels render side-by-side via lg: classes).
+  const [mobileView, setMobileView] = useState<'list' | 'chat' | 'info'>('list');
   const [loading, setLoading] = useState(true);
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
@@ -247,7 +250,10 @@ export default function ChatPage() {
         const convId = searchParams.get('conversationId');
         if (convId && convs.length > 0) {
           const target = convs.find((c: ConversationType) => c.id === convId);
-          if (target) setSelectedConv(target);
+          if (target) {
+            setSelectedConv(target);
+            setMobileView('chat');
+          }
         }
       });
     }
@@ -363,7 +369,10 @@ export default function ChatPage() {
       const convs = await getConversationsAPI();
       setConversations(convs);
       const conv = convs.find((c: ConversationType) => c.id === result.id);
-      if (conv) setSelectedConv(conv);
+      if (conv) {
+        setSelectedConv(conv);
+        setMobileView('chat');
+      }
     } catch (err) {
       console.error('Failed to create conversation:', err);
     }
@@ -424,6 +433,7 @@ export default function ChatPage() {
       setConversations(prev => prev.filter(c => c.id !== selectedConv.id));
       setSelectedConv(null);
       setShowDeleteConfirm(false);
+      setMobileView('list');
     } catch (err) {
       console.error('Failed to delete conversation:', err);
     }
@@ -558,7 +568,7 @@ export default function ChatPage() {
     return (
       <button
         key={conv.id}
-        onClick={() => setSelectedConv(conv)}
+        onClick={() => { setSelectedConv(conv); setMobileView('chat'); }}
         className={`w-full text-left px-4 py-3 transition-smooth group relative border-l-[3px] ${
           isActive
             ? 'bg-[var(--color-accent-soft)] border-[var(--color-blue-primary)]'
@@ -644,60 +654,53 @@ export default function ChatPage() {
   return (
     <div className="min-h-screen gradient-subtle">
       <div className="page-container">
-        {/* Page Header */}
-        <div className="relative card rounded-3xl p-6 md:p-8 mb-6 animate-section overflow-hidden">
-          <div aria-hidden className="pointer-events-none absolute -top-32 -right-32 w-80 h-80 rounded-full opacity-50 blur-3xl" style={{ background: 'radial-gradient(circle, var(--color-accent-soft) 0%, transparent 70%)' }} />
-          <div aria-hidden className="pointer-events-none absolute -bottom-32 -left-24 w-64 h-64 rounded-full opacity-30 blur-3xl" style={{ background: 'radial-gradient(circle, var(--color-blue-soft) 0%, transparent 70%)' }} />
-
-          <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-5 md:gap-6">
-            <div className="flex items-start gap-4">
-              <div className="hidden sm:flex w-12 h-12 lg:w-14 lg:h-14 rounded-2xl items-center justify-center flex-shrink-0" style={{ background: 'var(--gradient-primary)', boxShadow: 'var(--shadow-btn)' }}>
-                <MessageCircle className="w-6 h-6 lg:w-7 lg:h-7 text-white" />
-              </div>
-              <div>
-                <p className="label mb-2">Messaging</p>
-                <h1 className="heading-2 mb-2 fade-in-up">Messages</h1>
-                <p className="body-md fade-in-delay-1">Stay connected — chat 1-on-1 or collaborate in groups.</p>
-              </div>
+        {/* Editorial masthead — hidden on mobile when a conversation is open so chat fills the screen */}
+        <header className={`relative mb-8 pb-8 border-b border-[var(--color-border-rule)] animate-section ${mobileView !== 'list' ? 'hidden lg:block' : ''}`}>
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+            <div className="flex-1 max-w-3xl">
+              <p className="label !mb-3">Correspondence</p>
+              <h1 className="heading-hero mb-4">
+                Private <span className="serif-accent">conversations</span>.
+              </h1>
+              <p className="body-lg max-w-xl text-[var(--color-text-secondary)]">
+                One-on-one or in groups — share files, ask quick questions, keep work moving.
+              </p>
             </div>
 
-            {/* Stat chips */}
-            <div className="flex flex-wrap gap-2.5 flex-shrink-0">
-              <div className="flex items-center gap-2.5 px-3.5 py-2 rounded-2xl bg-white/70 backdrop-blur border border-[var(--color-border-light)]">
-                <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: 'var(--color-accent-soft)' }}>
-                  <MessageCircle className="w-4 h-4 text-[var(--color-blue-primary)]" />
+            {/* Stat chips — editorial ticker style */}
+            <div className="flex flex-wrap items-center gap-x-8 gap-y-3 shrink-0">
+              {[
+                { label: 'Chats', value: totalChats },
+                { label: 'Groups', value: totalGroups },
+                { label: 'Online', value: totalOnline, accent: true },
+              ].map(({ label, value, accent }) => (
+                <div key={label} className="flex flex-col">
+                  <span className={`text-[10px] uppercase tracking-[0.2em] font-semibold ${accent ? 'text-emerald-600' : 'text-[var(--color-text-soft)]'}`}>
+                    {accent && <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 align-middle animate-pulse" />}
+                    {label}
+                  </span>
+                  <span
+                    className="text-[var(--color-navy)] tabular-nums"
+                    style={{
+                      fontFamily: 'var(--font-fraunces), serif',
+                      fontSize: '1.875rem',
+                      fontWeight: 400,
+                      lineHeight: 1,
+                      letterSpacing: '-0.025em',
+                    }}
+                  >
+                    {value}
+                  </span>
                 </div>
-                <div>
-                  <div className="text-[10px] uppercase tracking-wider font-bold text-[var(--color-text-muted)]">Chats</div>
-                  <div className="text-sm font-semibold text-[var(--color-text-primary)] leading-tight">{totalChats}</div>
-                </div>
-              </div>
-              <div className="flex items-center gap-2.5 px-3.5 py-2 rounded-2xl bg-white/70 backdrop-blur border border-[var(--color-border-light)]">
-                <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: 'var(--color-accent-soft)' }}>
-                  <Users className="w-4 h-4 text-[var(--color-blue-primary)]" />
-                </div>
-                <div>
-                  <div className="text-[10px] uppercase tracking-wider font-bold text-[var(--color-text-muted)]">Groups</div>
-                  <div className="text-sm font-semibold text-[var(--color-text-primary)] leading-tight">{totalGroups}</div>
-                </div>
-              </div>
-              <div className="flex items-center gap-2.5 px-3.5 py-2 rounded-2xl bg-white/70 backdrop-blur border border-[var(--color-border-light)]">
-                <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-emerald-50">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                </div>
-                <div>
-                  <div className="text-[10px] uppercase tracking-wider font-bold text-[var(--color-text-muted)]">Online</div>
-                  <div className="text-sm font-semibold text-[var(--color-text-primary)] leading-tight">{totalOnline}</div>
-                </div>
-              </div>
+              ))}
             </div>
           </div>
-        </div>
+        </header>
 
         {/* Main Layout */}
-        <div className="card rounded-3xl overflow-hidden flex flex-col lg:flex-row h-[calc(100vh-280px)] min-h-[560px]">
-          {/* Left Sidebar */}
-          <ResizableSidebar side="left" defaultWidth={340} minWidth={260} maxWidth={480} responsive>
+        <div className="card workspace-shell rounded-3xl overflow-hidden flex flex-col lg:flex-row h-[calc(100vh-280px)] min-h-[560px]">
+          {/* Left Sidebar — conversation list */}
+          <ResizableSidebar side="left" defaultWidth={340} minWidth={260} maxWidth={480} responsive mobileVisible={mobileView === 'list'}>
             <aside className="w-full h-full bg-white lg:border-r border-[var(--color-border-light)] flex flex-col">
               {/* Search & Actions */}
               <div className="p-4 border-b border-[var(--color-border-light)] space-y-3 flex-shrink-0">
@@ -722,7 +725,7 @@ export default function ChatPage() {
               </div>
 
               {/* Conversations List */}
-              <div className="flex-1 overflow-y-auto">
+              <div className="flex-1 min-h-0 overflow-y-auto">
                 {pinnedChats.length > 0 && (
                   <div>
                     <div className="sticky top-0 z-10 px-4 py-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] bg-[var(--color-surface-muted)]/95 backdrop-blur border-b border-[var(--color-border-light)]">
@@ -768,12 +771,20 @@ export default function ChatPage() {
           </ResizableSidebar>
 
           {/* Center - Message Panel */}
-          <main className="flex-1 flex flex-col min-w-0 bg-[var(--color-bg-ivory)]">
+          <main className={`flex-1 flex-col min-w-0 min-h-0 bg-[var(--color-bg-ivory)] ${mobileView === 'chat' ? 'flex' : 'hidden'} lg:flex`}>
             {selectedConv ? (
               <>
                 {/* Chat Header */}
-                <div className="px-4 md:px-6 py-3.5 bg-white border-b border-[var(--color-border-light)] flex items-center justify-between flex-shrink-0">
-                  <div className="flex items-center gap-3 min-w-0">
+                <div className="px-3 md:px-6 py-3 md:py-3.5 bg-white border-b border-[var(--color-border-light)] flex items-center justify-between flex-shrink-0 gap-2">
+                  <div className="flex items-center gap-2 md:gap-3 min-w-0 flex-1">
+                    <button
+                      onClick={() => setMobileView('list')}
+                      className="lg:hidden w-9 h-9 rounded-lg flex items-center justify-center text-[var(--color-text-secondary)] bg-[var(--color-surface-muted)] hover:bg-[var(--color-accent-soft)] hover:text-[var(--color-blue-primary)] transition-smooth flex-shrink-0"
+                      title="Back to chats"
+                      aria-label="Back to chats"
+                    >
+                      <ArrowLeft className="w-5 h-5" />
+                    </button>
                     <div className="relative flex-shrink-0">
                       {selectedConv.isGroup ? (
                         <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-white" style={{ background: 'var(--gradient-primary)', boxShadow: 'var(--shadow-btn)' }}>
@@ -809,7 +820,14 @@ export default function ChatPage() {
                     </div>
                   </div>
                   <button
-                    onClick={() => setShowChatInfo(!showChatInfo)}
+                    onClick={() => {
+                      // On mobile, route info to its own pane; on desktop, toggle the side panel.
+                      if (typeof window !== 'undefined' && window.matchMedia('(max-width: 1023.98px)').matches) {
+                        setMobileView('info');
+                      } else {
+                        setShowChatInfo(!showChatInfo);
+                      }
+                    }}
                     className={`w-9 h-9 rounded-xl flex items-center justify-center transition-smooth flex-shrink-0 ${
                       showChatInfo
                         ? 'bg-[var(--color-accent-soft)] text-[var(--color-blue-primary)]'
@@ -822,7 +840,7 @@ export default function ChatPage() {
                 </div>
 
                 {/* Messages Area */}
-                <div className="flex-1 overflow-y-auto px-4 md:px-6 py-5">
+                <div className="flex-1 min-h-0 overflow-y-auto px-3 sm:px-4 md:px-6 py-4 md:py-5">
                   {messagesLoading ? (
                     <div className="flex items-center justify-center h-full">
                       <Loader2 className="w-8 h-8 animate-spin text-[var(--color-blue-primary)]" />
@@ -941,7 +959,7 @@ export default function ChatPage() {
                 </div>
 
                 {/* Message Composer */}
-                <div className="bg-white border-t border-[var(--color-border-light)] px-4 md:px-6 py-3 flex-shrink-0">
+                <div className="bg-white border-t border-[var(--color-border-light)] px-3 sm:px-4 md:px-6 py-3 flex-shrink-0 mobile-safe-bottom">
                   <div className="flex items-end gap-2">
                     <button
                       onClick={() => fileInputRef.current?.click()}
@@ -1007,9 +1025,28 @@ export default function ChatPage() {
           </main>
 
           {/* Right Panel - Chat Info */}
-          {selectedConv && showChatInfo && (
-            <ResizableSidebar side="right" defaultWidth={320} minWidth={260} maxWidth={480} responsive>
+          {selectedConv && (showChatInfo || mobileView === 'info') && (
+            <ResizableSidebar
+              side="right"
+              defaultWidth={320}
+              minWidth={260}
+              maxWidth={480}
+              responsive
+              mobileVisible={mobileView === 'info'}
+            >
               <aside className="w-full h-full bg-white border-l border-[var(--color-border-light)] overflow-y-auto">
+                {/* Mobile back-bar */}
+                <div className="lg:hidden sticky top-0 z-20 flex items-center gap-2 px-3 py-2.5 bg-white border-b border-[var(--color-border-light)]">
+                  <button
+                    onClick={() => setMobileView('chat')}
+                    className="w-9 h-9 rounded-lg flex items-center justify-center text-[var(--color-text-secondary)] bg-[var(--color-surface-muted)] hover:bg-[var(--color-accent-soft)] hover:text-[var(--color-blue-primary)] transition-smooth"
+                    aria-label="Back to messages"
+                  >
+                    <ArrowLeft className="w-5 h-5" />
+                  </button>
+                  <span className="text-sm font-semibold text-[var(--color-text-primary)] truncate">Chat info</span>
+                </div>
+
                 {/* Hero */}
                 <div className="relative px-6 pt-7 pb-5 text-center overflow-hidden border-b border-[var(--color-border-light)]" style={{ background: 'var(--gradient-bg)' }}>
                   <div aria-hidden className="pointer-events-none absolute -top-24 -right-24 w-56 h-56 rounded-full opacity-50 blur-3xl" style={{ background: 'radial-gradient(circle, var(--color-accent-soft) 0%, transparent 70%)' }} />

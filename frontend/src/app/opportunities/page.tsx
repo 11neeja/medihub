@@ -207,86 +207,97 @@ function OpportunityCard({ opp }: { opp: Opportunity }) {
   };
 
   return (
-    <div className="card hover-lift">
-      <div className="p-6">
-        {/* Header */}
-        <div className="flex items-start justify-between mb-3">
-            <div className="flex-1">
-            <div className="flex items-center gap-2 mb-1">
-              <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border ${typeColors}`}>
-                {opp.type === 'internship' ? 'Internship' : 'Job'}
+    <div className="card hover-lift group">
+      <div className="p-7">
+        <div className="flex items-start justify-between gap-5 mb-4">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-2.5">
+              <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-[var(--color-blue-primary)]">
+                {opp.type === 'internship' ? 'Internship' : 'Position'}
+              </span>
+              <span className="w-1 h-1 rounded-full bg-[var(--color-border-strong)]" />
+              <span className="text-[10px] uppercase tracking-[0.18em] text-[var(--color-text-soft)] font-semibold">
+                {opp.department}
               </span>
             </div>
-            <h3 className="heading-md">{opp.roleTitle}</h3>
-            <p className="body-sm text-slate-500 font-medium">{opp.postedBy}</p>
+            <h3
+              className="mb-1 group-hover:text-[var(--color-blue-primary)] transition-colors duration-300"
+              style={{
+                fontFamily: 'var(--font-fraunces), serif',
+                fontSize: '1.375rem',
+                fontWeight: 500,
+                lineHeight: 1.18,
+                letterSpacing: '-0.022em',
+                color: 'var(--color-navy)',
+              }}
+            >
+              {opp.roleTitle}
+            </h3>
+            <p className="text-sm text-[var(--color-text-secondary)] font-medium">{opp.postedBy}</p>
           </div>
-          <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-[var(--color-blue-soft)] flex items-center justify-center">
+          <div className="flex-shrink-0 w-12 h-12 rounded-md border border-[var(--color-border-rule)] flex items-center justify-center" style={{ background: 'var(--color-surface-elevated)' }}>
             {opp.type === 'internship' ? (
-              <GraduationCap className="w-6 h-6 text-[var(--color-blue-primary)]" />
+              <GraduationCap className="w-5 h-5 text-[var(--color-navy)]" strokeWidth={1.5} />
             ) : (
-              <Stethoscope className="w-6 h-6 text-[var(--color-blue-primary)]" />
+              <Stethoscope className="w-5 h-5 text-[var(--color-navy)]" strokeWidth={1.5} />
             )}
           </div>
         </div>
 
-        {/* Meta row */}
-        <div className="flex flex-wrap gap-4 body-sm text-slate-500 mb-4">
+        <div className="flex flex-wrap gap-x-5 gap-y-1.5 text-[0.8125rem] text-[var(--color-text-body)] mb-4">
           <span className="flex items-center gap-1.5">
-            <Building2 className="w-4 h-4" /> {opp.department}
+            <Building2 className="w-3.5 h-3.5 text-[var(--color-text-muted)]" strokeWidth={1.75} /> {opp.department}
           </span>
           <span className="flex items-center gap-1.5">
-            <MapPin className="w-4 h-4" /> {opp.location}
+            <MapPin className="w-3.5 h-3.5 text-[var(--color-text-muted)]" strokeWidth={1.75} /> {opp.location}
           </span>
-          <span className="flex items-center gap-1.5">
-            <Clock className="w-4 h-4" /> {opp.duration}
-          </span>
+          {opp.duration && (
+            <span className="flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5 text-[var(--color-text-muted)]" strokeWidth={1.75} /> {opp.duration}
+            </span>
+          )}
         </div>
 
-        {/* Description */}
-        <p className={`body-md text-slate-600 leading-relaxed ${expanded ? '' : 'line-clamp-2'}`}>
+        <p className={`body-md leading-relaxed ${expanded ? '' : 'line-clamp-2'}`}>
           {opp.description}
         </p>
 
-        {/* Expandable details */}
         {expanded && opp.requirements.length > 0 && (
-          <div className="mt-4">
-            <h4 className="text-sm font-semibold text-[var(--color-text-primary)] mb-2">Requirements</h4>
-            <ul className="space-y-1">
+          <div className="mt-5 pt-5 border-t border-[var(--color-border-hairline)]">
+            <p className="label !mb-2">Requirements</p>
+            <ul className="space-y-1.5">
               {opp.requirements.map((req, i) => (
-                <li key={i} className="text-sm text-slate-500 flex items-start gap-2">
-                  <span className="text-[var(--color-blue-primary)] mt-0.5">•</span>
-                  {req}
+                <li key={i} className="text-sm text-[var(--color-text-body)] flex items-start gap-2">
+                  <span className="text-[var(--color-navy)] mt-0.5 font-semibold">·</span>
+                  <span>{req}</span>
                 </li>
               ))}
             </ul>
           </div>
         )}
 
-        {/* Footer */}
-          <div className="flex items-center justify-between mt-5 pt-4 border-t border-[var(--color-border-light)]">
+        <div className="flex items-center justify-between mt-6 pt-4 border-t border-[var(--color-border-hairline)]">
           <button
             onClick={() => setExpanded(!expanded)}
-            className="text-sm text-[var(--color-blue-primary)] font-medium flex items-center gap-1 hover:text-[var(--color-blue-primary)] transition-colors"
+            className="text-xs uppercase tracking-[0.16em] text-[var(--color-text-muted)] hover:text-[var(--color-navy)] font-semibold flex items-center gap-1.5 transition-colors"
           >
             {expanded ? (
-              <>
-                Show less <ChevronUp className="w-4 h-4" />
-              </>
+              <>Show less <ChevronUp className="w-3.5 h-3.5" /></>
             ) : (
-              <>
-                View details <ChevronDown className="w-4 h-4" />
-              </>
+              <>Details <ChevronDown className="w-3.5 h-3.5" /></>
             )}
           </button>
 
-            <div className="flex items-center gap-3">
-            <span className="text-xs text-slate-400">Posted {formatDate(opp.postedAt)}</span>
+          <div className="flex items-center gap-3">
+            <span className="text-[11px] uppercase tracking-[0.14em] font-semibold text-[var(--color-text-soft)]">
+              {formatDate(opp.postedAt)}
+            </span>
             {hasApplied ? (
-              <span className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
-                <CheckCircle2 className="w-4 h-4" /> {application.status}
+              <span className="badge badge-success inline-flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5" /> {application.status}
               </span>
             ) : (
-              <button onClick={() => applyToOpportunity(opp.id)} className="btn-primary px-5 py-2 rounded-xl">Apply Now</button>
+              <button onClick={() => applyToOpportunity(opp.id)} className="btn-primary !py-2 !px-4">Apply</button>
             )}
           </div>
         </div>
@@ -347,90 +358,88 @@ export default function OpportunitiesPage() {
   return (
     <div className="min-h-screen gradient-subtle">
       <div className="page-container">
-        {/* Page Header */}
-        <div className="relative card rounded-3xl p-6 md:p-8 mb-6 animate-section overflow-hidden">
-          <div aria-hidden className="pointer-events-none absolute -top-32 -right-32 w-80 h-80 rounded-full opacity-50 blur-3xl" style={{ background: 'radial-gradient(circle, var(--color-accent-soft) 0%, transparent 70%)' }} />
-          <div aria-hidden className="pointer-events-none absolute -bottom-32 -left-24 w-64 h-64 rounded-full opacity-30 blur-3xl" style={{ background: 'radial-gradient(circle, var(--color-blue-soft) 0%, transparent 70%)' }} />
-
-          <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-5 md:gap-6">
-            <div className="flex items-start gap-4 fade-in-up">
-              <div className="hidden sm:flex w-12 h-12 lg:w-14 lg:h-14 rounded-2xl items-center justify-center flex-shrink-0" style={{ background: 'var(--gradient-primary)', boxShadow: 'var(--shadow-btn)' }}>
-                <Briefcase className="w-6 h-6 lg:w-7 lg:h-7 text-white" />
-              </div>
-              <div>
-                <p className="label mb-2">Opportunities</p>
-                <h1 className="heading-2 mb-2">Clinic Connect</h1>
-                <p className="body-md">Discover internships and jobs at top clinics and hospitals</p>
-              </div>
+        {/* Editorial masthead */}
+        <header className="relative mb-10 pb-10 border-b border-[var(--color-border-rule)] animate-section">
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+            <div className="flex-1 max-w-3xl">
+              <p className="label !mb-3">The Board</p>
+              <h1 className="heading-hero mb-4">
+                <span className="serif-accent">Posts</span> from clinics
+                <br /> &amp; hospitals.
+              </h1>
+              <p className="body-lg max-w-xl text-[var(--color-text-secondary)]">
+                Internships, residencies, and roles — posted by clinicians, for clinicians.
+              </p>
             </div>
-            <div className="flex flex-wrap gap-3 fade-in-delay-1 flex-shrink-0">
-              <button onClick={() => setShowCreate(true)} className="btn-primary inline-flex items-center gap-2 !py-2.5">
-                <Plus className="w-4 h-4" /> Post Opportunity
+            <div className="flex flex-wrap gap-3 shrink-0">
+              <button onClick={() => setShowCreate(true)} className="btn-primary inline-flex items-center gap-2">
+                <Plus className="w-4 h-4" strokeWidth={2} /> Post an opportunity
               </button>
             </div>
           </div>
-        </div>
+        </header>
 
         <div className="flex flex-col lg:flex-row gap-6">
           {/* ── Left Sidebar: Filters ── */}
           <ResizableSidebar side="left" defaultWidth={280} minWidth={200} maxWidth={400} responsive>
           <aside className="w-full">
-            <div className="card p-6 lg:sticky lg:top-20 space-y-6">
-              <h2 className="heading-3 flex items-center gap-2">
-                <Filter className="w-5 h-5 text-[var(--color-blue-primary)]" /> Filters
-              </h2>
-
-              {/* Department filter */}
+            <div className="card p-7 lg:sticky lg:top-24 space-y-7">
               <div>
-                <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-2">Department</label>
+                <p className="label !mb-1">Refine</p>
+                <h2 className="heading-3 flex items-center gap-2">Filters</h2>
+              </div>
+
+              <div>
+                <p className="label !mb-3">Department</p>
                 <select
                   value={filters.department}
                   onChange={e => handleSetFilters({ ...filters, department: e.target.value })}
-                  className="w-full px-4 py-2.5 border border-[var(--color-border-light)] rounded-xl text-sm bg-[var(--color-surface-muted)] text-[var(--color-text-primary)] focus:ring-2 focus:ring-[var(--color-blue-primary)] focus:border-transparent transition-all"
+                  className="input"
                 >
                   {departments.map(d => (
-                    <option key={d} value={d}>
-                      {d}
-                    </option>
+                    <option key={d} value={d}>{d}</option>
                   ))}
                 </select>
               </div>
 
-              {/* Location filter */}
               <div>
-                <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-2">Location</label>
+                <p className="label !mb-3">Location</p>
                 <select
                   value={filters.location}
                   onChange={e => handleSetFilters({ ...filters, location: e.target.value })}
-                  className="w-full px-4 py-2.5 border border-[var(--color-border-light)] rounded-xl text-sm bg-[var(--color-surface-muted)] text-[var(--color-text-primary)] focus:ring-2 focus:ring-[var(--color-blue-primary)] focus:border-transparent transition-all"
+                  className="input"
                 >
                   {locations.map(l => (
-                    <option key={l} value={l}>
-                      {l}
-                    </option>
+                    <option key={l} value={l}>{l}</option>
                   ))}
                 </select>
               </div>
 
-              {/* Type filter */}
               <div>
-                <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-2">Role Type</label>
-                <div className="space-y-2">
+                <p className="label !mb-3">Role Type</p>
+                <div className="flex flex-wrap gap-1.5">
                   {[{ value: 'all', label: 'All' }, { value: 'internship', label: 'Internship' }, { value: 'job', label: 'Job' }].map(opt => (
-                    <button key={opt.value} onClick={() => handleSetFilters({ ...filters, type: opt.value })} className={`${filters.type === opt.value ? 'btn-primary' : 'btn-secondary'} w-full text-left px-4 py-2.5 text-sm`}>
+                    <button
+                      key={opt.value}
+                      onClick={() => handleSetFilters({ ...filters, type: opt.value })}
+                      className={`px-3 py-1.5 rounded-full text-[0.75rem] font-semibold tracking-tight transition-smooth border ${
+                        filters.type === opt.value
+                          ? 'bg-[var(--color-navy)] text-white border-[var(--color-navy)]'
+                          : 'bg-transparent text-[var(--color-text-body)] border-[var(--color-border-rule)] hover:border-[var(--color-navy)] hover:text-[var(--color-navy)]'
+                      }`}
+                    >
                       {opt.label}
                     </button>
                   ))}
                 </div>
               </div>
 
-              {/* Clear filters */}
               {(filters.department !== 'All' || filters.location !== 'All' || filters.type !== 'all') && (
                 <button
                   onClick={() => handleSetFilters({ department: 'All', location: 'All', type: 'all' })}
-                  className="text-sm text-[var(--color-blue-primary)] hover:underline font-medium"
+                  className="text-xs uppercase tracking-[0.18em] text-[var(--color-blue-primary)] hover:text-[var(--color-navy)] font-semibold transition-colors pt-2 border-t border-[var(--color-border-hairline)] w-full text-left"
                 >
-                  Clear all filters
+                  ✕ Clear all filters
                 </button>
               )}
             </div>

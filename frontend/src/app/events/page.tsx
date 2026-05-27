@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import ResizableSidebar from '@/components/ResizableSidebar';
 import { Microscope, GraduationCap, PartyPopper, Monitor, Zap, Target, Search, Plus, X, Calendar, Clock, MapPin, Star, Check, Loader2, RefreshCw, ExternalLink, ChevronLeft, ChevronRight } from 'lucide-react';
-import { getEventsAPI, getEventbriteEventsAPI, refreshEventbriteCacheAPI, createEventAPI, toggleEventRegistrationAPI } from '@/lib/api';
+import { getEventsAPI, getExternalEventsAPI, refreshExternalEventsAPI, createEventAPI, toggleEventRegistrationAPI } from '@/lib/api';
 
 // Event interface with comprehensive fields
 interface Event {
@@ -23,9 +23,47 @@ interface Event {
   capacity?: number;
   registered?: number;
   isNew?: boolean;
-  source?: 'local' | 'eventbrite';
+  source?: 'local' | 'eventbrite' | 'hackclub' | 'devpost' | string;
   eventbriteUrl?: string;
+  externalUrl?: string;
+  region?: string;
 }
+
+// Canonical region buckets (matches the backend) in display order.
+const REGION_ORDER = ['Online', 'India', 'North America', 'Europe', 'Asia-Pacific', 'Middle East & Africa', 'Latin America', 'Other'];
+
+// Source filter options — label shown to the user, value matches event.source.
+const SOURCE_OPTIONS: { label: string; value: string }[] = [
+  { label: 'All', value: 'All' },
+  { label: 'Local', value: 'local' },
+  { label: 'Eventbrite', value: 'eventbrite' },
+  { label: 'Hack Club', value: 'hackclub' },
+  { label: 'Devpost', value: 'devpost' },
+];
+
+// Friendly label for an event's source (used on external register buttons).
+const sourceLabel = (source?: string): string => {
+  switch (source) {
+    case 'eventbrite': return 'Eventbrite';
+    case 'hackclub': return 'Hack Club';
+    case 'devpost': return 'Devpost';
+    default: return 'site';
+  }
+};
+
+// Client-side region fallback — used for events that arrive without a region
+// (e.g. older cached entries). Mirrors the backend's coarse bucketing.
+const regionFromLocation = (location?: string, mode?: string): string => {
+  if (mode === 'Online' || !location || /online/i.test(location)) return 'Online';
+  const t = location.toLowerCase();
+  if (/india|bengaluru|bangalore|mumbai|delhi|hyderabad|chennai|pune|kolkata|noida|gurgaon|gurugram|ahmedabad|jaipur/.test(t)) return 'India';
+  if (/usa|united states|america|canada|new york|san francisco|boston|toronto|chicago|seattle|los angeles|texas|california/.test(t)) return 'North America';
+  if (/uk|united kingdom|england|london|france|paris|germany|berlin|munich|spain|madrid|italy|rome|netherlands|amsterdam|europe|ireland|dublin|sweden|poland|portugal|switzerland|zurich/.test(t)) return 'Europe';
+  if (/china|japan|tokyo|korea|seoul|singapore|malaysia|indonesia|thailand|bangkok|vietnam|philippines|australia|sydney|melbourne|new zealand|hong kong|taiwan|bangladesh|pakistan|sri lanka|nepal/.test(t)) return 'Asia-Pacific';
+  if (/uae|dubai|abu dhabi|saudi|qatar|doha|israel|tel aviv|turkey|istanbul|egypt|cairo|africa|nigeria|lagos|kenya|nairobi|south africa|morocco/.test(t)) return 'Middle East & Africa';
+  if (/mexico|brazil|sao paulo|argentina|buenos aires|chile|santiago|colombia|bogota|peru|lima/.test(t)) return 'Latin America';
+  return 'Other';
+};
 
 export default function EventsPage() {
   const [events, setEvents] = useState<Event[]>([]);
@@ -39,13 +77,15 @@ export default function EventsPage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [sourceFilter, setSourceFilter] = useState<string>('All');
+  const [regionFilter, setRegionFilter] = useState<string>('All');
   const [isCached, setIsCached] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const EVENTS_PER_PAGE = 5;
 
   // ─── LocalStorage cache helpers ──────────────────────────────────
-  const CACHE_KEY = 'medihub_events_cache';
-  const CACHE_TS_KEY = 'medihub_events_cache_ts';
+  // v2: events now carry a `region` field — bump key to drop stale caches.
+  const CACHE_KEY = 'medihub_events_cache_v2';
+  const CACHE_TS_KEY = 'medihub_events_cache_v2_ts';
   const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 
   const saveToCache = (eventsList: Event[]) => {
@@ -86,27 +126,30 @@ export default function EventsPage() {
     capacity: apiEvent.capacity || 100,
     registered: apiEvent.registered || 0,
     source: 'local',
+    region: apiEvent.region || regionFromLocation(apiEvent.location, apiEvent.mode),
   });
 
-  // Helper to map Eventbrite event to frontend Event shape
-  const mapEventbriteEvent = (eb: any): Event => ({
-    id: eb._id || eb.id,
-    title: eb.title,
-    organizer: eb.organizer || 'Eventbrite',
-    date: eb.date,
-    time: eb.time || 'TBA',
-    location: eb.location || 'TBA',
-    mode: eb.mode || 'Online',
-    type: eb.type || 'Conference',
-    shortDescription: eb.shortDescription || '',
-    longDescription: eb.longDescription || '',
-    imageUrl: eb.imageUrl || '',
+  // Helper to map an aggregated external event (Eventbrite / Hack Club / Devpost)
+  const mapExternalEvent = (e: any): Event => ({
+    id: e._id || e.id,
+    title: e.title,
+    organizer: e.organizer || sourceLabel(e.source),
+    date: e.date,
+    time: e.time || 'TBA',
+    location: e.location || 'TBA',
+    mode: e.mode || 'Online',
+    type: e.type || 'Conference',
+    shortDescription: e.shortDescription || '',
+    longDescription: e.longDescription || '',
+    imageUrl: e.imageUrl || '',
     isRegistered: false,
-    featured: eb.featured || false,
-    capacity: eb.capacity || null,
-    registered: eb.registered || 0,
-    source: 'eventbrite',
-    eventbriteUrl: eb.eventbriteUrl || '',
+    featured: e.featured || false,
+    capacity: e.capacity || null,
+    registered: e.registered || 0,
+    source: e.source || 'eventbrite',
+    externalUrl: e.externalUrl || e.eventbriteUrl || '',
+    eventbriteUrl: e.eventbriteUrl || e.externalUrl || '',
+    region: e.region || regionFromLocation(e.location, e.mode),
   });
 
   // Stale-while-revalidate: show cache instantly, fetch fresh in background
@@ -129,20 +172,20 @@ export default function EventsPage() {
     const fetchAllEvents = async () => {
       if (!cached?.events.length) setIsLoadingEvents(true);
       try {
-        const [localData, eventbriteData] = await Promise.allSettled([
+        const [localData, externalData] = await Promise.allSettled([
           getEventsAPI(),
-          getEventbriteEventsAPI(),
+          getExternalEventsAPI(),
         ]);
 
         const localEvents = localData.status === 'fulfilled'
           ? localData.value.map(mapAPIEvent)
           : [];
 
-        const ebEvents = eventbriteData.status === 'fulfilled'
-          ? eventbriteData.value.map(mapEventbriteEvent)
+        const externalEvents = externalData.status === 'fulfilled'
+          ? externalData.value.map(mapExternalEvent)
           : [];
 
-        const allEvents = [...ebEvents, ...localEvents];
+        const allEvents = [...externalEvents, ...localEvents];
         setEvents(allEvents);
         setLastUpdated(new Date());
         setIsCached(false);
@@ -156,17 +199,17 @@ export default function EventsPage() {
     fetchAllEvents();
   }, []);
 
-  // Force refresh Eventbrite events + update cache
-  const handleRefreshEventbrite = async () => {
+  // Force refresh external events (all sources) + update cache
+  const handleRefreshExternal = async () => {
     setIsRefreshing(true);
     try {
-      const result = await refreshEventbriteCacheAPI();
-      const ebEvents = result.events.map(mapEventbriteEvent);
-      // Keep local events, replace eventbrite events
+      const result = await refreshExternalEventsAPI();
+      const externalEvents = result.events.map(mapExternalEvent);
+      // Keep locally-hosted events, replace all external ones
       setEvents(prev => {
         const updated = [
-          ...ebEvents,
-          ...prev.filter(e => e.source !== 'eventbrite'),
+          ...externalEvents,
+          ...prev.filter(e => e.source === 'local'),
         ];
         saveToCache(updated);
         return updated;
@@ -174,7 +217,7 @@ export default function EventsPage() {
       setLastUpdated(new Date());
       setIsCached(false);
     } catch (err) {
-      console.error('Failed to refresh Eventbrite events:', err);
+      console.error('Failed to refresh external events:', err);
     } finally {
       setIsRefreshing(false);
     }
@@ -231,10 +274,16 @@ export default function EventsPage() {
     }
 
     // Source filter
-    const matchesSource = sourceFilter === 'All' || event.source === sourceFilter.toLowerCase();
+    const matchesSource = sourceFilter === 'All' || event.source === sourceFilter;
 
-    return matchesSearch && matchesType && matchesMode && matchesDate && matchesSource;
+    // Region filter
+    const matchesRegion = regionFilter === 'All' || event.region === regionFilter;
+
+    return matchesSearch && matchesType && matchesMode && matchesDate && matchesSource && matchesRegion;
   });
+
+  // Regions actually present in the current event set (canonical order), for the filter UI
+  const availableRegions = ['All', ...REGION_ORDER.filter(r => events.some(e => e.region === r))];
 
   // Pagination
   const totalPages = Math.ceil(filteredEvents.length / EVENTS_PER_PAGE);
@@ -246,7 +295,7 @@ export default function EventsPage() {
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, typeFilter, modeFilter, dateFilter, sourceFilter]);
+  }, [searchQuery, typeFilter, modeFilter, dateFilter, sourceFilter, regionFilter]);
 
   // Get registered events
   const registeredEvents = events.filter(e => e.isRegistered);
@@ -280,9 +329,10 @@ export default function EventsPage() {
   // Toggle registration via API (local events only)
   const handleRegister = async (eventId: string) => {
     const event = events.find(e => e.id === eventId);
-    // For Eventbrite events, redirect to the real registration page
-    if (event?.source === 'eventbrite' && event.eventbriteUrl) {
-      window.open(event.eventbriteUrl, '_blank', 'noopener,noreferrer');
+    // External events register on the source's own site — never via our DB.
+    if (event && event.source !== 'local') {
+      const url = event.externalUrl || event.eventbriteUrl;
+      if (url) window.open(url, '_blank', 'noopener,noreferrer');
       return;
     }
     // For local events, toggle registration in DB
@@ -326,42 +376,42 @@ export default function EventsPage() {
   return (
     <div className="min-h-screen gradient-subtle">
       <div className="page-container">
-        {/* Page Header */}
-        <div className="relative card rounded-3xl p-6 md:p-8 mb-6 animate-section overflow-hidden">
-          <div aria-hidden className="pointer-events-none absolute -top-32 -right-32 w-80 h-80 rounded-full opacity-50 blur-3xl" style={{ background: 'radial-gradient(circle, var(--color-accent-soft) 0%, transparent 70%)' }} />
-          <div aria-hidden className="pointer-events-none absolute -bottom-32 -left-24 w-64 h-64 rounded-full opacity-30 blur-3xl" style={{ background: 'radial-gradient(circle, var(--color-blue-soft) 0%, transparent 70%)' }} />
-
-          <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-5 md:gap-6">
-            <div className="flex items-start gap-4 fade-in-up">
-              <div className="hidden sm:flex w-12 h-12 lg:w-14 lg:h-14 rounded-2xl items-center justify-center flex-shrink-0" style={{ background: 'var(--gradient-primary)', boxShadow: 'var(--shadow-btn)' }}>
-                <Calendar className="w-6 h-6 lg:w-7 lg:h-7 text-white" />
+        {/* Editorial masthead */}
+        <header className="relative mb-10 pb-10 border-b border-[var(--color-border-rule)] animate-section">
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-8">
+            <div className="flex-1 max-w-3xl">
+              <div className="flex items-center gap-4 mb-5">
+                <p className="label !mb-0">The Calendar</p>
+                <span className="hidden md:inline text-[10px] uppercase tracking-[0.2em] text-[var(--color-text-soft)] font-semibold">
+                  {events.length} listings · live
+                </span>
               </div>
-              <div>
-                <p className="label mb-2">Events</p>
-                <h1 className="heading-2 mb-2">Medical Events & Conferences</h1>
-                <p className="body-md">
-                  Discover, host, and register for medical workshops, conferences, fests, and hackathons
+              <h1 className="heading-hero mb-4">
+                Where medicine <span className="serif-accent">convenes</span>.
+              </h1>
+              <p className="body-lg max-w-xl text-[var(--color-text-secondary)]">
+                Workshops, conferences, fests, and hackathons — curated and contributed by your peers across the discipline.
+              </p>
+              {lastUpdated && (
+                <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--color-text-soft)] mt-5 flex items-center gap-2 font-semibold">
+                  <Clock className="w-3 h-3" strokeWidth={1.75} />
+                  Last refresh · {lastUpdated.toLocaleString()}
+                  {isCached && <span className="ml-1 text-amber-600 font-semibold normal-case tracking-normal">(cached)</span>}
                 </p>
-                {lastUpdated && (
-                  <p className="text-xs text-[var(--color-text-muted)] mt-3 flex items-center gap-1">
-                    <Clock className="w-3 h-3" /> Auto-refresh every 24 hrs &middot; Last updated: {lastUpdated.toLocaleString()}
-                    {isCached && <span className="ml-1 text-orange-500 font-medium">(cached)</span>}
-                  </p>
-                )}
-              </div>
+              )}
             </div>
-            <div className="flex flex-wrap gap-3 fade-in-delay-1 flex-shrink-0">
-              <button onClick={handleRefreshEventbrite} disabled={isRefreshing} className="btn-secondary inline-flex items-center gap-2 !py-2.5 disabled:opacity-50" title="Force refresh Eventbrite events">
-                <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <div className="flex flex-wrap gap-3 shrink-0">
+              <button onClick={handleRefreshExternal} disabled={isRefreshing} className="btn-secondary inline-flex items-center gap-2 disabled:opacity-50" title="Refresh events from all sources">
+                <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} strokeWidth={1.75} />
                 Refresh
               </button>
-              <button onClick={() => setShowHostForm(!showHostForm)} className="btn-primary inline-flex items-center gap-2 !py-2.5">
-                <Plus className="w-4 h-4" />
-                Host Event
+              <button onClick={() => setShowHostForm(!showHostForm)} className="btn-primary inline-flex items-center gap-2">
+                <Plus className="w-4 h-4" strokeWidth={2} />
+                Host an event
               </button>
             </div>
           </div>
-        </div>
+        </header>
 
       {/* Host Event Form Modal */}
       {showHostForm && (
@@ -568,9 +618,9 @@ export default function EventsPage() {
                   : 'bg-[var(--color-blue-primary)] text-white hover:bg-[var(--color-blue-primary)]/80'
                   }`}
               >
-                {selectedEvent.source === 'eventbrite' ? (
+                {selectedEvent.source !== 'local' ? (
                   <span className="flex items-center justify-center gap-2">
-                    <ExternalLink className="w-5 h-5" /> Register on Eventbrite
+                    <ExternalLink className="w-5 h-5" /> Register on {sourceLabel(selectedEvent.source)}
                   </span>
                 ) : selectedEvent.isRegistered ? (
                   <span className="flex items-center justify-center gap-2">
@@ -588,34 +638,35 @@ export default function EventsPage() {
           {/* Left Sidebar - Filters */}
           <ResizableSidebar side="left" defaultWidth={280} minWidth={200} maxWidth={400} responsive>
           <aside className="w-full">
-            <div className="card p-6 lg:sticky lg:top-20 space-y-6">
+            <div className="card p-7 lg:sticky lg:top-24 space-y-7">
               {/* Search */}
               <div>
-                <label className="block text-sm font-semibold text-[var(--color-text-primary)] mb-2">Search Events</label>
+                <p className="label !mb-3">Search</p>
                 <div className="relative">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-text-soft)]" strokeWidth={1.75} />
                   <input
                     type="text"
-                    placeholder="Search by title or organizer..."
+                    placeholder="By title or organizer…"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 border border-[var(--color-border-light)] rounded-lg focus:ring-2 focus:ring-[var(--color-blue-primary)] focus:border-transparent"
+                    className="input !pl-10"
                   />
-                  <span className="absolute left-3 top-3.5 text-slate-400"><Search className="w-4 h-4" /></span>
                 </div>
               </div>
 
               {/* Event Type Filter */}
               <div>
-                <label className="block text-sm font-semibold text-[var(--color-text-primary)] mb-4">Event Type</label>
-                <div className="space-y-2">
+                <p className="label !mb-3">Type</p>
+                <div className="flex flex-wrap gap-1.5">
                   {['All', 'Workshop', 'Conference', 'Fest', 'Webinar', 'Hackathon'].map(type => (
                     <button
                       key={type}
                       onClick={() => setTypeFilter(type)}
-                      className={`w-full text-left px-5 py-3 rounded-xl transition-smooth ${typeFilter === type
-                        ? 'gradient-primary text-white font-semibold shadow-premium hover-scale'
-                        : 'bg-slate-50 text-[var(--color-text-primary)] hover:bg-[var(--color-blue-soft)]/30 hover-glow'
-                        }`}
+                      className={`px-3 py-1.5 rounded-full text-[0.75rem] font-semibold tracking-tight transition-smooth border ${
+                        typeFilter === type
+                          ? 'bg-[var(--color-navy)] text-white border-[var(--color-navy)]'
+                          : 'bg-transparent text-[var(--color-text-body)] border-[var(--color-border-rule)] hover:border-[var(--color-navy)] hover:text-[var(--color-navy)]'
+                      }`}
                     >
                       {type}
                     </button>
@@ -625,16 +676,17 @@ export default function EventsPage() {
 
               {/* Mode Filter */}
               <div>
-                <label className="block text-sm font-semibold text-[var(--color-text-primary)] mb-3">Mode</label>
-                <div className="space-y-2">
+                <p className="label !mb-3">Mode</p>
+                <div className="flex flex-wrap gap-1.5">
                   {['All', 'Online', 'On-campus', 'Hybrid'].map(mode => (
                     <button
                       key={mode}
                       onClick={() => setModeFilter(mode)}
-                        className={`w-full text-left px-4 py-2 rounded-xl transition ${modeFilter === mode
-                        ? 'bg-[var(--color-blue-primary)] text-white font-semibold'
-                        : 'bg-slate-50 text-[var(--color-text-primary)] hover:bg-[var(--color-blue-soft)]/30'
-                        }`}
+                      className={`px-3 py-1.5 rounded-full text-[0.75rem] font-semibold tracking-tight transition-smooth border ${
+                        modeFilter === mode
+                          ? 'bg-[var(--color-navy)] text-white border-[var(--color-navy)]'
+                          : 'bg-transparent text-[var(--color-text-body)] border-[var(--color-border-rule)] hover:border-[var(--color-navy)] hover:text-[var(--color-navy)]'
+                      }`}
                     >
                       {mode}
                     </button>
@@ -644,44 +696,67 @@ export default function EventsPage() {
 
               {/* Date Filter */}
               <div>
-                <label className="block text-sm font-semibold text-[var(--color-text-primary)] mb-3">When</label>
-                <div className="space-y-2">
+                <p className="label !mb-3">When</p>
+                <div className="flex flex-wrap gap-1.5">
                   {['All', 'This Week', 'This Month', 'Upcoming'].map(date => (
                     <button
                       key={date}
                       onClick={() => setDateFilter(date)}
-                        className={`w-full text-left px-4 py-2 rounded-xl transition ${dateFilter === date
-                        ? 'bg-[var(--color-blue-primary)] text-white font-semibold'
-                        : 'bg-slate-50 text-[var(--color-text-primary)] hover:bg-[var(--color-blue-soft)]/30'
-                        }`}
+                      className={`px-3 py-1.5 rounded-full text-[0.75rem] font-semibold tracking-tight transition-smooth border ${
+                        dateFilter === date
+                          ? 'bg-[var(--color-navy)] text-white border-[var(--color-navy)]'
+                          : 'bg-transparent text-[var(--color-text-body)] border-[var(--color-border-rule)] hover:border-[var(--color-navy)] hover:text-[var(--color-navy)]'
+                      }`}
                     >
                       {date}
-                      </button>
+                    </button>
                   ))}
                 </div>
               </div>
+
+              {/* Region Filter */}
+              {availableRegions.length > 1 && (
+                <div>
+                  <p className="label !mb-3">Region</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {availableRegions.map(region => (
+                      <button
+                        key={region}
+                        onClick={() => setRegionFilter(region)}
+                        className={`px-3 py-1.5 rounded-full text-[0.75rem] font-semibold tracking-tight transition-smooth border ${
+                          regionFilter === region
+                            ? 'bg-[var(--color-navy)] text-white border-[var(--color-navy)]'
+                            : 'bg-transparent text-[var(--color-text-body)] border-[var(--color-border-rule)] hover:border-[var(--color-navy)] hover:text-[var(--color-navy)]'
+                        }`}
+                      >
+                        {region}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Source Filter */}
               <div>
-                <label className="block text-sm font-semibold text-[var(--color-text-primary)] mb-3">Source</label>
-                <div className="space-y-2">
-                  {['All', 'Eventbrite', 'Local'].map(src => (
+                <p className="label !mb-3">Source</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {SOURCE_OPTIONS.map(({ label, value }) => (
                     <button
-                      key={src}
-                      onClick={() => setSourceFilter(src)}
-                        className={`w-full text-left px-4 py-2 rounded-xl transition ${sourceFilter === src
-                        ? 'bg-[var(--color-blue-primary)] text-white font-semibold'
-                        : 'bg-slate-50 text-[var(--color-text-primary)] hover:bg-[var(--color-blue-soft)]/30'
-                        }`}
+                      key={value}
+                      onClick={() => setSourceFilter(value)}
+                      className={`px-3 py-1.5 rounded-full text-[0.75rem] font-semibold tracking-tight transition-smooth border ${
+                        sourceFilter === value
+                          ? 'bg-[var(--color-navy)] text-white border-[var(--color-navy)]'
+                          : 'bg-transparent text-[var(--color-text-body)] border-[var(--color-border-rule)] hover:border-[var(--color-navy)] hover:text-[var(--color-navy)]'
+                      }`}
                     >
-                      {src}
-                      </button>
+                      {label}
+                    </button>
                   ))}
                 </div>
               </div>
 
-              {/* Clear Filters */}
-              {(searchQuery || typeFilter !== 'All' || modeFilter !== 'All' || dateFilter !== 'All' || sourceFilter !== 'All') && (
+              {(searchQuery || typeFilter !== 'All' || modeFilter !== 'All' || dateFilter !== 'All' || sourceFilter !== 'All' || regionFilter !== 'All') && (
                 <button
                   onClick={() => {
                     setSearchQuery('');
@@ -689,10 +764,11 @@ export default function EventsPage() {
                     setModeFilter('All');
                     setDateFilter('All');
                     setSourceFilter('All');
+                    setRegionFilter('All');
                   }}
-                  className="w-full text-[var(--color-blue-primary)] hover:text-[var(--color-blue-primary)]/80 font-semibold py-2 text-sm"
+                  className="w-full text-[var(--color-blue-primary)] hover:text-[var(--color-navy)] font-semibold py-2 text-xs uppercase tracking-[0.18em] border-t border-[var(--color-border-hairline)] pt-4 transition-colors"
                 >
-                  Clear All Filters
+                  ✕ Clear all filters
                 </button>
               )}
             </div>
@@ -779,101 +855,121 @@ export default function EventsPage() {
                   </button>
                 </div>
               ) : (
-                paginatedEvents.map(event => (
+                paginatedEvents.map(event => {
+                  const eventDate = event.date ? new Date(event.date) : null;
+                  return (
                   <article
                     key={event.id}
                     className="card hover-lift transition-smooth overflow-hidden group"
                   >
                     <div className="flex flex-col sm:flex-row">
-                      {/* Event Image */}
-                      <div className="relative w-full sm:w-48 h-48 sm:h-auto sm:min-h-[200px] bg-gradient-to-br from-[var(--color-blue-primary)] to-[var(--color-blue-soft)] flex-shrink-0 overflow-hidden">
+                      <div className="relative w-full sm:w-56 h-48 sm:h-auto sm:min-h-[220px] gradient-ink flex-shrink-0 overflow-hidden">
                         {event.imageUrl ? (
                           <img
                             src={event.imageUrl}
                             alt={event.title}
-                            className="absolute inset-0 w-full h-full object-cover"
+                            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                             onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                           />
                         ) : (
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <Target className="w-12 h-12 text-white/80 group-hover:scale-110 transition-transform" />
+                          <div className="absolute inset-0 flex items-center justify-center dot-grid">
+                            <Target className="w-14 h-14 text-white/30" strokeWidth={1} />
+                          </div>
+                        )}
+
+                        {eventDate && (
+                          <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-sm rounded-md px-2.5 py-1.5 shadow-sm">
+                            <div className="text-[9px] uppercase tracking-[0.18em] font-bold text-[var(--color-blue-primary)] leading-none">
+                              {eventDate.toLocaleDateString('en-US', { month: 'short' })}
+                            </div>
+                            <div
+                              className="text-[var(--color-navy)] leading-none mt-0.5"
+                              style={{
+                                fontFamily: 'var(--font-fraunces), serif',
+                                fontSize: '1.25rem',
+                                fontWeight: 500,
+                              }}
+                            >
+                              {eventDate.getDate()}
+                            </div>
                           </div>
                         )}
 
                         {event.isNew && (
-                          <span className="absolute top-3 right-3 bg-white text-[var(--color-blue-primary)] px-3 py-1 rounded-full text-xs font-bold shadow-premium pulse-subtle">
-                            NEW
+                          <span className="absolute top-3 right-3 bg-white text-[var(--color-blue-primary)] px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">
+                            New
                           </span>
                         )}
                       </div>
-                      {/* Event Content */}
-                      <div className="flex-1 p-6">
-                        <div className="flex justify-between items-start mb-3">
-                          <div className="flex-1">
-                            <div className="flex gap-2 mb-2">
-                              <span className={`px-2 py-1 rounded-lg text-xs font-semibold ${event.mode === 'Online' ? 'bg-[var(--color-blue-soft)] text-[var(--color-blue-primary)]' :
-                                event.mode === 'On-campus' ? 'bg-[var(--color-blue-primary)]/20 text-[var(--color-blue-primary)]' :
-                                  'bg-[var(--color-blue-soft)]/50 text-[var(--color-blue-primary)]'
-                                }`}>
-                                {event.mode}
+                      <div className="flex-1 p-6 md:p-7 flex flex-col">
+                        <div className="flex-1">
+                          <div className="flex flex-wrap items-center gap-2 mb-3">
+                            <span className="badge badge-sm">{event.mode}</span>
+                            <span className="badge badge-sm badge-muted">{event.type}</span>
+                            {event.isRegistered && (
+                              <span className="badge badge-sm badge-success inline-flex items-center gap-1">
+                                <Check className="w-3 h-3" strokeWidth={2.5} /> Registered
                               </span>
-                              <span className="bg-slate-100 text-[var(--color-text-primary)] px-2 py-1 rounded-lg text-xs font-semibold">
-                                {event.type}
-                              </span>
-                              {event.isRegistered && (
-                                <span className="bg-green-100 text-green-800 px-2 py-1 rounded-lg text-xs font-semibold flex items-center gap-1">
-                                  <Check className="w-3 h-3" /> Registered
-                                </span>
-                              )}
-                            </div>
-                            <h2
-                              onClick={() => setSelectedEvent(event)}
-                              className="text-xl font-bold text-[var(--color-text-primary)] mb-2 group-hover:text-[var(--color-blue-primary)] transition cursor-pointer"
-                            >
-                              {event.title}
-                            </h2>
-                            <p className="text-sm text-slate-500 mb-3">by {event.organizer}</p>
-                            <p className="text-slate-700 mb-3 line-clamp-2">{event.shortDescription}</p>
+                            )}
                           </div>
+                          <h2
+                            onClick={() => setSelectedEvent(event)}
+                            className="mb-2 group-hover:text-[var(--color-blue-primary)] transition-colors duration-300 cursor-pointer"
+                            style={{
+                              fontFamily: 'var(--font-fraunces), serif',
+                              fontSize: '1.375rem',
+                              fontWeight: 500,
+                              lineHeight: 1.2,
+                              letterSpacing: '-0.022em',
+                              color: 'var(--color-navy)',
+                            }}
+                          >
+                            {event.title}
+                          </h2>
+                          <p className="text-[11px] uppercase tracking-[0.16em] font-semibold text-[var(--color-text-muted)] mb-3">
+                            by {event.organizer}
+                          </p>
+                          <p className="body-md line-clamp-2 mb-4">{event.shortDescription}</p>
                         </div>
 
-                        <div className="flex flex-wrap gap-3 text-sm text-slate-600 mb-4">
-                          <span className="flex items-center gap-1">
-                            <Calendar className="w-4 h-4 text-[var(--color-blue-primary)]" /> {new Date(event.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        <div className="flex flex-wrap gap-x-5 gap-y-1.5 text-[0.8125rem] text-[var(--color-text-body)] mb-5 pt-3 border-t border-[var(--color-border-hairline)]">
+                          <span className="flex items-center gap-1.5">
+                            <Calendar className="w-3.5 h-3.5 text-[var(--color-text-muted)]" strokeWidth={1.75} />
+                            {eventDate ? eventDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'TBA'}
                           </span>
-                          <span className="flex items-center gap-1">
-                            <Clock className="w-4 h-4 text-[var(--color-blue-primary)]" /> {event.time}
+                          <span className="flex items-center gap-1.5">
+                            <Clock className="w-3.5 h-3.5 text-[var(--color-text-muted)]" strokeWidth={1.75} />
+                            {event.time}
                           </span>
-                          <span className="flex items-center gap-1">
-                            <MapPin className="w-4 h-4 text-[var(--color-blue-primary)]" /> {event.location}
+                          <span className="flex items-center gap-1.5 truncate">
+                            <MapPin className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" strokeWidth={1.75} />
+                            <span className="truncate">{event.location}</span>
                           </span>
                         </div>
 
-                        <div className="flex gap-3">
+                        <div className="flex gap-2">
                           <button
                             onClick={() => setSelectedEvent(event)}
-                            className="flex-1 border-2 border-[var(--color-blue-primary)] text-[var(--color-blue-primary)] px-5 py-3 rounded-xl font-semibold hover:bg-[var(--color-blue-soft)] transition-smooth hover-glow"
+                            className="btn-secondary flex-1 !py-2.5"
                           >
-                            View Details
+                            View details
                           </button>
                           <button
                             onClick={() => handleRegister(event.id)}
-                            className={`flex-1 px-5 py-3 rounded-xl font-semibold transition-smooth shadow-premium hover:shadow-premium-md hover-scale ${event.isRegistered
-                              ? 'gradient-primary text-white hover:opacity-90'
-                              : 'gradient-primary text-white hover:opacity-90'
-                              }`}
+                            className="btn-primary flex-1 inline-flex items-center justify-center gap-1.5 !py-2.5"
                           >
-                            {event.source === 'eventbrite' ? (
-                              <span className="flex items-center justify-center gap-1"><ExternalLink className="w-4 h-4" /> Register</span>
+                            {event.source !== 'local' ? (
+                              <><ExternalLink className="w-3.5 h-3.5" /> Register</>
                             ) : event.isRegistered ? (
-                              <span className="flex items-center justify-center gap-1"><Check className="w-4 h-4" /> Registered</span>
+                              <><Check className="w-3.5 h-3.5" /> Registered</>
                             ) : 'Register'}
                           </button>
                         </div>
                       </div>
                     </div>
                   </article>
-                ))
+                  );
+                })
               )}
             </div>
             </>
