@@ -190,8 +190,9 @@ Set these environment variables on Render:
 
 - `DATABASE_URL`
 - `JWT_SECRET`
-- `OLLAMA_BASE_URL` if you use the AI features
-- `OLLAMA_MODEL` if you use the AI features
+- `AI_PROVIDER=gemini`
+- `GEMINI_API_KEY`
+- `GEMINI_MODEL` if you want to change the default model
 - `EVENTBRITE_TOKEN` if you use events
 - `NEWS_API_KEY` if you use news
 

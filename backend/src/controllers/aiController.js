@@ -3,11 +3,32 @@ import fs from 'fs'
 import path from 'path'
 import { extractTextFromFile } from '../utils/extractText.js'
 
-// ── Ollama configuration ──
+// ── AI provider configuration ──
+const AI_PROVIDER = process.env.AI_PROVIDER || (process.env.GEMINI_API_KEY ? 'gemini' : 'ollama')
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || ''
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-1.5-flash'
 const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL || 'http://localhost:11434'
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'smollm:1.7b'
 
-console.log(`✅ Ollama AI configured (model: ${OLLAMA_MODEL}, url: ${OLLAMA_BASE_URL})`)
+if (AI_PROVIDER === 'gemini') {
+  console.log(`✅ Gemini AI configured (model: ${GEMINI_MODEL})`)
+} else {
+  console.log(`✅ Ollama AI configured (model: ${OLLAMA_MODEL}, url: ${OLLAMA_BASE_URL})`)
+}
+
+function isGeminiEnabled() {
+  return AI_PROVIDER === 'gemini' && Boolean(GEMINI_API_KEY)
+}
+
+function getAIErrorResponse(error) {
+  if (error.message?.includes('ECONNREFUSED') || error.message?.includes('fetch failed')) {
+    return AI_PROVIDER === 'gemini'
+      ? '⚠️ **AI is unavailable** — Cannot reach Gemini. Check the API key and outbound network access.'
+      : '⚠️ **AI is unavailable** — Cannot connect to Ollama. Make sure Ollama is running locally (`ollama serve`) and the model is pulled (`ollama pull llama3.1`).'
+  }
+
+  return `⚠️ **AI error**: ${error.message}`
+}
 
 // ── Helper: call Ollama chat API ──
 async function ollamaChat(messages, options = {}) {
@@ -62,18 +83,88 @@ async function ollamaGenerate(prompt, options = {}) {
   return data.response || ''
 }
 
+// ── Helper: call Gemini generateContent API ──
+async function geminiGenerate(prompt, options = {}) {
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        systemInstruction: {
+          parts: [{ text: SYSTEM_PROMPT }],
+        },
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig: {
+          temperature: options.temperature ?? 0.7,
+          maxOutputTokens: options.maxTokens ?? 2048,
+        },
+      }),
+    }
+  )
+
+  if (!response.ok) {
+    const errText = await response.text()
+    throw new Error(`Gemini error (${response.status}): ${errText}`)
+  }
+
+  const data = await response.json()
+  return data.candidates?.[0]?.content?.parts?.map(part => part.text || '').join('') || ''
+}
+
+async function geminiChat(messages, options = {}) {
+  const systemMessage = messages.find(m => m.role === 'system')?.content || SYSTEM_PROMPT
+  const conversation = messages
+    .filter(m => m.role !== 'system')
+    .map(m => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content }],
+    }))
+
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: systemMessage }] },
+        contents: conversation,
+        generationConfig: {
+          temperature: options.temperature ?? 0.7,
+          maxOutputTokens: options.maxTokens ?? 2048,
+        },
+      }),
+    }
+  )
+
+  if (!response.ok) {
+    const errText = await response.text()
+    throw new Error(`Gemini error (${response.status}): ${errText}`)
+  }
+
+  const data = await response.json()
+  return data.candidates?.[0]?.content?.parts?.map(part => part.text || '').join('') || ''
+}
+
+async function generateAIResponse(promptOrMessages, options = {}) {
+  if (isGeminiEnabled()) {
+    if (Array.isArray(promptOrMessages)) {
+      return geminiChat(promptOrMessages, options)
+    }
+    return geminiGenerate(promptOrMessages, options)
+  }
+
+  if (Array.isArray(promptOrMessages)) {
+    return ollamaChat(promptOrMessages, options)
+  }
+  return ollamaGenerate(promptOrMessages, options)
+}
+
 // ── Helper: check if error is an Ollama API error ──
 function isOllamaError(error) {
   return error.message?.includes('Ollama') ||
          error.message?.includes('ECONNREFUSED') ||
          error.message?.includes('fetch failed')
-}
-
-function getOllamaErrorResponse(error) {
-  if (error.message?.includes('ECONNREFUSED') || error.message?.includes('fetch failed')) {
-    return '⚠️ **AI is unavailable** — Cannot connect to Ollama. Make sure Ollama is running locally (`ollama serve`) and the model is pulled (`ollama pull llama3.1`).'
-  }
-  return `⚠️ **AI error**: ${error.message}`
 }
 
 // ── In-memory suggestion cache ──
@@ -177,13 +268,13 @@ export const chatWithAI = async (req, res) => {
 
     messages.push({ role: 'user', content: fullPrompt })
 
-    const response = await ollamaChat(messages)
+    const response = await generateAIResponse(messages)
 
     res.json({ response })
   } catch (error) {
     console.error('AI Chat Error:', error)
-    if (isOllamaError(error)) {
-      return res.json({ response: getOllamaErrorResponse(error) })
+    if (isOllamaError(error) || error.message?.includes('Gemini')) {
+      return res.json({ response: getAIErrorResponse(error) })
     }
     res.status(500).json({ message: 'Failed to get AI response', error: error.message })
   }
@@ -246,13 +337,13 @@ export const summarizeDocument = async (req, res) => {
 
     const prompt = `${SYSTEM_PROMPT}\n\nProvide a brief summary (4-6 sentences max) of the following document titled "${document.name}":\n\n${truncated}\n\nKeep it concise. Mention what the document is about and its key points. Do not list every detail.`
 
-    const summary = await ollamaGenerate(prompt)
+    const summary = await generateAIResponse(prompt)
 
     return res.json({ summary })
   } catch (error) {
     console.error('Summarize Error:', error)
-    if (isOllamaError(error)) {
-      return res.json({ summary: getOllamaErrorResponse(error) })
+    if (isOllamaError(error) || error.message?.includes('Gemini')) {
+      return res.json({ summary: getAIErrorResponse(error) })
     }
     res.status(500).json({ message: 'Failed to summarize document', error: error.message })
   }
@@ -297,7 +388,7 @@ export const getSuggestedQuestions = async (req, res) => {
       prompt = `Generate exactly 8 important medical study questions covering different medical topics like pharmacology, pathology, anatomy, physiology, and clinical medicine. Make them specific and educational.\n\nReturn ONLY a JSON array of strings, no other text. Example: ["Question 1?", "Question 2?"]`
     }
 
-    const text = await ollamaGenerate(prompt, { temperature: 0.8 })
+    const text = await generateAIResponse(prompt, { temperature: 0.8 })
 
     // Parse JSON array from response
     let questions = []
