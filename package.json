@@ -6,6 +6,8 @@
   },
   "scripts": {
     "install:all": "npm install && cd frontend && npm install && cd ../backend && npm install",
+    "postinstall": "npm install --prefix backend --omit=dev",
+    "start": "npm --prefix backend start",
     "dev:backend": "cd backend && npm run dev",
     "dev:frontend": "cd frontend && npm run dev",
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\""
