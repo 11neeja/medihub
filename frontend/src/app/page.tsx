@@ -214,7 +214,7 @@ export default function LandingPage() {
                   src={image.src}
                   alt={image.alt}
                   aria-hidden={i !== heroImageIndex}
-                  className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-[1200ms] ease-in-out ${
+                  className={`absolute inset-0 w-full h-full object-cover transition-opacity [transition-duration:1200ms] ease-in-out ${
                     i === heroImageIndex ? 'opacity-100' : 'opacity-0'
                   }`}
                 />
