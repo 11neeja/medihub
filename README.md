@@ -172,6 +172,41 @@ npm run dev
 
 That starts the frontend on `http://localhost:3000` and the backend on `http://localhost:5000`.
 
+## Deployment 🚀
+
+### 1. Database
+
+Prisma is the ORM, not the database itself. For production, use a hosted PostgreSQL database and point `DATABASE_URL` at it. Prisma Postgres, Neon, Supabase, and Render Postgres all work.
+
+### 2. Backend on Render
+
+Deploy the `backend/` folder as a Render Web Service.
+
+- Build command: `npm install && npx prisma generate`
+- Start command: `npm start`
+- Health check path: `/api/health`
+
+Set these environment variables on Render:
+
+- `DATABASE_URL`
+- `JWT_SECRET`
+- `OLLAMA_BASE_URL` if you use the AI features
+- `OLLAMA_MODEL` if you use the AI features
+- `EVENTBRITE_TOKEN` if you use events
+- `NEWS_API_KEY` if you use news
+
+### 3. Frontend on Vercel
+
+Deploy the `frontend/` folder as a Vercel Next.js project.
+
+Set these environment variables on Vercel:
+
+- `NEXT_PUBLIC_API_URL=https://your-backend.onrender.com/api`
+- `NEXT_PUBLIC_SOCKET_URL=https://your-backend.onrender.com`
+- `NEXT_PUBLIC_BACKEND_URL=https://your-backend.onrender.com`
+
+If you want the uploaded files and chat attachments to work in production, make sure the backend Render service is publicly reachable and serves `/uploads`.
+
 ## Scripts ⚙️
 
 ### Root scripts 🧰

@@ -73,7 +73,8 @@ interface SharedFile {
   createdAt: string;
 }
 
-const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:5000';
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:5000';
+const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || BACKEND_URL;
 
 export default function ChatPage() {
   const { user } = useAuth();
@@ -549,7 +550,7 @@ export default function ChatPage() {
   // Handle save/download file
   const handleSaveToNotebook = (file: SharedFile) => {
     if (file.fileUrl) {
-      window.open(`http://localhost:5000${file.fileUrl}`, '_blank');
+      window.open(`${BACKEND_URL}${file.fileUrl}`, '_blank');
     }
   };
 
@@ -915,7 +916,7 @@ export default function ChatPage() {
                                         <div className="text-sm font-semibold truncate">{message.fileName}</div>
                                         {message.fileUrl && (
                                           <a
-                                            href={`http://localhost:5000${message.fileUrl}`}
+                                            href={`${BACKEND_URL}${message.fileUrl}`}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className={`text-xs inline-flex items-center gap-1 hover:underline ${

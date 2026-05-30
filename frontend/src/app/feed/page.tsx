@@ -40,7 +40,7 @@ import {
   createPrivateConversationAPI,
 } from '@/lib/api';
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:5000';
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:5000';
 
 type Role = 'Student' | 'Doctor' | 'Professor' | 'Researcher';
 
