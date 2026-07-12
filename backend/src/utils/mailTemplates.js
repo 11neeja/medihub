@@ -1,0 +1,58 @@
+const theme = {
+  background: '#F5F8FF',
+  card: '#FFFFFF',
+  navy: '#0B194D',
+  blue: '#1D4ED8',
+  softBlue: '#E8F1FF',
+  text: '#334155',
+  muted: '#64748B',
+  border: '#D8E2F1',
+}
+
+const shell = (content) => `
+  <div style="margin:0;padding:0;background:${theme.background};font-family:Arial,Helvetica,sans-serif;color:${theme.text};">
+    <div style="max-width:640px;margin:0 auto;padding:32px 16px;">
+      <div style="background:${theme.card};border:1px solid ${theme.border};border-radius:24px;overflow:hidden;box-shadow:0 20px 60px rgba(11,25,77,0.08);">
+        <div style="padding:28px 32px;background:linear-gradient(135deg, ${theme.navy} 0%, ${theme.blue} 100%);color:#fff;">
+          <div style="font-size:13px;letter-spacing:0.24em;text-transform:uppercase;opacity:0.8;">MediHub</div>
+          <div style="font-size:30px;font-weight:700;margin-top:10px;line-height:1.15;">${content.title}</div>
+          <div style="font-size:15px;opacity:0.92;margin-top:10px;line-height:1.6;">${content.subtitle}</div>
+        </div>
+        <div style="padding:32px;">
+          ${content.body}
+        </div>
+      </div>
+      <div style="text-align:center;font-size:12px;color:${theme.muted};padding:18px 10px 0;line-height:1.6;">
+        MediHub • Built for medical learning and collaboration
+      </div>
+    </div>
+  </div>
+`
+
+export const buildWelcomeEmail = ({ name }) => shell({
+  title: 'Welcome to MediHub',
+  subtitle: 'Your account is ready. Start exploring your study and collaboration workspace.',
+  body: `
+    <p style="margin:0 0 18px;font-size:16px;line-height:1.8;">Hi ${name},</p>
+    <p style="margin:0 0 18px;font-size:15px;line-height:1.8;">Welcome to MediHub. You can now use your dashboard, medical feed, notebook, chat, events, and AI assistant in one place.</p>
+    <div style="background:${theme.softBlue};border:1px solid ${theme.border};border-radius:18px;padding:18px 20px;margin:24px 0;">
+      <p style="margin:0 0 10px;font-size:13px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:${theme.blue};">What you can do next</p>
+      <p style="margin:0;color:${theme.text};font-size:14px;line-height:1.7;">Complete your profile, browse the feed, join groups, and start saving notes and documents.</p>
+    </div>
+    <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/home" style="display:inline-block;background:${theme.navy};color:#fff;text-decoration:none;padding:14px 24px;border-radius:14px;font-weight:700;margin-top:6px;">Go to MediHub</a>
+  `,
+})
+
+export const buildPasswordResetEmail = ({ name, resetUrl }) => shell({
+  title: 'Reset Your Password',
+  subtitle: 'We received a request to reset your MediHub password. This link expires in 1 hour.',
+  body: `
+    <p style="margin:0 0 18px;font-size:16px;line-height:1.8;">Hi ${name},</p>
+    <p style="margin:0 0 18px;font-size:15px;line-height:1.8;">Use the button below to choose a new password. If you did not request this, you can ignore this message safely.</p>
+    <div style="background:${theme.softBlue};border:1px solid ${theme.border};border-radius:18px;padding:18px 20px;margin:24px 0;">
+      <p style="margin:0;font-size:14px;line-height:1.7;color:${theme.text};">For security, the link will expire after one hour and can only be used once.</p>
+    </div>
+    <a href="${resetUrl}" style="display:inline-block;background:${theme.navy};color:#fff;text-decoration:none;padding:14px 24px;border-radius:14px;font-weight:700;margin-top:6px;">Reset Password</a>
+    <p style="margin:20px 0 0;font-size:12px;line-height:1.7;color:${theme.muted};word-break:break-all;">If the button does not work, copy and paste this link into your browser:<br>${resetUrl}</p>
+  `,
+})

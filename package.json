@@ -1,11 +1,20 @@
 {
   "name": "medihub",
   "version": "1.0.0",
+  "prisma": {
+    "schema": "backend/prisma/schema.prisma"
+  },
   "scripts": {
-    "install:all": "npm install && cd frontend && npm install && cd ../backend && npm install",
+    "install:all": "npm install --ignore-scripts && cd frontend && npm install && cd ../backend && npm install",
+    "postinstall": "npm install --prefix backend",
+    "start": "npm --prefix backend start",
     "dev:backend": "cd backend && npm run dev",
     "dev:frontend": "cd frontend && npm run dev",
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\""
+  },
+  "dependencies": {
+    "@prisma/client": "^7.4.1",
+    "prisma": "^7.4.1"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"

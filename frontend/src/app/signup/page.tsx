@@ -4,7 +4,7 @@ import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
-import { User, Mail, Lock, ArrowRight, ArrowLeft, AlertCircle, ServerCrash } from 'lucide-react';
+import { User, Mail, Lock, ArrowRight, ArrowLeft, AlertCircle, ShieldCheck } from 'lucide-react';
 
 const SIGNUP_HERO_IMAGE =
   'https://images.unsplash.com/photo-1666214280391-8ff5bd3c0bf0?w=1200&h=1600&fit=crop&q=80';
@@ -13,28 +13,36 @@ export default function SignupPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { signup, backendConnected, dbConnected } = useAuth();
+  const { signup } = useAuth();
   const router = useRouter();
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
 
-    if (!name || !email || !password) {
+    if (!name || !email || !password || !confirmPassword) {
       setError('Please fill in all fields');
       return;
     }
 
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters');
+    if (password !== confirmPassword) {
+      setError('Password and confirm password must match');
+      return;
+    }
+
+    const passwordPolicy = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/;
+    if (!passwordPolicy.test(password)) {
+      setError('Use a strong password with 8+ characters, uppercase, lowercase, number, and special character');
       return;
     }
 
     setIsSubmitting(true);
     try {
-      await signup(name, email, password);
+      await signup(name, email, password, rememberMe);
       router.push('/home');
     } catch (err: any) {
       setError(err.message || 'Registration failed. Please try again.');
@@ -123,20 +131,6 @@ export default function SignupPage() {
 
         <div className="flex-1 flex items-center justify-center">
           <div className="w-full max-w-md">
-            {(!backendConnected || !dbConnected) && (
-              <div className="mb-6 bg-red-50 border border-red-200 rounded-xl p-3.5 flex items-start gap-3">
-                <ServerCrash className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-red-700 font-semibold text-sm">Backend Not Connected</p>
-                  <p className="text-red-600 text-xs mt-1 leading-relaxed">
-                    {!backendConnected
-                      ? 'Cannot reach the backend server. Please start it with: cd backend && npm run dev'
-                      : 'Database is not connected. Check your database configuration.'}
-                  </p>
-                </div>
-              </div>
-            )}
-
             {/* Header */}
             <div className="mb-8">
               <p className="label mb-3">Get started</p>
@@ -203,17 +197,57 @@ export default function SignupPage() {
                     id="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Create a strong password (min 6 chars)"
+                    placeholder="Create a strong password"
                     className="input w-full pl-11 pr-4"
                     required
-                    minLength={6}
+                    minLength={8}
+                  />
+                </div>
+                <div className="mt-3 rounded-xl border border-[var(--color-border-light)] bg-white p-4 text-sm text-[var(--color-text-secondary)]">
+                  <div className="flex items-center gap-2 font-semibold text-[var(--color-navy)] mb-2">
+                    <ShieldCheck className="w-4 h-4 text-[var(--color-blue-primary)]" />
+                    Strong password policy
+                  </div>
+                  <ul className="space-y-1.5">
+                    <li>• At least 8 characters</li>
+                    <li>• One uppercase and one lowercase letter</li>
+                    <li>• One number and one special character</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="confirmPassword" className="block label mb-2">
+                  Confirm Password
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--color-text-muted)]" />
+                  <input
+                    type="password"
+                    id="confirmPassword"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Re-enter your password"
+                    className="input w-full pl-11 pr-4"
+                    required
+                    minLength={8}
                   />
                 </div>
               </div>
 
+              <label className="inline-flex items-center gap-2 text-sm text-[var(--color-text-secondary)] cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="h-4 w-4 rounded border-[var(--color-border-mid)] accent-[var(--color-blue-primary)] focus:ring-[var(--color-blue-primary)]"
+                />
+                Remember me for 7 days
+              </label>
+
               <button
                 type="submit"
-                disabled={isSubmitting || !backendConnected || !dbConnected}
+                disabled={isSubmitting}
                 className="btn-primary !rounded-lg w-full py-4 inline-flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? (

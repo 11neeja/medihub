@@ -5,6 +5,7 @@
   "main": "server.js",
   "type": "module",
   "prisma": {
+    "schema": "prisma/schema.prisma",
     "seed": "tsx prisma/seed.ts"
   },
   "scripts": {
@@ -28,6 +29,7 @@
     "jsonwebtoken": "^9.0.2",
     "mammoth": "^1.11.0",
     "multer": "^2.0.2",
+    "nodemailer": "^6.10.1",
     "officeparser": "^6.0.4",
     "pdf-parse": "^2.4.5",
     "pg": "^8.18.0",

@@ -12,8 +12,6 @@ model User {
   email     String   @unique
   password  String
   role      String   @default("user")
-  resetPasswordToken   String?  @unique
-  resetPasswordExpires DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

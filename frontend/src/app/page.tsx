@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   ArrowRight,
   BadgeCheck,
@@ -16,6 +17,7 @@ import {
   Stethoscope,
 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { useAuth } from '@/context/AuthContext';
 
 const ECOSYSTEM_PILLS = [
   'Medical Students',
@@ -113,6 +115,8 @@ export default function LandingPage() {
   const [formData, setFormData] = useState({ name: '', email: '', message: '' });
   const [openFaq, setOpenFaq] = useState(0);
   const [heroImageIndex, setHeroImageIndex] = useState(0);
+  const { loading, isAuthenticated } = useAuth();
+  const router = useRouter();
 
   // Auto-rotate hero images
   useEffect(() => {
@@ -121,6 +125,16 @@ export default function LandingPage() {
     }, HERO_ROTATION_MS);
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    if (!loading && isAuthenticated) {
+      router.replace('/home');
+    }
+  }, [loading, isAuthenticated, router]);
+
+  if (loading || isAuthenticated) {
+    return null;
+  }
 
   const scrollToSection = (sectionId: string) => {
     document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -214,7 +228,7 @@ export default function LandingPage() {
                   src={image.src}
                   alt={image.alt}
                   aria-hidden={i !== heroImageIndex}
-                  className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-[1200ms] ease-in-out ${
+                  className={`absolute inset-0 w-full h-full object-cover transition-opacity [transition-duration:1200ms] ease-in-out ${
                     i === heroImageIndex ? 'opacity-100' : 'opacity-0'
                   }`}
                 />

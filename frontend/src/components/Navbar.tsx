@@ -157,7 +157,7 @@ export default function Navbar() {
             className="hidden xl:inline-block text-[10px] uppercase tracking-[0.22em] text-[var(--color-text-muted)] font-semibold"
             aria-hidden
           >
-            est. 2025
+            est. 2026
           </span>
         </Link>
 

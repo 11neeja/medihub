@@ -190,8 +190,17 @@ Set these environment variables on Render:
 
 - `DATABASE_URL`
 - `JWT_SECRET`
-- `OLLAMA_BASE_URL` if you use the AI features
-- `OLLAMA_MODEL` if you use the AI features
+- `SMTP_HOST`
+- `SMTP_PORT`
+- `SMTP_REQUIRE_TLS=true`
+- `SMTP_FAMILY=4` to force IPv4 SMTP connections from Render
+- `SMTP_USER`
+- `SMTP_PASS`
+- `SMTP_FROM_NAME` if you want a custom sender name
+- `SMTP_FROM_EMAIL` if your SMTP provider supports a custom from address
+- `AI_PROVIDER=gemini`
+- `GEMINI_API_KEY`
+- `GEMINI_MODEL` if you want to change the default model
 - `EVENTBRITE_TOKEN` if you use events
 - `NEWS_API_KEY` if you use news
 

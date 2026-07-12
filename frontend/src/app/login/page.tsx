@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
+import { useEffect, useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
-import { Mail, Lock, ArrowRight, ArrowLeft, AlertCircle, ServerCrash } from 'lucide-react';
+import { Mail, Lock, ArrowRight, ArrowLeft, AlertCircle, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { forgotPasswordAPI, resetPasswordAPI } from '@/lib/api';
 
 const LOGIN_HERO_IMAGE =
   'https://images.unsplash.com/photo-1505751172876-fa1923c5c528?w=1200&h=1600&fit=crop&q=80';
@@ -12,10 +13,38 @@ const LOGIN_HERO_IMAGE =
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { login, backendConnected, dbConnected } = useAuth();
+  const [modalMode, setModalMode] = useState<'forgot' | 'reset' | null>(null);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotError, setForgotError] = useState('');
+  const [forgotSuccess, setForgotSuccess] = useState('');
+  const [forgotSubmitting, setForgotSubmitting] = useState(false);
+  const [resetToken, setResetToken] = useState('');
+  const [resetEmail, setResetEmail] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [resetError, setResetError] = useState('');
+  const [resetSuccess, setResetSuccess] = useState('');
+  const [resetSubmitting, setResetSubmitting] = useState(false);
+  const { login } = useAuth();
   const router = useRouter();
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const token = searchParams.get('token');
+    const emailFromQuery = searchParams.get('email');
+    const mode = searchParams.get('mode');
+
+    if (mode === 'reset' && token && emailFromQuery) {
+      setModalMode('reset');
+      setResetToken(token);
+      setResetEmail(emailFromQuery);
+      setResetError('');
+      setResetSuccess('');
+    }
+  }, []);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -28,12 +57,90 @@ export default function LoginPage() {
 
     setIsSubmitting(true);
     try {
-      await login(email, password);
+      await login(email, password, rememberMe);
       router.push('/home');
     } catch (err: any) {
       setError(err.message || 'Login failed. Please try again.');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const openForgotPasswordModal = () => {
+    setForgotEmail(email);
+    setForgotError('');
+    setForgotSuccess('');
+    setModalMode('forgot');
+  };
+
+  const closeForgotPasswordModal = () => {
+    setModalMode(null);
+    setForgotError('');
+    setForgotSuccess('');
+    setForgotSubmitting(false);
+    setResetError('');
+    setResetSuccess('');
+    setResetSubmitting(false);
+  };
+
+  const handleForgotPassword = async (e: FormEvent) => {
+    e.preventDefault();
+    setForgotError('');
+    setForgotSuccess('');
+
+    if (!forgotEmail) {
+      setForgotError('Please enter your email address');
+      return;
+    }
+
+    setForgotSubmitting(true);
+    try {
+      const res = await forgotPasswordAPI(forgotEmail);
+      setForgotSuccess(res.message || 'Check your email for the reset link.');
+    } catch (err: any) {
+      setForgotError(err.response?.data?.message || err.message || 'Unable to send reset email');
+    } finally {
+      setForgotSubmitting(false);
+    }
+  };
+
+  const handleResetPassword = async (e: FormEvent) => {
+    e.preventDefault();
+    setResetError('');
+    setResetSuccess('');
+
+    if (!resetEmail || !resetToken) {
+      setResetError('This reset link is missing information. Please request a new one.');
+      return;
+    }
+
+    const strongPassword = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/;
+    if (!strongPassword.test(newPassword)) {
+      setResetError('Use a strong password with 8+ characters, uppercase, lowercase, number, and special character');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setResetError('Passwords do not match');
+      return;
+    }
+
+    setResetSubmitting(true);
+    try {
+      const res = await resetPasswordAPI(resetEmail, resetToken, newPassword);
+      setResetSuccess(res.message || 'Password updated successfully. You can sign in now.');
+      setPassword('');
+      setEmail(resetEmail);
+      setNewPassword('');
+      setConfirmPassword('');
+      setTimeout(() => {
+        closeForgotPasswordModal();
+        router.replace('/login');
+      }, 1600);
+    } catch (err: any) {
+      setResetError(err.response?.data?.message || err.message || 'Unable to reset password');
+    } finally {
+      setResetSubmitting(false);
     }
   };
 
@@ -51,20 +158,6 @@ export default function LoginPage() {
 
         <div className="flex-1 flex items-center justify-center">
           <div className="w-full max-w-md">
-            {(!backendConnected || !dbConnected) && (
-              <div className="mb-6 bg-red-50 border border-red-200 rounded-xl p-3.5 flex items-start gap-3">
-                <ServerCrash className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-red-700 font-semibold text-sm">Backend Not Connected</p>
-                  <p className="text-red-600 text-xs mt-1 leading-relaxed">
-                    {!backendConnected
-                      ? 'Cannot reach the backend server. Please start it with: cd backend && npm run dev'
-                      : 'Database is not connected. Check your database configuration.'}
-                  </p>
-                </div>
-              </div>
-            )}
-
             {/* Header */}
             <div className="mb-8">
               <p className="label mb-3">Welcome back</p>
@@ -120,9 +213,29 @@ export default function LoginPage() {
                 </div>
               </div>
 
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <label className="inline-flex items-center gap-2 text-sm text-[var(--color-text-secondary)] cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="h-4 w-4 rounded border-[var(--color-border-mid)] accent-[var(--color-blue-primary)] focus:ring-[var(--color-blue-primary)]"
+                  />
+                  Remember me for 7 days
+                </label>
+
+                <button
+                  type="button"
+                  onClick={openForgotPasswordModal}
+                  className="text-sm font-semibold text-[var(--color-blue-primary)] hover:text-[var(--color-navy-hover)] transition-smooth"
+                >
+                  Forgot password?
+                </button>
+              </div>
+
               <button
                 type="submit"
-                disabled={isSubmitting || !backendConnected || !dbConnected}
+                disabled={isSubmitting}
                 className="btn-primary !rounded-lg w-full py-4 inline-flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? (
@@ -216,6 +329,195 @@ export default function LoginPage() {
           </div>
         </div>
       </div>
+
+      {modalMode && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center px-4 bg-[rgba(11,25,77,0.45)] backdrop-blur-sm"
+          onClick={closeForgotPasswordModal}
+        >
+          <div
+            className="w-full max-w-md rounded-[28px] border border-[var(--color-border-light)] bg-white shadow-[0_24px_80px_rgba(11,25,77,0.18)] p-6 sm:p-8"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {modalMode === 'forgot' ? (
+              <>
+                <div className="mb-6">
+                  <p className="label mb-2">Forgot password</p>
+                  <h2 className="text-2xl font-extrabold tracking-tight text-[var(--color-navy)]">Send reset link</h2>
+                  <p className="body-md mt-2">Enter your email and we’ll send a secure reset link to your inbox.</p>
+                </div>
+
+                {forgotError && (
+                  <div className="mb-4 bg-red-50 border border-red-200 rounded-xl p-3 flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
+                    <p className="text-red-600 text-sm">{forgotError}</p>
+                  </div>
+                )}
+
+                {forgotSuccess && (
+                  <div className="mb-4 bg-emerald-50 border border-emerald-200 rounded-xl p-3">
+                    <p className="text-emerald-700 text-sm leading-relaxed">{forgotSuccess}</p>
+                    <p className="text-emerald-700 text-xs mt-2 leading-relaxed">
+                      Open the email, reset your password, then return here to sign in with the new password.
+                    </p>
+                  </div>
+                )}
+
+                <form onSubmit={handleForgotPassword} className="space-y-5">
+                  <div>
+                    <label htmlFor="forgot-email" className="block label mb-2">
+                      Email Address
+                    </label>
+                    <div className="relative">
+                      <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--color-text-muted)]" />
+                      <input
+                        type="email"
+                        id="forgot-email"
+                        value={forgotEmail}
+                        onChange={(e) => setForgotEmail(e.target.value)}
+                        placeholder="your.email@example.com"
+                        className="input w-full pl-11 pr-4"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <button
+                      type="button"
+                      onClick={closeForgotPasswordModal}
+                      className="btn-secondary !rounded-lg w-full py-3.5"
+                    >
+                      Close
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={forgotSubmitting}
+                      className="btn-primary !rounded-lg w-full py-3.5 inline-flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {forgotSubmitting ? (
+                        <>
+                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          Sending…
+                        </>
+                      ) : (
+                        'Send email'
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </>
+            ) : (
+              <>
+                <div className="mb-6">
+                  <p className="label mb-2">Reset password</p>
+                  <h2 className="text-2xl font-extrabold tracking-tight text-[var(--color-navy)]">Choose a new password</h2>
+                  <p className="body-md mt-2">Reset the password for {resetEmail} and then sign back in on this page.</p>
+                </div>
+
+                {resetError && (
+                  <div className="mb-4 bg-red-50 border border-red-200 rounded-xl p-3 flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
+                    <p className="text-red-600 text-sm">{resetError}</p>
+                  </div>
+                )}
+
+                {resetSuccess && (
+                  <div className="mb-4 bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                    <p className="text-emerald-700 text-sm">{resetSuccess}</p>
+                  </div>
+                )}
+
+                <form onSubmit={handleResetPassword} className="space-y-5">
+                  <div>
+                    <label className="block label mb-2">Email Address</label>
+                    <div className="relative">
+                      <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--color-text-muted)]" />
+                      <input
+                        type="email"
+                        value={resetEmail}
+                        className="input w-full pl-11 pr-4"
+                        disabled
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label htmlFor="new-password" className="block label mb-2">
+                      New Password
+                    </label>
+                    <div className="relative">
+                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--color-text-muted)]" />
+                      <input
+                        type="password"
+                        id="new-password"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        placeholder="Create a strong password"
+                        className="input w-full pl-11 pr-4"
+                        required
+                        minLength={8}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label htmlFor="confirm-password" className="block label mb-2">
+                      Confirm Password
+                    </label>
+                    <div className="relative">
+                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--color-text-muted)]" />
+                      <input
+                        type="password"
+                        id="confirm-password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        placeholder="Repeat the password"
+                        className="input w-full pl-11 pr-4"
+                        required
+                        minLength={8}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-[var(--color-border-light)] bg-white p-4 text-sm text-[var(--color-text-secondary)]">
+                    <div className="flex items-center gap-2 font-semibold text-[var(--color-navy)] mb-2">
+                      <ShieldCheck className="w-4 h-4 text-[var(--color-blue-primary)]" />
+                      Password policy
+                    </div>
+                    <p>8+ characters, uppercase, lowercase, number, and special character.</p>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <button
+                      type="button"
+                      onClick={closeForgotPasswordModal}
+                      className="btn-secondary !rounded-lg w-full py-3.5"
+                    >
+                      Close
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={resetSubmitting}
+                      className="btn-primary !rounded-lg w-full py-3.5 inline-flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {resetSubmitting ? (
+                        <>
+                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          Updating…
+                        </>
+                      ) : (
+                        'Reset password'
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useSearchParams } from 'next/navigation';
 import ResizableSidebar from '@/components/ResizableSidebar';
 import { useAuth } from '@/context/AuthContext';
 import { useNotifications } from '@/context/NotificationContext';
@@ -79,7 +78,6 @@ const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || BACKEND_URL;
 export default function ChatPage() {
   const { user } = useAuth();
   const { addNotification } = useNotifications();
-  const searchParams = useSearchParams();
 
   // State
   const [conversations, setConversations] = useState<ConversationType[]>([]);
@@ -248,6 +246,7 @@ export default function ChatPage() {
   useEffect(() => {
     if (user) {
       loadConversations().then((convs) => {
+        const searchParams = new URLSearchParams(window.location.search);
         const convId = searchParams.get('conversationId');
         if (convId && convs.length > 0) {
           const target = convs.find((c: ConversationType) => c.id === convId);
@@ -258,7 +257,7 @@ export default function ChatPage() {
         }
       });
     }
-  }, [user, loadConversations, searchParams]);
+  }, [user, loadConversations]);
 
   // Load messages when conversation is selected
   useEffect(() => {

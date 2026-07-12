@@ -32,13 +32,23 @@ export const checkBackendHealth = async (): Promise<{
 }
 
 // ─── Auth API ──────────────────────────────────────────────────────
-export const loginAPI = async (email: string, password: string) => {
-  const res = await api.post('/users/login', { email, password })
+export const loginAPI = async (email: string, password: string, rememberMe = false) => {
+  const res = await api.post('/users/login', { email, password, rememberMe })
   return res.data
 }
 
-export const registerAPI = async (name: string, email: string, password: string) => {
-  const res = await api.post('/users/register', { name, email, password })
+export const registerAPI = async (name: string, email: string, password: string, rememberMe = false) => {
+  const res = await api.post('/users/register', { name, email, password, rememberMe })
+  return res.data
+}
+
+export const forgotPasswordAPI = async (email: string) => {
+  const res = await api.post('/users/forgot-password', { email })
+  return res.data
+}
+
+export const resetPasswordAPI = async (email: string, token: string, password: string) => {
+  const res = await api.post('/users/reset-password', { email, token, password })
   return res.data
 }
 
