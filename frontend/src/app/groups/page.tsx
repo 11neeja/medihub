@@ -22,6 +22,12 @@ import {
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:5000';
 
+// Cloud (absolute) file URLs are used as-is; legacy /uploads/... paths are served by our backend.
+const resolveFileUrl = (url?: string | null) => {
+  if (!url) return '';
+  return /^https?:\/\//i.test(url) ? url : `${BACKEND_URL}${url}`;
+};
+
 type SortMode = 'hot' | 'new' | 'top';
 
 interface Community {
@@ -420,7 +426,7 @@ export default function GroupsPage() {
   const handleDownloadResource = async (resource: Resource) => {
     try {
       await downloadCommunityResourceAPI(resource.id);
-      window.open(`${BACKEND_URL}${resource.fileUrl}`, '_blank');
+      window.open(resolveFileUrl(resource.fileUrl), '_blank');
     } catch (err) {
       console.error('Download failed:', err);
     }

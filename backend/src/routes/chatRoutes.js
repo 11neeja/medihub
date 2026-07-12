@@ -17,10 +17,10 @@ import {
   getPendingJoinRequests,
 } from '../controllers/chatController.js'
 import { protect } from '../middleware/auth.js'
-import { createUpload } from '../utils/upload.js'
+import { createMemoryUpload } from '../utils/upload.js'
 
 const router = express.Router()
-const upload = createUpload('chat')
+const upload = createMemoryUpload(50 * 1024 * 1024) // 50 MB max
 
 // Conversations
 router.get('/conversations', protect, getConversations)

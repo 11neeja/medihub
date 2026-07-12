@@ -1,7 +1,8 @@
 import prisma from '../config/prisma.js'
-import { createUpload } from '../utils/upload.js'
+import { createMemoryUpload } from '../utils/upload.js'
+import { persistFile } from '../utils/storage.js'
 
-export const postImageUpload = createUpload('post', 10 * 1024 * 1024) // 10 MB max
+export const postImageUpload = createMemoryUpload(10 * 1024 * 1024) // 10 MB max
 
 const postInclude = {
   author: { select: { id: true, name: true, email: true, role: true } },
@@ -73,7 +74,7 @@ export const createPost = async (req, res) => {
 
     let imageUrl = null
     if (req.file) {
-      imageUrl = `/uploads/${req.file.filename}`
+      imageUrl = await persistFile(req.file, { folder: 'medihub/posts', prefix: 'post' })
     }
 
     const post = await prisma.post.create({

@@ -1,9 +1,10 @@
 import prisma from '../config/prisma.js';
-import { createUpload } from '../utils/upload.js';
+import { createMemoryUpload } from '../utils/upload.js';
+import { persistFile } from '../utils/storage.js';
 import { createAndEmitNotification } from '../utils/notification.js';
 
 // Multer instance for community resource uploads
-export const resourceUpload = createUpload('resource', 50 * 1024 * 1024);
+export const resourceUpload = createMemoryUpload(50 * 1024 * 1024);
 
 // Shared include for communities
 const communityInclude = {
@@ -518,10 +519,11 @@ export const uploadResource = async (req, res) => {
     if (!req.file) return res.status(400).json({ message: 'No file provided' });
 
     const ext = req.file.originalname.split('.').pop()?.toLowerCase() || 'file';
+    const fileUrl = await persistFile(req.file, { folder: 'medihub/resources', prefix: 'resource' });
     const resource = await prisma.communityResource.create({
       data: {
         name: req.file.originalname,
-        fileUrl: `/uploads/${req.file.filename}`,
+        fileUrl,
         fileType: ext,
         communityId: id,
         uploadedById: req.user.id,

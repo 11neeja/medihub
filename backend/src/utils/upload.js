@@ -26,4 +26,14 @@ export function createUpload(prefix = 'file', maxSize = 250 * 1024 * 1024) {
   return multer({ storage, limits: { fileSize: maxSize } })
 }
 
+/**
+ * Create a multer upload instance backed by in-memory storage.
+ * Use this when the file will be streamed straight to cloud storage
+ * (e.g. Cloudinary) rather than written to local disk.
+ * @param {number} maxSize - max file size in bytes (default 10 MB)
+ */
+export function createMemoryUpload(maxSize = 10 * 1024 * 1024) {
+  return multer({ storage: multer.memoryStorage(), limits: { fileSize: maxSize } })
+}
+
 export { uploadsDir }

@@ -42,6 +42,13 @@ import {
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:5000';
 
+// Resolve a stored image URL. Cloudinary (and other cloud) URLs are absolute
+// and used as-is; legacy /uploads/... paths are served by our backend.
+const resolveImageUrl = (url?: string | null) => {
+  if (!url) return '';
+  return /^https?:\/\//i.test(url) ? url : `${BACKEND_URL}${url}`;
+};
+
 type Role = 'Student' | 'Doctor' | 'Professor' | 'Researcher';
 
 interface Author {
@@ -435,7 +442,7 @@ export default function FeedPage() {
           {(post.repostedFrom?.imageUrl || post.imageUrl) && (
             <div className="mb-4 rounded-xl overflow-hidden border border-[var(--color-border-light)] bg-black/5 flex items-center justify-center max-h-[480px]">
               <img
-                src={`${BACKEND_URL}${post.repostedFrom?.imageUrl || post.imageUrl}`}
+                src={resolveImageUrl(post.repostedFrom?.imageUrl || post.imageUrl)}
                 alt="Post image"
                 className="max-w-full max-h-[480px] object-contain"
               />

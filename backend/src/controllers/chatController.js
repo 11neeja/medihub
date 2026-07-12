@@ -2,6 +2,7 @@ import prisma from '../config/prisma.js'
 import fs from 'fs'
 import path from 'path'
 import { createAndEmitNotification } from '../utils/notification.js'
+import { persistFile } from '../utils/storage.js'
 
 // @desc    Get all conversations for the logged-in user
 // @route   GET /api/chat/conversations
@@ -240,12 +241,15 @@ export const sendFileMessage = async (req, res) => {
       return res.status(400).json({ message: 'No file uploaded' })
     }
 
-    const { originalname, mimetype, size, filename } = req.file
+    const { originalname, mimetype, size } = req.file
     const fileType = mimetype.startsWith('image/')
       ? 'image'
       : mimetype === 'application/pdf'
       ? 'pdf'
       : 'file'
+
+    // Persist to shared cloud storage (or local disk in dev)
+    const fileUrl = await persistFile(req.file, { folder: 'medihub/chat', prefix: 'chat' })
 
     // Store as document with source=chat
     const document = await prisma.document.create({
@@ -254,7 +258,7 @@ export const sendFileMessage = async (req, res) => {
         name: originalname,
         type: fileType,
         source: 'chat',
-        filePath: filename,
+        filePath: fileUrl,
         mimeType: mimetype,
         size,
       },
@@ -266,7 +270,7 @@ export const sendFileMessage = async (req, res) => {
         conversationId,
         senderId: req.user.id,
         fileName: originalname,
-        fileUrl: `/uploads/${filename}`,
+        fileUrl,
         fileType,
         documentId: document.id,
       },

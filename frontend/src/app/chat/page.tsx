@@ -75,6 +75,12 @@ interface SharedFile {
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:5000';
 const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || BACKEND_URL;
 
+// Cloud (absolute) file URLs are used as-is; legacy /uploads/... paths are served by our backend.
+const resolveFileUrl = (url?: string | null) => {
+  if (!url) return '';
+  return /^https?:\/\//i.test(url) ? url : `${BACKEND_URL}${url}`;
+};
+
 export default function ChatPage() {
   const { user } = useAuth();
   const { addNotification } = useNotifications();
@@ -549,7 +555,7 @@ export default function ChatPage() {
   // Handle save/download file
   const handleSaveToNotebook = (file: SharedFile) => {
     if (file.fileUrl) {
-      window.open(`${BACKEND_URL}${file.fileUrl}`, '_blank');
+      window.open(resolveFileUrl(file.fileUrl), '_blank');
     }
   };
 
@@ -915,7 +921,7 @@ export default function ChatPage() {
                                         <div className="text-sm font-semibold truncate">{message.fileName}</div>
                                         {message.fileUrl && (
                                           <a
-                                            href={`${BACKEND_URL}${message.fileUrl}`}
+                                            href={resolveFileUrl(message.fileUrl)}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className={`text-xs inline-flex items-center gap-1 hover:underline ${

@@ -2,6 +2,7 @@ import prisma from '../config/prisma.js'
 import fs from 'fs'
 import path from 'path'
 import { extractTextFromFile } from '../utils/extractText.js'
+import { isRemoteUrl } from '../utils/storage.js'
 
 // @desc    Get all documents for logged-in user (optionally filtered by source)
 // @route   GET /api/documents?source=assistant|notebook
@@ -78,6 +79,16 @@ export const downloadDocument = async (req, res) => {
       where: { id: req.params.id, userId: req.user.id },
     })
     if (!document) return res.status(404).json({ message: 'Document not found' })
+
+    // Files stored in cloud storage keep an absolute URL in filePath.
+    if (isRemoteUrl(document.filePath)) {
+      return res.json({
+        name: document.name,
+        type: document.type,
+        mimeType: document.mimeType,
+        fileUrl: document.filePath,
+      })
+    }
 
     const uploadsDir = path.join(process.cwd(), 'uploads')
     const fullPath = path.join(uploadsDir, document.filePath)
