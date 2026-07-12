@@ -4,9 +4,36 @@ import { buildWelcomeEmail, buildPasswordResetEmail } from './mailTemplates.js'
 
 dotenv.config()
 
-export const hasSmtpConfig = () => Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS)
+// ── Credential hygiene ──────────────────────────────────────────
+// Gmail shows app passwords as "xxxx xxxx xxxx xxxx"; the spaces are
+// display-only. Pasting them verbatim into .env or the Render dashboard
+// makes Gmail reject the login with 535. Strip whitespace for Gmail hosts
+// (and anything shaped like an app password) so a spaced paste can never
+// break mail again, locally or in production.
 
-let transporter = null
+const trimmed = (value) => (value || '').trim()
+
+const isGmailHost = (host) => /(^|\.)gmail\.com$/i.test(host)
+
+const smtpHost = () => trimmed(process.env.SMTP_HOST)
+const smtpUser = () => trimmed(process.env.SMTP_USER)
+
+const smtpPass = () => {
+  const raw = trimmed(process.env.SMTP_PASS)
+  const compact = raw.replace(/\s+/g, '')
+  const looksLikeAppPassword = /^[a-z]{16}$/i.test(compact)
+  return isGmailHost(smtpHost()) || looksLikeAppPassword ? compact : raw
+}
+
+export const hasSmtpConfig = () => Boolean(smtpHost() && smtpUser() && smtpPass())
+
+// 'not_configured' | 'unverified' | 'ok' | 'error' — surfaced by /api/health
+let mailerStatus = 'unverified'
+export const getMailerStatus = () => (hasSmtpConfig() ? mailerStatus : 'not_configured')
+
+// Last transport config that actually worked; tried first on later sends
+// so we stop re-probing ports (and re-logging) on every email.
+let knownGoodConfig = null
 
 const assertMailAccepted = (info, label) => {
   const acceptedCount = Array.isArray(info.accepted) ? info.accepted.length : 0
@@ -20,21 +47,21 @@ const assertMailAccepted = (info, label) => {
 }
 
 const getFromAddress = () => {
-  const fromEmail = process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER
-  const fromName = process.env.SMTP_FROM_NAME || 'MediHub'
+  const fromEmail = trimmed(process.env.SMTP_FROM_EMAIL) || smtpUser()
+  const fromName = trimmed(process.env.SMTP_FROM_NAME) || 'MediHub'
   return fromEmail ? `${fromName} <${fromEmail}>` : fromName
 }
 
 const buildTransportOptions = ({ port, secure }) => {
   return {
-    host: process.env.SMTP_HOST,
+    host: smtpHost(),
     port,
     secure,
     family: Number(process.env.SMTP_FAMILY || 4),
     requireTLS: String(process.env.SMTP_REQUIRE_TLS || 'true') === 'true',
     auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
+      user: smtpUser(),
+      pass: smtpPass(),
     },
     logger: String(process.env.SMTP_DEBUG || 'false') === 'true',
     debug: String(process.env.SMTP_DEBUG || 'false') === 'true',
@@ -44,51 +71,90 @@ const buildTransportOptions = ({ port, secure }) => {
   }
 }
 
-const createTransporter = ({ port, secure }) => {
-  const transportOptions = buildTransportOptions({ port, secure })
-
-  const createdTransporter = nodemailer.createTransport(transportOptions, {
+const createTransporter = ({ port, secure }) =>
+  nodemailer.createTransport(buildTransportOptions({ port, secure }), {
     from: getFromAddress(),
   })
 
-  console.log('SMTP transporter initialized:', {
-    host: process.env.SMTP_HOST,
-    port,
-    secure,
-    family: Number(process.env.SMTP_FAMILY || 4),
-    from: process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER,
-  })
-
-  return createdTransporter
-}
-
-const getTransporterCandidates = () => {
-  const host = process.env.SMTP_HOST || ''
+// Candidate transport configs, most likely to succeed first. For Gmail we
+// always keep both 465 (implicit TLS) and 587 (STARTTLS) on the list —
+// hosts like Render allow both but block port 25.
+const getTransportCandidates = () => {
   const primaryPort = Number(process.env.SMTP_PORT || 587)
   const primarySecure = String(process.env.SMTP_SECURE || 'false') === 'true'
 
-  const candidates = [{ port: primaryPort, secure: primarySecure }]
+  const candidates = []
+  const addCandidate = (candidate) => {
+    if (!candidates.some((c) => c.port === candidate.port && c.secure === candidate.secure)) {
+      candidates.push(candidate)
+    }
+  }
 
-  const isGmailHost = /(^|\.)gmail\.com$/i.test(host) || host === 'smtp.gmail.com'
-  if (isGmailHost && primaryPort !== 465) {
-    candidates.push({ port: 465, secure: true })
+  if (knownGoodConfig) addCandidate(knownGoodConfig)
+  addCandidate({ port: primaryPort, secure: primarySecure })
+
+  if (isGmailHost(smtpHost())) {
+    addCandidate({ port: 465, secure: true })
+    addCandidate({ port: 587, secure: false })
   }
 
   return candidates
 }
 
+// Translate low-level SMTP failures into instructions someone can act on
+// from the production logs alone.
+const describeSmtpFailure = (error) => {
+  const message = error?.message || ''
+
+  if (error?.code === 'EAUTH' || /535|Username and Password not accepted|Invalid login/i.test(message)) {
+    return (
+      'Gmail rejected the login (535). The app password is wrong or has been revoked — ' +
+      'generate a new one at https://myaccount.google.com/apppasswords and update SMTP_PASS ' +
+      'where this server runs (production: Render dashboard → medihub-backend → Environment; local: backend/.env). ' +
+      'Note: changing the Google account password revokes ALL existing app passwords.'
+    )
+  }
+
+  if (error?.code === 'ETIMEDOUT' || error?.code === 'ESOCKET' || /timed?\s*out/i.test(message)) {
+    return (
+      'Could not reach the SMTP server (timeout). The host may block this port — ' +
+      'Gmail works on 465 (TLS) or 587 (STARTTLS); port 25 is blocked on most cloud hosts.'
+    )
+  }
+
+  if (error?.code === 'EDNS' || /ENOTFOUND|EAI_AGAIN/i.test(message)) {
+    return 'DNS lookup for the SMTP host failed. Check SMTP_HOST (expected: smtp.gmail.com).'
+  }
+
+  return null
+}
+
 const withTransportFallback = async (label, action) => {
-  const candidates = getTransporterCandidates()
+  const candidates = getTransportCandidates()
   let lastError = null
 
   for (const candidate of candidates) {
     try {
       const candidateTransporter = createTransporter(candidate)
       const result = await action(candidateTransporter)
-      transporter = candidateTransporter
+
+      if (!knownGoodConfig || knownGoodConfig.port !== candidate.port || knownGoodConfig.secure !== candidate.secure) {
+        console.log('SMTP transport ready:', {
+          host: smtpHost(),
+          port: candidate.port,
+          secure: candidate.secure,
+          from: trimmed(process.env.SMTP_FROM_EMAIL) || smtpUser(),
+        })
+      }
+
+      knownGoodConfig = { port: candidate.port, secure: candidate.secure }
+      mailerStatus = 'ok'
       return result
     } catch (error) {
       lastError = error
+      if (knownGoodConfig && knownGoodConfig.port === candidate.port && knownGoodConfig.secure === candidate.secure) {
+        knownGoodConfig = null
+      }
       console.warn(`${label} failed for SMTP port ${candidate.port}:`, {
         message: error.message,
         code: error.code,
@@ -98,23 +164,16 @@ const withTransportFallback = async (label, action) => {
     }
   }
 
+  mailerStatus = 'error'
+  const hint = describeSmtpFailure(lastError)
+  if (hint) console.error(`${label}: ${hint}`)
+
   throw lastError || new Error(`${label} failed for all SMTP connection attempts.`)
-}
-
-const getTransporter = () => {
-  if (transporter) return transporter
-
-  if (!hasSmtpConfig()) return null
-
-  return createTransporter({
-    port: Number(process.env.SMTP_PORT || 587),
-    secure: String(process.env.SMTP_SECURE || 'false') === 'true',
-  })
 }
 
 export const verifyMailerConnection = async () => {
   if (!hasSmtpConfig()) {
-    throw new Error('SMTP is not configured. Set SMTP_HOST, SMTP_PORT, SMTP_USER, and SMTP_PASS in backend/.env.')
+    throw new Error('SMTP is not configured. Set SMTP_HOST, SMTP_PORT, SMTP_USER, and SMTP_PASS in backend/.env (local) or the Render dashboard (production).')
   }
 
   await withTransportFallback('SMTP verification', async (candidateTransporter) => {
@@ -125,7 +184,7 @@ export const verifyMailerConnection = async () => {
 
 export const sendWelcomeEmail = async ({ name, email }) => {
   if (!hasSmtpConfig()) {
-    throw new Error('SMTP is not configured. Set SMTP_HOST, SMTP_PORT, SMTP_USER, and SMTP_PASS in backend/.env.')
+    throw new Error('SMTP is not configured. Set SMTP_HOST, SMTP_PORT, SMTP_USER, and SMTP_PASS in backend/.env (local) or the Render dashboard (production).')
   }
 
   const info = await withTransportFallback('Welcome email', async (candidateTransporter) => candidateTransporter.sendMail({
@@ -147,7 +206,7 @@ export const sendWelcomeEmail = async ({ name, email }) => {
 
 export const sendPasswordResetEmail = async ({ name, email, resetUrl }) => {
   if (!hasSmtpConfig()) {
-    throw new Error('SMTP is not configured. Set SMTP_HOST, SMTP_PORT, SMTP_USER, and SMTP_PASS in backend/.env.')
+    throw new Error('SMTP is not configured. Set SMTP_HOST, SMTP_PORT, SMTP_USER, and SMTP_PASS in backend/.env (local) or the Render dashboard (production).')
   }
 
   const info = await withTransportFallback('Password reset email', async (candidateTransporter) => candidateTransporter.sendMail({

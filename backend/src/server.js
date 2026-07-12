@@ -18,7 +18,7 @@ import newsRoutes from './routes/newsRoutes.js'
 import opportunityRoutes from './routes/opportunityRoutes.js'
 import groupRoutes from './routes/groupRoutes.js'
 import seedDatabase from './utils/seed.js'
-import { hasSmtpConfig, verifyMailerConnection } from './utils/mailer.js'
+import { hasSmtpConfig, verifyMailerConnection, getMailerStatus } from './utils/mailer.js'
 
 const app = express()
 const PORT = process.env.PORT || 5000
@@ -139,15 +139,14 @@ const startServer = async () => {
 
   await seedDatabase()
 
+  // Verify SMTP in the background — never delay or block server startup on
+  // an external mail server (Gmail timeouts would stall cold starts on Render).
   if (hasSmtpConfig()) {
-    try {
-      await verifyMailerConnection()
-      console.log('SMTP transporter verified')
-    } catch (error) {
-      console.warn('SMTP verification failed:', error.message)
-    }
+    verifyMailerConnection()
+      .then(() => console.log('SMTP transporter verified'))
+      .catch((error) => console.warn('SMTP verification failed:', error.message))
   } else {
-    console.warn('SMTP not configured; welcome/reset emails will not be sent until backend/.env is filled')
+    console.warn('SMTP not configured; welcome/reset emails will not be sent. Set SMTP_* in backend/.env (local) or the Render dashboard (production).')
   }
 
   // Middleware
@@ -166,6 +165,7 @@ const startServer = async () => {
         status: 'ok',
         server: true,
         database: 'connected',
+        smtp: getMailerStatus(),
         timestamp: new Date().toISOString(),
       })
     } catch {
@@ -173,6 +173,7 @@ const startServer = async () => {
         status: 'error',
         server: true,
         database: 'disconnected',
+        smtp: getMailerStatus(),
         timestamp: new Date().toISOString(),
       })
     }

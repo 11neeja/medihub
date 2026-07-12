@@ -16,12 +16,19 @@ services:
         sync: false
       - key: JWT_SECRET
         sync: false
+      # Public URL of the deployed frontend — used to build links in emails
+      # (password reset, welcome). MUST be set or reset links point to localhost.
+      - key: FRONTEND_URL
+        sync: false
+      # Gmail SMTP is fixed config, not a secret — pin it here so the only
+      # dashboard-managed values are the account (SMTP_USER/SMTP_FROM_EMAIL)
+      # and the app password (SMTP_PASS). 465 = implicit TLS, reliable on Render.
       - key: SMTP_HOST
-        sync: false
+        value: smtp.gmail.com
       - key: SMTP_PORT
-        sync: false
+        value: 465
       - key: SMTP_SECURE
-        value: false
+        value: true
       - key: SMTP_FAMILY
         value: 4
       - key: SMTP_REQUIRE_TLS
