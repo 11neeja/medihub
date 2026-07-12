@@ -16,8 +16,6 @@ import {
   Calendar,
   Users,
   BookOpen,
-  Smartphone,
-  Lightbulb,
   Loader2,
   X,
   Send,
@@ -106,8 +104,14 @@ export default function FeedPage() {
   const [repostContent, setRepostContent] = useState('');
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const emojiRef = useRef<HTMLDivElement>(null);
+
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ message, type });
+    window.setTimeout(() => setToast(null), 2600);
+  };
 
   const currentUserId = user?._id || '';
   const currentUserName = user?.name || 'You';
@@ -268,7 +272,7 @@ export default function FeedPage() {
       setRepostContent('');
     } catch (err: any) {
       if (err?.response?.status === 400) {
-        alert('You already reposted this');
+        showToast('You already reposted this', 'error');
       }
       console.error('Failed to repost:', err);
       setRepostModal(null);
@@ -279,7 +283,7 @@ export default function FeedPage() {
   // Share (copy link)
   const handleShare = (postId: string) => {
     navigator.clipboard.writeText(`${window.location.origin}/feed?post=${postId}`);
-    alert('Link copied to clipboard!');
+    showToast('Link copied to clipboard');
   };
 
   // Message user — create/get private conversation and navigate to chat
@@ -318,13 +322,19 @@ export default function FeedPage() {
 
   const getRoleBadgeColor = (role: string): string => {
     switch (role) {
-      case 'Doctor': return 'bg-[var(--color-blue-soft)] text-[var(--color-blue-primary)]';
-      case 'Professor': return 'bg-[var(--color-blue-primary)]/20 text-[var(--color-blue-primary)]';
-      case 'Student': return 'bg-[var(--color-blue-soft)]/50 text-[var(--color-blue-primary)]';
-      case 'Researcher': return 'bg-[var(--color-blue-primary)]/30 text-[var(--color-blue-primary)]';
-      default: return 'bg-slate-100 text-[var(--color-text-secondary)]';
+      case 'Professor': return 'bg-[rgba(0,11,51,0.06)] text-[var(--color-navy)] border-[rgba(0,11,51,0.14)]';
+      case 'Researcher': return 'bg-[var(--color-accent-soft)] text-[var(--color-blue-secondary)] border-[rgba(30,66,159,0.16)]';
+      case 'Student': return 'bg-[var(--color-surface-muted)] text-[var(--color-text-secondary)] border-[var(--color-border-light)]';
+      case 'Doctor':
+      default: return 'bg-[var(--color-accent-soft)] text-[var(--color-blue-primary)] border-[rgba(11,59,145,0.14)]';
     }
   };
+
+  const roleBadge = (role?: string) => (
+    <span className={`inline-flex items-center px-2 py-[3px] rounded-full text-[9.5px] font-bold uppercase tracking-[0.1em] border ${getRoleBadgeColor(role || 'Doctor')}`}>
+      {role || 'Doctor'}
+    </span>
+  );
 
   const renderPostContent = (content: string) => {
     // Render hashtags as clickable + detect URLs
@@ -340,7 +350,7 @@ export default function FeedPage() {
       }
       if (part.match(/^https?:\/\//)) {
         return (
-          <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline break-all">
+          <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="text-[var(--color-blue-primary)] font-medium hover:underline break-all">
             {part}
           </a>
         );
@@ -360,61 +370,66 @@ export default function FeedPage() {
         <div className="p-6">
           {/* Repost indicator */}
           {post.repostedFrom && (
-            <div className="flex items-center gap-2 text-sm text-slate-500 mb-3 pl-2">
-              <Repeat2 className="w-4 h-4" />
-              <span><strong className="text-[var(--color-text-primary)]">{post.author.name}</strong> reposted</span>
+            <div className="flex items-center gap-2 mb-4 text-[10px] uppercase tracking-[0.18em] font-semibold text-[var(--color-text-soft)]">
+              <Repeat2 className="w-3.5 h-3.5" strokeWidth={1.75} />
+              <span><span className="text-[var(--color-navy)]">{post.author.name}</span> reposted</span>
+              <span className="flex-1 h-px bg-[var(--color-border-hairline)]" />
             </div>
           )}
 
           {/* Post Header */}
-          <div className="flex gap-4 mb-4">
+          <div className="flex gap-3.5 mb-4">
             <UserAvatar
               userId={post.repostedFrom ? post.repostedFrom.author._id : post.author._id}
               name={post.repostedFrom ? post.repostedFrom.author.name : post.author.name}
-              size={48}
+              size={44}
+              className="ring-1 ring-[var(--color-border-hairline)]"
             />
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-bold text-[var(--color-text-primary)]">
+                <span className="font-semibold text-[0.9375rem] tracking-tight text-[var(--color-navy)]">
                   {post.repostedFrom ? post.repostedFrom.author.name : post.author.name}
                 </span>
-                <span className={`px-2 py-0.5 rounded text-xs font-semibold ${getRoleBadgeColor(
-                  (post.repostedFrom ? post.repostedFrom.author.role : post.author.role) || 'Doctor'
-                )}`}>
-                  {(post.repostedFrom ? post.repostedFrom.author.role : post.author.role) || 'Doctor'}
-                </span>
-                <span className="text-gray-500 text-sm">
+                {roleBadge(post.repostedFrom ? post.repostedFrom.author.role : post.author.role)}
+              </div>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-xs text-[var(--color-text-soft)] font-medium">
                   @{(post.repostedFrom ? post.repostedFrom.author.name : post.author.name).toLowerCase().replace(/\s+/g, '')}
                 </span>
-                <span className="text-gray-400">•</span>
-                <span className="text-gray-500 text-sm">{getTimeAgo(post.repostedFrom ? post.repostedFrom.createdAt : post.createdAt)}</span>
+                <span className="w-[3px] h-[3px] rounded-full bg-[var(--color-border-strong)]" />
+                <span className="text-[10px] uppercase tracking-[0.16em] font-semibold text-[var(--color-text-soft)]">
+                  {getTimeAgo(post.repostedFrom ? post.repostedFrom.createdAt : post.createdAt)}
+                </span>
               </div>
             </div>
             {/* Message button (for other users' posts) */}
             {(post.repostedFrom ? post.repostedFrom.author._id : post.author._id) !== currentUserId && (
-              <div className="relative group/tip">
-                <button
-                  onClick={() => handleMessageUser(post.repostedFrom ? post.repostedFrom.author.id : post.author.id)}
-                  className="text-slate-400 hover:text-[var(--color-blue-primary)] p-1.5 rounded-lg hover:bg-[var(--color-surface-muted)] transition"
-                >
-                  <SendHorizonal className="w-[18px] h-[18px]" />
-                </button>
-                <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1 rounded-lg text-xs font-medium bg-[var(--color-blue-primary)] text-[var(--color-blue-soft)] opacity-0 group-hover/tip:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-lg">Message</span>
-              </div>
+              <button
+                onClick={() => handleMessageUser(post.repostedFrom ? post.repostedFrom.author.id : post.author.id)}
+                className="icon-btn"
+                data-tip="Message"
+                aria-label="Message author"
+              >
+                <SendHorizonal className="w-[17px] h-[17px]" strokeWidth={1.75} />
+              </button>
             )}
             {/* Post menu (delete for own posts) */}
             {post.author._id === currentUserId && !post.repostedFrom && (
               <div className="relative">
-                  <button onClick={() => setMenuOpen(menuOpen === post._id ? null : post._id)} className="text-slate-400 hover:text-[var(--color-blue-primary)] p-1 rounded-lg hover:bg-[var(--color-surface-muted)] transition">
-                  <MoreHorizontal className="w-5 h-5" />
+                <button
+                  onClick={() => setMenuOpen(menuOpen === post._id ? null : post._id)}
+                  className="icon-btn"
+                  aria-label="Post options"
+                >
+                  <MoreHorizontal className="w-[18px] h-[18px]" strokeWidth={1.75} />
                 </button>
                 {menuOpen === post._id && (
-                  <div className="absolute right-0 mt-1 bg-white border border-[var(--color-border-light)] rounded-xl shadow-lg z-20 py-1 min-w-[140px]">
+                  <div className="nb-menu absolute right-0 mt-2 z-20 !min-w-[160px] py-1">
                     <button
                       onClick={() => handleDeletePost(post._id)}
-                      className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition"
+                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[0.8125rem] font-semibold text-red-600 hover:bg-red-50 transition-colors"
                     >
-                      <Trash2 className="w-4 h-4" /> Delete Post
+                      <Trash2 className="w-4 h-4" strokeWidth={1.75} /> Delete post
                     </button>
                   </div>
                 )}
@@ -424,8 +439,8 @@ export default function FeedPage() {
 
           {/* Repost quote content */}
           {post.repostedFrom && post.content && (
-            <div className="mb-3">
-              <p className="text-[var(--color-text-primary)] whitespace-pre-wrap leading-relaxed italic text-sm">
+            <div className="mb-4">
+              <p className="serif-accent text-[0.9375rem] text-[var(--color-text-secondary)] whitespace-pre-wrap leading-relaxed border-l-2 border-[var(--color-border-mid)] pl-4">
                 {renderPostContent(post.content)}
               </p>
             </div>
@@ -433,14 +448,14 @@ export default function FeedPage() {
 
           {/* Original Post Content */}
           <div className="mb-4">
-            <p className="text-[var(--color-text-primary)] whitespace-pre-wrap leading-relaxed">
+            <p className="text-[0.9375rem] text-[var(--color-text-primary)] whitespace-pre-wrap leading-[1.7] tracking-[-0.003em]">
               {renderPostContent(post.repostedFrom ? post.repostedFrom.content : post.content)}
             </p>
           </div>
 
           {/* Post Image */}
           {(post.repostedFrom?.imageUrl || post.imageUrl) && (
-            <div className="mb-4 rounded-xl overflow-hidden border border-[var(--color-border-light)] bg-black/5 flex items-center justify-center max-h-[480px]">
+            <div className="mb-4 rounded-xl overflow-hidden border border-[var(--color-border-hairline)] bg-[var(--color-surface-elevated)] flex items-center justify-center max-h-[480px] shadow-hairline">
               <img
                 src={resolveImageUrl(post.repostedFrom?.imageUrl || post.imageUrl)}
                 alt="Post image"
@@ -455,20 +470,22 @@ export default function FeedPage() {
               href={post.repostedFrom?.linkUrl || post.linkUrl || '#'}
               target="_blank"
               rel="noopener noreferrer"
-              className="block mb-4 p-4 border border-[var(--color-border-light)] rounded-xl hover:bg-[var(--color-surface-muted)] transition group"
+              className="card-item flex items-center gap-3 mb-4 px-4 py-3 hover:border-[var(--color-border-mid)] hover:bg-[var(--color-accent-soft)]/40 transition-smooth group"
             >
-              <div className="flex items-center gap-2 text-blue-600 group-hover:text-blue-700">
-                <LinkIcon className="w-4 h-4 flex-shrink-0" />
-                <span className="text-sm truncate">{post.repostedFrom?.linkUrl || post.linkUrl}</span>
-              </div>
+              <span className="w-8 h-8 rounded-lg bg-[var(--color-accent-soft)] border border-[rgba(11,59,145,0.1)] flex items-center justify-center shrink-0">
+                <LinkIcon className="w-3.5 h-3.5 text-[var(--color-blue-primary)]" strokeWidth={2} />
+              </span>
+              <span className="text-[0.8125rem] font-medium text-[var(--color-blue-primary)] truncate group-hover:text-[var(--color-navy)] transition-colors">
+                {post.repostedFrom?.linkUrl || post.linkUrl}
+              </span>
             </a>
           )}
 
           {/* Tags */}
           {((post.repostedFrom?.tags || post.tags) ?? []).length > 0 && (
-                <div className="flex flex-wrap gap-2 mb-4">
+            <div className="flex flex-wrap gap-1.5 mb-4">
               {(post.repostedFrom?.tags || post.tags || []).map(tag => (
-                <button key={tag} onClick={() => setFilterTag(tag)} className="text-[var(--color-blue-primary)] hover:text-[var(--color-blue-primary)] text-sm hover:underline transition">
+                <button key={tag} onClick={() => setFilterTag(tag)} className="chip">
                   #{tag}
                 </button>
               ))}
@@ -476,116 +493,122 @@ export default function FeedPage() {
           )}
 
           {/* Post Actions */}
-          <div className="flex items-center gap-1 pt-4 border-t border-[var(--color-border-light)]">
+          <div className="flex items-center gap-1 pt-3.5 border-t border-[var(--color-border-hairline)]">
             {/* Like */}
-            <div className="relative group/tip">
-              <button
-                onClick={() => handleLike(post._id)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors ${isLiked ? 'text-red-500 bg-red-50' : 'text-slate-400 hover:text-red-500 hover:bg-red-50'}`}
-              >
-                <Heart className={`w-[18px] h-[18px] ${isLiked ? 'fill-current' : ''}`} />
-                <span className="text-sm font-medium">{post.likes?.length || 0}</span>
-              </button>
-              <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1 rounded-lg text-xs font-medium bg-[var(--color-blue-primary)] text-[var(--color-blue-soft)] opacity-0 group-hover/tip:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-lg">{isLiked ? 'Unlike' : 'Like'}</span>
-            </div>
+            <button
+              onClick={() => handleLike(post._id)}
+              data-tip={isLiked ? 'Unlike' : 'Like'}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[0.8125rem] font-semibold tabular-nums transition-smooth ${
+                isLiked
+                  ? 'text-rose-600 bg-rose-50'
+                  : 'text-[var(--color-text-muted)] hover:text-rose-600 hover:bg-rose-50'
+              }`}
+            >
+              <Heart className={`w-[17px] h-[17px] ${isLiked ? 'fill-current heart-pop' : ''}`} strokeWidth={1.75} />
+              <span>{post.likes?.length || 0}</span>
+            </button>
 
             {/* Comment */}
-            <div className="relative group/tip">
-              <button
-                onClick={() => toggleComments(post._id)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors ${commentsOpen ? 'text-[var(--color-blue-primary)] bg-[var(--color-blue-soft)]' : 'text-slate-400 hover:text-[var(--color-blue-primary)] hover:bg-[var(--color-blue-soft)]'}`}
-              >
-                <MessageCircle className="w-[18px] h-[18px]" />
-                <span className="text-sm font-medium">{post.commentsCount || 0}</span>
-              </button>
-              <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1 rounded-lg text-xs font-medium bg-[var(--color-blue-primary)] text-[var(--color-blue-soft)] opacity-0 group-hover/tip:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-lg">Comment</span>
-            </div>
+            <button
+              onClick={() => toggleComments(post._id)}
+              data-tip="Comment"
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[0.8125rem] font-semibold tabular-nums transition-smooth ${
+                commentsOpen
+                  ? 'text-[var(--color-blue-primary)] bg-[var(--color-accent-soft)]'
+                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-blue-primary)] hover:bg-[var(--color-accent-soft)]'
+              }`}
+            >
+              <MessageCircle className="w-[17px] h-[17px]" strokeWidth={1.75} />
+              <span>{post.commentsCount || 0}</span>
+            </button>
 
             {/* Repost */}
-            <div className="relative group/tip">
-              <button
-                onClick={() => setRepostModal(post.repostedFrom ? post.repostedFrom._id : post._id)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-slate-400 hover:text-[var(--color-blue-primary)] hover:bg-[var(--color-blue-soft)] transition-colors"
-              >
-                <Repeat2 className="w-[18px] h-[18px]" />
-                <span className="text-sm font-medium">{post.repostsCount || 0}</span>
-              </button>
-              <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1 rounded-lg text-xs font-medium bg-[var(--color-blue-primary)] text-[var(--color-blue-soft)] opacity-0 group-hover/tip:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-lg">Repost</span>
-            </div>
+            <button
+              onClick={() => setRepostModal(post.repostedFrom ? post.repostedFrom._id : post._id)}
+              data-tip="Repost"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[0.8125rem] font-semibold tabular-nums text-[var(--color-text-muted)] hover:text-[var(--color-blue-primary)] hover:bg-[var(--color-accent-soft)] transition-smooth"
+            >
+              <Repeat2 className="w-[17px] h-[17px]" strokeWidth={1.75} />
+              <span>{post.repostsCount || 0}</span>
+            </button>
 
             {/* Bookmark */}
-            <div className="relative group/tip ml-auto">
-              <button
-                onClick={() => handleBookmark(post._id)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors ${isBookmarked ? 'text-[var(--color-blue-primary)] bg-[var(--color-blue-soft)]' : 'text-slate-400 hover:text-[var(--color-blue-primary)] hover:bg-[var(--color-blue-soft)]'}`}
-              >
-                <Bookmark className={`w-[18px] h-[18px] ${isBookmarked ? 'fill-current' : ''}`} />
-              </button>
-              <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1 rounded-lg text-xs font-medium bg-[var(--color-blue-primary)] text-[var(--color-blue-soft)] opacity-0 group-hover/tip:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-lg">{isBookmarked ? 'Unsave' : 'Save'}</span>
-            </div>
+            <button
+              onClick={() => handleBookmark(post._id)}
+              data-tip={isBookmarked ? 'Unsave' : 'Save'}
+              className={`ml-auto flex items-center px-3 py-1.5 rounded-full transition-smooth ${
+                isBookmarked
+                  ? 'text-[var(--color-blue-primary)] bg-[var(--color-accent-soft)]'
+                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-blue-primary)] hover:bg-[var(--color-accent-soft)]'
+              }`}
+            >
+              <Bookmark className={`w-[17px] h-[17px] ${isBookmarked ? 'fill-current' : ''}`} strokeWidth={1.75} />
+            </button>
 
             {/* Share */}
-            <div className="relative group/tip">
-              <button
-                onClick={() => handleShare(post._id)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-slate-400 hover:text-[var(--color-blue-primary)] hover:bg-[var(--color-blue-soft)] transition-colors"
-              >
-                <Share2 className="w-[18px] h-[18px]" />
-              </button>
-              <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1 rounded-lg text-xs font-medium bg-[var(--color-blue-primary)] text-[var(--color-blue-soft)] opacity-0 group-hover/tip:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-lg">Share</span>
-            </div>
+            <button
+              onClick={() => handleShare(post._id)}
+              data-tip="Copy link"
+              className="flex items-center px-3 py-1.5 rounded-full text-[var(--color-text-muted)] hover:text-[var(--color-navy)] hover:bg-[var(--color-accent-soft)] transition-smooth"
+            >
+              <Share2 className="w-[17px] h-[17px]" strokeWidth={1.75} />
+            </button>
           </div>
 
           {/* Comments Section */}
           {commentsOpen && (
-            <div className="mt-4 pt-4 border-t border-[var(--color-border-light)]">
+            <div className="mt-4 pt-4 border-t border-[var(--color-border-hairline)]">
               {/* Existing comments */}
-              <div className="space-y-3 mb-4 max-h-[300px] overflow-y-auto">
+              <div className="space-y-3 mb-4 max-h-[300px] overflow-y-auto pr-1">
                 {(post.comments || []).length === 0 ? (
-                  <p className="text-sm text-slate-400 text-center py-2">No comments yet. Be the first!</p>
+                  <p className="text-[0.8125rem] text-[var(--color-text-soft)] text-center py-3 serif-accent">
+                    No comments yet — be the first.
+                  </p>
                 ) : (
                   post.comments.map(comment => (
-                    <div key={comment._id} className="flex gap-3 group">
-                      <UserAvatar userId={comment.author._id} name={comment.author.name} size={32} />
-                      <div className="flex-1 bg-[var(--color-blue-soft)]/40 rounded-xl px-3 py-2">
+                    <div key={comment._id} className="flex gap-2.5 group">
+                      <UserAvatar userId={comment.author._id} name={comment.author.name} size={30} className="mt-0.5" />
+                      <div className="flex-1 card-item px-3.5 py-2.5">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <span className="font-semibold text-sm text-[var(--color-text-primary)]">{comment.author.name}</span>
-                            <span className="text-xs text-slate-400">{getTimeAgo(comment.createdAt)}</span>
+                            <span className="font-semibold text-[0.8125rem] text-[var(--color-navy)] tracking-tight">{comment.author.name}</span>
+                            <span className="text-[10px] uppercase tracking-[0.14em] font-semibold text-[var(--color-text-soft)]">{getTimeAgo(comment.createdAt)}</span>
                           </div>
                           {comment.author._id === currentUserId && (
                             <button
                               onClick={() => handleDeleteComment(post._id, comment._id)}
-                              className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 transition p-1"
+                              className="opacity-0 group-hover:opacity-100 icon-btn icon-btn-sm icon-btn-danger !w-6 !h-6"
+                              aria-label="Delete comment"
                             >
-                              <Trash2 className="w-3.5 h-3.5" />
+                              <Trash2 className="w-3.5 h-3.5" strokeWidth={1.75} />
                             </button>
                           )}
                         </div>
-                        <p className="text-sm text-[var(--color-text-primary)] mt-0.5">{comment.content}</p>
+                        <p className="text-[0.8125rem] text-[var(--color-text-primary)] mt-1 leading-relaxed">{comment.content}</p>
                       </div>
                     </div>
                   ))
                 )}
               </div>
               {/* Comment input */}
-              <div className="flex gap-3 items-center">
-                <UserAvatar userId={currentUserId} name={currentUserName} size={32} />
+              <div className="flex gap-2.5 items-center">
+                <UserAvatar userId={currentUserId} name={currentUserName} size={30} />
                 <div className="flex-1 flex gap-2">
                   <input
                     type="text"
                     value={commentTexts[post._id] || ''}
                     onChange={e => setCommentTexts(prev => ({ ...prev, [post._id]: e.target.value }))}
                     onKeyDown={e => { if (e.key === 'Enter') handleAddComment(post._id); }}
-                    placeholder="Write a comment..."
-                    className="flex-1 px-4 py-2 border border-[var(--color-border-light)] rounded-xl text-sm focus:ring-2 focus:ring-[var(--color-blue-primary)]/20 focus:border-[var(--color-blue-primary)] transition placeholder:text-slate-400"
+                    placeholder="Add to the discussion…"
+                    className="input flex-1 !rounded-full !py-2 !px-4 text-sm"
                   />
                   <button
                     onClick={() => handleAddComment(post._id)}
                     disabled={!commentTexts[post._id]?.trim()}
-                    className="gradient-primary text-white px-3 py-2 rounded-xl hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="btn-primary !rounded-full !p-0 w-9 h-9 shrink-0 inline-flex items-center justify-center disabled:opacity-40"
+                    aria-label="Send comment"
                   >
-                    <Send className="w-4 h-4" />
+                    <Send className="w-4 h-4" strokeWidth={1.75} />
                   </button>
                 </div>
               </div>
@@ -678,49 +701,54 @@ export default function FeedPage() {
           {/* Center - Main Feed */}
           <main className="flex-1 min-w-0">
             {/* Post Composer */}
-            <div className="card p-6 mb-6">
+            <div className="card p-6 mb-6 fade-in-up">
               <div className="flex gap-4">
-                <UserAvatar userId={currentUserId} name={currentUserName} size={48} />
-                <div className="flex-1">
+                <UserAvatar userId={currentUserId} name={currentUserName} size={44} className="ring-1 ring-[var(--color-border-hairline)]" />
+                <div className="flex-1 min-w-0">
                   <textarea
                     value={newPostContent}
                     onChange={e => setNewPostContent(e.target.value)}
-                    placeholder="Share your medical insights, achievements, or questions..."
-                    className="input w-full resize-none"
+                    placeholder="Share a case, a paper, a question — or a small win…"
+                    className="w-full resize-none bg-transparent border-none outline-none text-[0.9375rem] text-[var(--color-text-primary)] leading-relaxed placeholder:text-[var(--color-text-soft)] pt-2"
                     rows={3}
                   />
 
                   {/* Image Preview */}
                   {newPostImagePreview && (
                     <div className="relative mt-3 inline-block">
-                      <img src={newPostImagePreview} alt="Preview" className="max-h-48 rounded-xl border border-[var(--color-border-light)]" />
+                      <img src={newPostImagePreview} alt="Preview" className="max-h-48 rounded-xl border border-[var(--color-border-hairline)] shadow-hairline" />
                       <button
                         onClick={clearImage}
-                        className="absolute top-2 right-2 bg-black/60 text-white rounded-full p-1 hover:bg-black/80 transition"
+                        className="absolute top-2 right-2 bg-[rgba(0,11,51,0.66)] backdrop-blur-sm text-white rounded-full p-1.5 hover:bg-[rgba(0,11,51,0.85)] transition-colors"
+                        aria-label="Remove image"
                       >
-                        <X className="w-4 h-4" />
+                        <X className="w-3.5 h-3.5" strokeWidth={2} />
                       </button>
                     </div>
                   )}
 
                   {/* Link Input */}
                   {showLinkInput && (
-                    <div className="mt-3 flex gap-2">
+                    <div className="mt-3 flex gap-2 fade-in">
                       <input
                         type="url"
                         value={newPostLink}
                         onChange={e => setNewPostLink(e.target.value)}
-                        placeholder="Paste a link (https://...)"
-                        className="input flex-1 px-4 py-2"
+                        placeholder="Paste a link (https://…)"
+                        className="input flex-1 !py-2.5 text-sm"
                       />
-                      <button onClick={() => { setShowLinkInput(false); setNewPostLink(''); }} className="text-slate-400 hover:text-red-500 p-2">
-                        <X className="w-4 h-4" />
+                      <button
+                        onClick={() => { setShowLinkInput(false); setNewPostLink(''); }}
+                        className="icon-btn icon-btn-danger"
+                        aria-label="Remove link"
+                      >
+                        <X className="w-4 h-4" strokeWidth={1.75} />
                       </button>
                     </div>
                   )}
 
-                  <div className="flex justify-between items-center mt-3">
-                    <div className="flex gap-1">
+                  <div className="flex justify-between items-center mt-3 pt-3 border-t border-[var(--color-border-hairline)]">
+                    <div className="flex gap-0.5">
                       <input
                         ref={imageInputRef}
                         type="file"
@@ -728,37 +756,37 @@ export default function FeedPage() {
                         onChange={handleImageSelect}
                         className="hidden"
                       />
-                      <div className="relative group/tip">
-                        <button
-                          onClick={() => imageInputRef.current?.click()}
-                          className="text-slate-400 hover:text-[var(--color-blue-primary)] transition-smooth p-2 rounded-lg hover:bg-[var(--color-surface-muted)]"
-                        >
-                          <ImageIcon className="w-5 h-5" />
-                        </button>
-                        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1 rounded-lg text-xs font-medium bg-[var(--color-blue-primary)] text-[var(--color-blue-soft)] opacity-0 group-hover/tip:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-lg">Add image</span>
-                      </div>
-                      <div className="relative group/tip">
-                        <button
-                          onClick={() => setShowLinkInput(!showLinkInput)}
-                          className={`transition-smooth p-2 rounded-lg hover:bg-[var(--color-surface-muted)] ${showLinkInput ? 'text-[var(--color-blue-primary)]' : 'text-slate-400 hover:text-[var(--color-blue-primary)]'}`}
-                        >
-                          <LinkIcon className="w-5 h-5" />
-                        </button>
-                        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1 rounded-lg text-xs font-medium bg-[var(--color-blue-primary)] text-[var(--color-blue-soft)] opacity-0 group-hover/tip:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-lg">Add link</span>
-                      </div>
+                      <button
+                        onClick={() => imageInputRef.current?.click()}
+                        className="icon-btn"
+                        data-tip="Add image"
+                        aria-label="Add image"
+                      >
+                        <ImageIcon className="w-[19px] h-[19px]" strokeWidth={1.75} />
+                      </button>
+                      <button
+                        onClick={() => setShowLinkInput(!showLinkInput)}
+                        className="icon-btn"
+                        data-active={showLinkInput}
+                        data-tip="Add link"
+                        aria-label="Add link"
+                      >
+                        <LinkIcon className="w-[19px] h-[19px]" strokeWidth={1.75} />
+                      </button>
                       <div className="relative" ref={emojiRef}>
-                        <div className="relative group/tip">
-                          <button
-                            onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                            className={`transition-smooth p-2 rounded-lg hover:bg-[var(--color-surface-muted)] ${showEmojiPicker ? 'text-[var(--color-blue-primary)]' : 'text-slate-400 hover:text-[var(--color-blue-primary)]'}`}
-                          >
-                            <Smile className="w-5 h-5" />
-                          </button>
-                          <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1 rounded-lg text-xs font-medium bg-[var(--color-blue-primary)] text-[var(--color-blue-soft)] opacity-0 group-hover/tip:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-lg">Add emoji</span>
-                        </div>
+                        <button
+                          onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                          className="icon-btn"
+                          data-active={showEmojiPicker}
+                          data-tip="Add emoji"
+                          aria-label="Add emoji"
+                        >
+                          <Smile className="w-[19px] h-[19px]" strokeWidth={1.75} />
+                        </button>
                         {showEmojiPicker && (
-                          <div className="absolute bottom-full left-0 mb-2 bg-white border border-[var(--color-border-light)] rounded-xl shadow-lg p-3 z-30 w-[280px]">
-                            <div className="grid grid-cols-6 gap-1">
+                          <div className="nb-menu absolute bottom-full left-0 mb-2 p-3 z-30 w-[300px]">
+                            <p className="label !mb-2.5">Add emoji</p>
+                            <div className="grid grid-cols-8 gap-0.5">
                               {EMOJI_LIST.map(emoji => (
                                 <button
                                   key={emoji}
@@ -766,7 +794,7 @@ export default function FeedPage() {
                                     setNewPostContent(prev => prev + emoji);
                                     setShowEmojiPicker(false);
                                   }}
-                                  className="text-xl hover:bg-[var(--color-surface-muted)] rounded-lg p-1.5 transition"
+                                  className="text-lg hover:bg-[var(--color-accent-soft)] rounded-md p-1 transition-colors"
                                 >
                                   {emoji}
                                 </button>
@@ -779,10 +807,10 @@ export default function FeedPage() {
                     <button
                       onClick={handleCreatePost}
                       disabled={(!newPostContent.trim() && !newPostImage) || isPosting}
-                      className="btn-primary inline-flex items-center gap-2 px-6 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="btn-primary inline-flex items-center gap-2 !px-6"
                     >
-                      {isPosting && <Loader2 className="w-4 h-4 animate-spin" />}
-                      Post
+                      {isPosting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-3.5 h-3.5" strokeWidth={2} />}
+                      {isPosting ? 'Publishing…' : 'Post'}
                     </button>
                   </div>
                 </div>
@@ -791,29 +819,61 @@ export default function FeedPage() {
 
             {/* Active Filter */}
             {filterTag && (
-              <div className="mb-4 flex items-center gap-2">
-                <span className="text-sm text-slate-500">Filtering by:</span>
-                <span className="bg-[var(--color-blue-soft)] text-[var(--color-blue-primary)] px-3 py-1 rounded-full text-sm font-semibold flex items-center gap-2">
+              <div className="mb-4 flex items-center gap-3 fade-in">
+                <span className="text-[10px] uppercase tracking-[0.18em] font-semibold text-[var(--color-text-muted)]">Filtering by</span>
+                <span className="chip !cursor-default">
                   #{filterTag}
-                  <button onClick={() => setFilterTag(null)} className="hover:text-[var(--color-text-primary)]">✕</button>
+                  <button
+                    onClick={() => setFilterTag(null)}
+                    className="ml-0.5 hover:text-[var(--color-navy)] transition-colors"
+                    aria-label="Clear filter"
+                  >
+                    <X className="w-3 h-3" strokeWidth={2.25} />
+                  </button>
                 </span>
+                <span className="flex-1 h-px bg-[var(--color-border-rule)]" />
               </div>
             )}
 
             {/* Posts Timeline */}
             <div className="space-y-4">
               {isLoadingPosts ? (
-                <div className="card p-12 text-center">
-                  <Loader2 className="w-10 h-10 text-[var(--color-blue-primary)] animate-spin mx-auto mb-3" />
-                  <p className="body-md">Loading posts...</p>
-                </div>
+                <>
+                  {[0, 1, 2].map(i => (
+                    <div key={i} className="card p-6" style={{ opacity: 1 - i * 0.25 }}>
+                      <div className="flex gap-3.5 mb-5">
+                        <div className="skeleton skeleton-circle w-11 h-11" />
+                        <div className="flex-1 pt-1">
+                          <div className="skeleton h-3.5 w-40 mb-2.5" />
+                          <div className="skeleton h-2.5 w-24" />
+                        </div>
+                      </div>
+                      <div className="space-y-2.5 mb-5">
+                        <div className="skeleton h-3 w-full" />
+                        <div className="skeleton h-3 w-[92%]" />
+                        <div className="skeleton h-3 w-[60%]" />
+                      </div>
+                      <div className="flex gap-2 pt-4 border-t border-[var(--color-border-hairline)]">
+                        <div className="skeleton h-7 w-16 !rounded-full" />
+                        <div className="skeleton h-7 w-16 !rounded-full" />
+                        <div className="skeleton h-7 w-16 !rounded-full" />
+                      </div>
+                    </div>
+                  ))}
+                </>
               ) : filteredPosts.length === 0 ? (
-                <div className="card p-12 text-center">
-                  <div className="w-20 h-20 mx-auto mb-5 rounded-2xl flex items-center justify-center" style={{ background: 'var(--color-accent-soft)' }}>
-                    <Heart className="w-10 h-10 text-[var(--color-blue-primary)]" />
+                <div className="card p-14 text-center relative overflow-hidden">
+                  <div aria-hidden className="absolute inset-0 dot-grid opacity-40" />
+                  <div className="relative">
+                    <div className="empty-plate">
+                      <Newspaper className="w-7 h-7" strokeWidth={1.25} />
+                    </div>
+                    <p className="label justify-center !mb-2">The floor is open</p>
+                    <h3 className="heading-3 mb-2">Nothing here <span className="serif-accent">yet</span></h3>
+                    <p className="body-md max-w-sm mx-auto">
+                      {filterTag ? 'No posts match this tag — try clearing the filter.' : 'Share something with the community to kick things off.'}
+                    </p>
                   </div>
-                  <h3 className="heading-3 mb-2">No posts found</h3>
-                  <p className="body-md max-w-sm mx-auto">Try adjusting your filter, or share something with the community to kick things off.</p>
                 </div>
               ) : (
                 filteredPosts.map(post => renderPostCard(post))
@@ -826,66 +886,88 @@ export default function FeedPage() {
             <aside className="w-full">
               <div className="lg:sticky lg:top-20 space-y-6">
                 {/* Trending Topics */}
-                <div className="card p-6">
-                  <h2 className="heading-3 mb-4 flex items-center gap-2">
-                    <TrendingUp className="w-5 h-5 text-[var(--color-blue-primary)]" />
-                    Trending Topics
-                  </h2>
-                  {trendingTopics.length === 0 ? (
-                    <p className="text-sm text-slate-400 text-center py-4">No trending topics yet. Start using #hashtags!</p>
-                  ) : (
-                    <div className="space-y-1">
-                      {trendingTopics.map((topic, index) => (
-                        <button
-                          key={topic.tag}
-                          onClick={() => setFilterTag(topic.tag)}
-                          className="w-full text-left hover:bg-[var(--color-surface-muted)] p-2.5 rounded-xl transition-smooth hover-glow group"
-                        >
-                          <div className="flex items-center gap-3">
-                            <span className="text-sm font-semibold text-slate-400">#{index + 1}</span>
-                            <div className="flex-1">
-                              <div className="font-semibold text-[var(--color-text-primary)] group-hover:text-[var(--color-blue-primary)] transition">#{topic.tag}</div>
-                              <div className="text-xs text-slate-500">{topic.posts}</div>
-                            </div>
-                          </div>
-                        </button>
-                      ))}
+                <div className="card p-7">
+                  <div className="flex items-baseline justify-between mb-5">
+                    <div>
+                      <p className="label !mb-1">In Circulation</p>
+                      <h2 className="heading-3">Trending</h2>
                     </div>
+                    <TrendingUp className="w-4 h-4 text-[var(--color-text-soft)]" strokeWidth={1.5} />
+                  </div>
+                  {trendingTopics.length === 0 ? (
+                    <p className="text-[0.8125rem] text-[var(--color-text-soft)] text-center py-4 serif-accent">
+                      Quiet for now — start a #hashtag.
+                    </p>
+                  ) : (
+                    <ol className="-mx-2">
+                      {trendingTopics.map((topic, index) => (
+                        <li key={topic.tag}>
+                          <button
+                            onClick={() => setFilterTag(topic.tag)}
+                            className="text-left w-full px-2 py-2.5 rounded-md transition-smooth hover:bg-[var(--color-accent-soft)] flex items-baseline gap-3 border-b border-[var(--color-border-hairline)] last:border-b-0 group"
+                          >
+                            <span
+                              className="text-[var(--color-text-soft)] font-semibold tabular-nums shrink-0"
+                              style={{ fontFamily: 'var(--font-fraunces), serif', fontSize: '0.9375rem', fontStyle: 'italic' }}
+                            >
+                              {String(index + 1).padStart(2, '0')}
+                            </span>
+                            <span className="flex-1 min-w-0">
+                              <span className="block text-sm text-[var(--color-text-body)] group-hover:text-[var(--color-navy)] font-semibold tracking-tight truncate">
+                                #{topic.tag}
+                              </span>
+                              <span className="block text-[10px] uppercase tracking-[0.16em] font-semibold text-[var(--color-text-soft)] mt-0.5">
+                                {topic.posts}
+                              </span>
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ol>
                   )}
                 </div>
 
                 {/* Saved Posts */}
-                <div className="card p-6">
-                  <h2 className="heading-3 mb-4 flex items-center gap-2">
-                    <Bookmark className="w-5 h-5 text-[var(--color-blue-primary)]" />
-                    Saved Posts
-                  </h2>
+                <div className="card p-7">
+                  <div className="flex items-baseline justify-between mb-5">
+                    <div>
+                      <p className="label !mb-1">Your Shelf</p>
+                      <h2 className="heading-3">Saved</h2>
+                    </div>
+                    <Bookmark className="w-4 h-4 text-[var(--color-text-soft)]" strokeWidth={1.5} />
+                  </div>
                   {(() => {
                     const saved = posts.filter(p => p.bookmarkedBy?.includes(currentUserId));
                     if (saved.length === 0) {
-                      return <p className="text-sm text-slate-400 text-center py-4">No saved posts yet. Bookmark posts to see them here.</p>;
+                      return (
+                        <p className="text-[0.8125rem] text-[var(--color-text-soft)] text-center py-4 serif-accent">
+                          Bookmark posts to keep them here.
+                        </p>
+                      );
                     }
                     return (
-                      <div className="space-y-3">
+                      <div className="space-y-1 -mx-2">
                         {saved.slice(0, 5).map(p => (
                           <button
                             key={p._id}
                             onClick={() => {
                               document.getElementById(`post-${p._id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                             }}
-                            className="w-full text-left hover:bg-[var(--color-surface-muted)] p-2.5 rounded-xl transition group"
+                            className="w-full text-left hover:bg-[var(--color-accent-soft)] px-2 py-2.5 rounded-md transition-smooth group"
                           >
-                            <div className="flex items-start gap-2">
+                            <div className="flex items-start gap-2.5">
                               <UserAvatar userId={p.author._id} name={p.author.name} size={28} className="mt-0.5" />
                               <div className="flex-1 min-w-0">
-                                <div className="text-xs font-semibold text-[var(--color-text-primary)] truncate">{p.author.name}</div>
-                                <p className="text-xs text-slate-500 line-clamp-2 mt-0.5">{p.content || '(Repost)'}</p>
+                                <div className="text-xs font-semibold text-[var(--color-navy)] tracking-tight truncate">{p.author.name}</div>
+                                <p className="text-xs text-[var(--color-text-muted)] line-clamp-2 mt-0.5 leading-relaxed">{p.content || '(Repost)'}</p>
                               </div>
                             </div>
                           </button>
                         ))}
                         {saved.length > 5 && (
-                          <p className="text-xs text-slate-400 text-center">+{saved.length - 5} more saved</p>
+                          <p className="text-[10px] uppercase tracking-[0.16em] font-semibold text-[var(--color-text-soft)] text-center pt-2">
+                            +{saved.length - 5} more saved
+                          </p>
                         )}
                       </div>
                     );
@@ -893,16 +975,29 @@ export default function FeedPage() {
                 </div>
 
                 {/* Quick Tips */}
-                <div className="card p-6">
-                  <h3 className="heading-3 mb-3 flex items-center gap-2">
-                    <Lightbulb className="w-4 h-4 text-[var(--color-blue-primary)]" />
-                    Feed Tips
-                  </h3>
-                  <ul className="space-y-2 text-sm text-[var(--color-text-muted)]">
-                    <li>• Upload images of research, cases, or achievements</li>
-                    <li>• Share medical articles with the link button</li>
-                    <li>• Use hashtags to join conversations</li>
-                    <li>• Repost interesting content to your followers</li>
+                <div className="card p-7">
+                  <p className="label !mb-1">House Notes</p>
+                  <h3 className="heading-3 mb-4">Make it count</h3>
+                  <ul className="space-y-0">
+                    {[
+                      'Upload images of research, cases, or achievements',
+                      'Share medical articles with the link button',
+                      'Use hashtags to join conversations',
+                      'Repost interesting work to your colleagues',
+                    ].map((tip, i) => (
+                      <li
+                        key={i}
+                        className="flex gap-3 py-2.5 text-[0.8125rem] leading-relaxed text-[var(--color-text-body)] border-b border-[var(--color-border-hairline)] last:border-b-0"
+                      >
+                        <span
+                          className="text-[var(--color-text-soft)] shrink-0"
+                          style={{ fontFamily: 'var(--font-fraunces), serif', fontStyle: 'italic', fontSize: '0.8125rem' }}
+                        >
+                          {String(i + 1).padStart(2, '0')}
+                        </span>
+                        {tip}
+                      </li>
+                    ))}
                   </ul>
                 </div>
               </div>
@@ -913,37 +1008,55 @@ export default function FeedPage() {
 
       {/* Repost Modal */}
       {repostModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => { setRepostModal(null); setRepostContent(''); }}>
-          <div className="card max-w-lg w-full p-6" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-[var(--color-text-primary)]">Repost</h3>
-              <button onClick={() => { setRepostModal(null); setRepostContent(''); }} className="text-slate-400 hover:text-[var(--color-text-primary)] transition">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <textarea
-              value={repostContent}
-              onChange={e => setRepostContent(e.target.value)}
-              placeholder="Add your thoughts (optional)..."
-              className="input w-full mb-4 resize-none"
-              rows={3}
-            />
-            <div className="flex justify-end gap-3">
+        <div className="modal-overlay" onClick={() => { setRepostModal(null); setRepostContent(''); }}>
+          <div className="modal-card max-w-lg" onClick={e => e.stopPropagation()}>
+            <div className="modal-head !border-b-0 !pb-0">
+              <div>
+                <p className="label !mb-1.5">Amplify</p>
+                <h3 className="modal-title">Repost to your feed</h3>
+              </div>
               <button
                 onClick={() => { setRepostModal(null); setRepostContent(''); }}
-                className="px-4 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 transition"
+                className="icon-btn icon-btn-sm -mt-1 -mr-1"
+                aria-label="Close"
+              >
+                <X className="w-4 h-4" strokeWidth={2} />
+              </button>
+            </div>
+            <div className="modal-body">
+              <textarea
+                value={repostContent}
+                onChange={e => setRepostContent(e.target.value)}
+                placeholder="Add your thoughts (optional)…"
+                className="input w-full resize-none"
+                rows={3}
+                autoFocus
+              />
+            </div>
+            <div className="modal-foot">
+              <button
+                onClick={() => { setRepostModal(null); setRepostContent(''); }}
+                className="btn-secondary"
               >
                 Cancel
               </button>
               <button
                 onClick={() => handleRepost(repostModal)}
-                className="btn-primary px-6 py-2 font-semibold"
+                className="btn-primary inline-flex items-center gap-2"
               >
-                <Repeat2 className="w-4 h-4 inline mr-2" />
+                <Repeat2 className="w-4 h-4" strokeWidth={1.75} />
                 Repost
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Toast */}
+      {toast && (
+        <div className="toast" data-type={toast.type} role="status">
+          <span className="toast-dot" />
+          {toast.message}
         </div>
       )}
     </div>

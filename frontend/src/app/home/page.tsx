@@ -15,7 +15,6 @@ import {
   Bot,
   X,
   RefreshCw,
-  Loader2,
   ExternalLink,
   ChevronLeft,
   ChevronRight,
@@ -266,7 +265,7 @@ export default function HomePage() {
 
               {/* Active Filters Indicator */}
               {(selectedSpecialty !== 'All' || searchQuery) && (
-                <div className="mt-6 pt-6 border-t" style={{ borderColor: 'var(--color-border-muted)' }}>
+                <div className="mt-6 pt-6 border-t" style={{ borderColor: 'var(--color-border-hairline)' }}>
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-sm font-medium text-[var(--color-text-muted)]">Active Filters</span>
                     <button
@@ -375,11 +374,20 @@ export default function HomePage() {
             {/* News Feed */}
             <div className="space-y-4">
               {loading ? (
-                <div className="card p-12 text-center">
-                  <Loader2 className="w-10 h-10 text-[var(--color-accent)] mx-auto mb-4 animate-spin" />
-                  <h3 className="heading-3 mb-1">Loading news…</h3>
-                  <p className="body-md">Fetching latest medical news</p>
-                </div>
+                <>
+                  {[0, 1, 2].map(i => (
+                    <div key={i} className="card overflow-hidden flex flex-col sm:flex-row" style={{ opacity: 1 - i * 0.25 }}>
+                      <div className="skeleton !rounded-none w-full sm:w-52 h-40 sm:h-auto sm:min-h-[180px] shrink-0" />
+                      <div className="flex-1 p-6 md:p-7">
+                        <div className="skeleton h-2.5 w-36 mb-4" />
+                        <div className="skeleton h-5 w-5/6 mb-3" />
+                        <div className="skeleton h-3 w-full mb-2" />
+                        <div className="skeleton h-3 w-2/3 mb-5" />
+                        <div className="skeleton h-2.5 w-40" />
+                      </div>
+                    </div>
+                  ))}
+                </>
               ) : error ? (
                 <div className="card p-12 text-center">
                   <Newspaper className="w-16 h-16 text-red-300 mx-auto mb-4" />

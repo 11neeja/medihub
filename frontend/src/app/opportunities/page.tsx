@@ -8,7 +8,6 @@ import {
   Clock,
   Building2,
   Search,
-  Filter,
   Plus,
   CheckCircle2,
   ChevronDown,
@@ -18,7 +17,6 @@ import {
   X,
   GraduationCap,
   Stethoscope,
-  Loader2,
 } from 'lucide-react';
 import { useOpportunities } from '@/context/OpportunityContext';
 import { Opportunity, OpportunityType } from '@/types';
@@ -83,7 +81,7 @@ function CreateOpportunityForm({ onClose }: { onClose: () => void }) {
         {/* Modal Body (scrollable) */}
         <form id="post-opportunity-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-6 md:px-8 py-6 space-y-5">
           <div>
-            <label className="block text-sm font-semibold text-[var(--color-text-primary)] mb-2">Role title <span className="text-red-500">*</span></label>
+            <label className="field-label">Role title <span className="text-red-500">*</span></label>
             <input
               className={inputClass}
               placeholder="e.g. Clinical Research Intern"
@@ -95,7 +93,7 @@ function CreateOpportunityForm({ onClose }: { onClose: () => void }) {
 
           <div className="grid md:grid-cols-2 gap-5">
             <div>
-              <label className="block text-sm font-semibold text-[var(--color-text-primary)] mb-2">Department <span className="text-red-500">*</span></label>
+              <label className="field-label">Department <span className="text-red-500">*</span></label>
               <input
                 className={inputClass}
                 placeholder="e.g. Cardiology"
@@ -105,7 +103,7 @@ function CreateOpportunityForm({ onClose }: { onClose: () => void }) {
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-[var(--color-text-primary)] mb-2">Type <span className="text-red-500">*</span></label>
+              <label className="field-label">Type <span className="text-red-500">*</span></label>
               <select
                 className={inputClass}
                 value={form.type}
@@ -119,7 +117,7 @@ function CreateOpportunityForm({ onClose }: { onClose: () => void }) {
 
           <div className="grid md:grid-cols-2 gap-5">
             <div>
-              <label className="block text-sm font-semibold text-[var(--color-text-primary)] mb-2">Location <span className="text-red-500">*</span></label>
+              <label className="field-label">Location <span className="text-red-500">*</span></label>
               <input
                 className={inputClass}
                 placeholder="e.g. Mumbai, India"
@@ -129,7 +127,7 @@ function CreateOpportunityForm({ onClose }: { onClose: () => void }) {
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-[var(--color-text-primary)] mb-2">Duration</label>
+              <label className="field-label">Duration</label>
               <input
                 className={inputClass}
                 placeholder="e.g. 3 months"
@@ -140,7 +138,7 @@ function CreateOpportunityForm({ onClose }: { onClose: () => void }) {
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-[var(--color-text-primary)] mb-2">Posted by (clinic or hospital) <span className="text-red-500">*</span></label>
+            <label className="field-label">Posted by (clinic or hospital) <span className="text-red-500">*</span></label>
             <input
               className={inputClass}
               placeholder="e.g. Apollo Hospitals"
@@ -151,7 +149,7 @@ function CreateOpportunityForm({ onClose }: { onClose: () => void }) {
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-[var(--color-text-primary)] mb-2">Description <span className="text-red-500">*</span></label>
+            <label className="field-label">Description <span className="text-red-500">*</span></label>
             <textarea
               className={`${inputClass} resize-none`}
               rows={4}
@@ -163,7 +161,7 @@ function CreateOpportunityForm({ onClose }: { onClose: () => void }) {
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-[var(--color-text-primary)] mb-2">Requirements <span className="text-[var(--color-text-muted)] font-normal">(one per line)</span></label>
+            <label className="field-label">Requirements <span className="text-[var(--color-text-muted)] font-normal">(one per line)</span></label>
             <textarea
               className={`${inputClass} resize-none`}
               rows={4}
@@ -195,11 +193,6 @@ function OpportunityCard({ opp }: { opp: Opportunity }) {
 
   const application = getApplicationForOpportunity(opp.id);
   const hasApplied = !!application;
-
-  const typeColors =
-    opp.type === 'internship'
-      ? 'bg-blue-50 text-blue-700 border-blue-200'
-      : 'bg-emerald-50 text-emerald-700 border-emerald-200';
 
   const formatDate = (iso: string) => {
     const d = new Date(iso);
@@ -453,38 +446,39 @@ export default function OpportunitiesPage() {
               <div className="relative">
                 <input
                   type="text"
-                  placeholder="Search opportunities by title, department, location…"
+                  placeholder="Search by title, department, location…"
                   value={searchQuery}
                   onChange={e => handleSearchChange(e.target.value)}
-                  className="input pl-11"
+                  className="input !pl-11"
                 />
-                <Search className="absolute left-3.5 top-3.5 w-5 h-5 text-slate-400" />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-text-soft)]" strokeWidth={1.75} />
               </div>
-              <div className="flex items-center justify-between mt-3">
-                <span className="text-sm text-slate-500 font-medium">
+              <div className="flex items-center justify-between mt-4 gap-3 flex-wrap">
+                <span className="text-[11px] uppercase tracking-[0.18em] font-semibold text-[var(--color-text-muted)]">
                   {displayedOpportunities.length}{' '}
-                  {displayedOpportunities.length === 1 ? 'opportunity' : 'opportunities'} found
+                  {displayedOpportunities.length === 1 ? 'opportunity' : 'opportunities'}
+                  {totalPages > 1 && <> &middot; Page {safePage}/{totalPages}</>}
                 </span>
 
                 {/* Pagination */}
                 {!isLoading && displayedOpportunities.length > PAGE_SIZE && (
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5">
                     <button
                       onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                       disabled={safePage <= 1}
-                      className="p-1.5 rounded-lg border border-[var(--color-border-light)] bg-[var(--color-surface-muted)] text-[var(--color-text-primary)] hover:bg-[var(--color-blue-soft)] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="pagination-btn !p-1.5"
                     >
-                      <ChevronLeft className="w-4 h-4" />
+                      <ChevronLeft className="w-4 h-4 text-[var(--color-blue-primary)]" />
                     </button>
 
                     {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
                       <button
                         key={page}
                         onClick={() => setCurrentPage(page)}
-                        className={`w-8 h-8 rounded-lg text-sm font-medium transition-all ${
+                        className={`w-8 h-8 rounded-lg text-sm font-semibold transition ${
                           page === safePage
-                            ? 'bg-[var(--color-blue-primary)] text-white shadow-sm'
-                            : 'border border-[var(--color-border-light)] bg-[var(--color-surface-muted)] text-[var(--color-text-primary)] hover:bg-[var(--color-blue-soft)]'
+                            ? 'gradient-primary text-white shadow-premium'
+                            : 'pagination-page'
                         }`}
                       >
                         {page}
@@ -494,14 +488,10 @@ export default function OpportunitiesPage() {
                     <button
                       onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                       disabled={safePage >= totalPages}
-                      className="p-1.5 rounded-lg border border-[var(--color-border-light)] bg-[var(--color-surface-muted)] text-[var(--color-text-primary)] hover:bg-[var(--color-blue-soft)] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="pagination-btn !p-1.5"
                     >
-                      <ChevronRight className="w-4 h-4" />
+                      <ChevronRight className="w-4 h-4 text-[var(--color-blue-primary)]" />
                     </button>
-
-                    <span className="ml-2 text-sm text-slate-500">
-                      Page {safePage} of {totalPages}
-                    </span>
                   </div>
                 )}
               </div>
@@ -510,17 +500,33 @@ export default function OpportunitiesPage() {
             {/* Opportunity list */}
             <div className="space-y-4">
               {isLoading ? (
-                <div className="bg-[var(--color-surface-muted)] rounded-2xl shadow-premium p-12 text-center">
-                  <Loader2 className="w-10 h-10 text-[var(--color-blue-primary)] mx-auto mb-4 animate-spin" />
-                  <p className="text-slate-500 font-medium">Loading opportunities…</p>
-                </div>
+                <>
+                  {[0, 1, 2].map(i => (
+                    <div key={i} className="card p-7" style={{ opacity: 1 - i * 0.25 }}>
+                      <div className="flex items-start justify-between gap-5 mb-5">
+                        <div className="flex-1">
+                          <div className="skeleton h-2.5 w-40 mb-3" />
+                          <div className="skeleton h-5 w-2/3 mb-2.5" />
+                          <div className="skeleton h-3 w-32" />
+                        </div>
+                        <div className="skeleton w-12 h-12 !rounded-md shrink-0" />
+                      </div>
+                      <div className="skeleton h-3 w-full mb-2" />
+                      <div className="skeleton h-3 w-3/4" />
+                    </div>
+                  ))}
+                </>
               ) : displayedOpportunities.length === 0 ? (
-                <div className="card p-12 text-center">
-                  <div className="w-20 h-20 mx-auto mb-5 rounded-2xl flex items-center justify-center" style={{ background: 'var(--color-accent-soft)' }}>
-                    <Briefcase className="w-10 h-10 text-[var(--color-blue-primary)]" />
+                <div className="card p-14 text-center relative overflow-hidden">
+                  <div aria-hidden className="absolute inset-0 dot-grid opacity-40" />
+                  <div className="relative">
+                    <div className="empty-plate">
+                      <Briefcase className="w-7 h-7" strokeWidth={1.25} />
+                    </div>
+                    <p className="label justify-center !mb-2">The board is clear</p>
+                    <h3 className="heading-3 mb-2">No opportunities <span className="serif-accent">found</span></h3>
+                    <p className="body-md max-w-sm mx-auto">Try adjusting your filters — or post your own opportunity to reach the community.</p>
                   </div>
-                  <h3 className="heading-3 mb-2">No opportunities found</h3>
-                  <p className="body-md max-w-sm mx-auto">Try adjusting your filters &mdash; or post your own opportunity to reach the community.</p>
                 </div>
               ) : (
                 paginatedOpportunities.map(opp => <OpportunityCard key={opp.id} opp={opp} />)

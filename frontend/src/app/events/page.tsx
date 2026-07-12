@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import ResizableSidebar from '@/components/ResizableSidebar';
-import { Microscope, GraduationCap, PartyPopper, Monitor, Zap, Target, Search, Plus, X, Calendar, Clock, MapPin, Star, Check, Loader2, RefreshCw, ExternalLink, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Microscope, GraduationCap, PartyPopper, Monitor, Zap, Target, Search, Plus, X, Calendar, Clock, MapPin, Star, Check, RefreshCw, ExternalLink, ChevronLeft, ChevronRight } from 'lucide-react';
 import { getEventsAPI, getExternalEventsAPI, refreshExternalEventsAPI, createEventAPI, toggleEventRegistrationAPI } from '@/lib/api';
 
 // Event interface with comprehensive fields
@@ -442,17 +442,17 @@ export default function EventsPage() {
             {/* Modal Body (scrollable) */}
             <form id="host-event-form" onSubmit={handleCreateEvent} className="flex-1 overflow-y-auto px-6 md:px-8 py-6 space-y-5">
               <div>
-                <label className="block text-sm font-semibold text-[var(--color-text-primary)] mb-2">Event title <span className="text-red-500">*</span></label>
+                <label className="field-label">Event title <span className="text-red-500">*</span></label>
                 <input type="text" required value={newEvent.title} onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })} className="input" placeholder="e.g., Advanced Surgical Techniques Workshop" />
               </div>
 
               <div className="grid md:grid-cols-2 gap-5">
                 <div>
-                  <label className="block text-sm font-semibold text-[var(--color-text-primary)] mb-2">Organizer <span className="text-red-500">*</span></label>
+                  <label className="field-label">Organizer <span className="text-red-500">*</span></label>
                   <input type="text" required value={newEvent.organizer} onChange={(e) => setNewEvent({ ...newEvent, organizer: e.target.value })} className="input" placeholder="Your name or organization" />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-[var(--color-text-primary)] mb-2">Event type <span className="text-red-500">*</span></label>
+                  <label className="field-label">Event type <span className="text-red-500">*</span></label>
                   <select value={newEvent.type} onChange={(e) => setNewEvent({ ...newEvent, type: e.target.value as Event['type'] })} className="input">
                     <option value="Workshop">Workshop</option>
                     <option value="Conference">Conference</option>
@@ -465,22 +465,22 @@ export default function EventsPage() {
 
               <div className="grid md:grid-cols-2 gap-5">
                 <div>
-                  <label className="block text-sm font-semibold text-[var(--color-text-primary)] mb-2">Date <span className="text-red-500">*</span></label>
+                  <label className="field-label">Date <span className="text-red-500">*</span></label>
                   <input type="date" required value={newEvent.date} onChange={(e) => setNewEvent({ ...newEvent, date: e.target.value })} className="input" />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-[var(--color-text-primary)] mb-2">Time <span className="text-red-500">*</span></label>
+                  <label className="field-label">Time <span className="text-red-500">*</span></label>
                   <input type="text" required value={newEvent.time} onChange={(e) => setNewEvent({ ...newEvent, time: e.target.value })} className="input" placeholder="09:00 AM – 05:00 PM" />
                 </div>
               </div>
 
               <div className="grid md:grid-cols-2 gap-5">
                 <div>
-                  <label className="block text-sm font-semibold text-[var(--color-text-primary)] mb-2">Location <span className="text-red-500">*</span></label>
+                  <label className="field-label">Location <span className="text-red-500">*</span></label>
                   <input type="text" required value={newEvent.location} onChange={(e) => setNewEvent({ ...newEvent, location: e.target.value })} className="input" placeholder="Venue or virtual platform" />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-[var(--color-text-primary)] mb-2">Mode <span className="text-red-500">*</span></label>
+                  <label className="field-label">Mode <span className="text-red-500">*</span></label>
                   <select value={newEvent.mode} onChange={(e) => setNewEvent({ ...newEvent, mode: e.target.value as Event['mode'] })} className="input">
                     <option value="Online">Online</option>
                     <option value="On-campus">On-campus</option>
@@ -490,12 +490,12 @@ export default function EventsPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-[var(--color-text-primary)] mb-2">Short description <span className="text-red-500">*</span></label>
+                <label className="field-label">Short description <span className="text-red-500">*</span></label>
                 <input type="text" required value={newEvent.shortDescription} onChange={(e) => setNewEvent({ ...newEvent, shortDescription: e.target.value })} className="input" placeholder="Brief one-line description" />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-[var(--color-text-primary)] mb-2">Detailed description <span className="text-red-500">*</span></label>
+                <label className="field-label">Detailed description <span className="text-red-500">*</span></label>
                 <textarea required value={newEvent.longDescription} onChange={(e) => setNewEvent({ ...newEvent, longDescription: e.target.value })} rows={4} className="input resize-none" placeholder="Provide comprehensive event details, agenda, and what participants can expect…" />
               </div>
             </form>
@@ -515,10 +515,10 @@ export default function EventsPage() {
 
       {/* Event Detail Modal */}
       {selectedEvent && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 z-50 flex items-center justify-center p-4 fade-in">
-          <div className="glass-effect rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-premium-xl fade-in-up">
+        <div className="modal-overlay" onClick={() => setSelectedEvent(null)}>
+          <div className="modal-card !max-w-3xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             {/* Event Banner */}
-            <div className="h-64 gradient-primary flex items-center justify-center text-white relative overflow-hidden">
+            <div className="h-56 md:h-64 gradient-ink flex items-center justify-center text-white relative overflow-hidden">
               {selectedEvent.imageUrl ? (
                 <img
                   src={selectedEvent.imageUrl}
@@ -528,105 +528,105 @@ export default function EventsPage() {
                 />
               ) : (
                 <>
-                  <div className="absolute inset-0 opacity-20">
-                    <div className="absolute inset-0 shimmer"></div>
-                  </div>
-                  <Target className="w-16 h-16 relative z-10 float" />
+                  <div aria-hidden className="absolute inset-0 dot-grid opacity-[0.12]" />
+                  <div className="absolute inset-0 opacity-20"><div className="absolute inset-0 shimmer" /></div>
+                  <Target className="w-16 h-16 relative z-10 float text-white/60" strokeWidth={1} />
                 </>
               )}
-
+              <div className="absolute inset-0 bg-gradient-to-t from-[rgba(0,11,51,0.55)] via-transparent to-transparent" />
+              <button
+                onClick={() => setSelectedEvent(null)}
+                className="absolute top-4 right-4 w-9 h-9 rounded-full bg-[rgba(0,11,51,0.5)] backdrop-blur-sm text-white hover:bg-[rgba(0,11,51,0.75)] transition-colors flex items-center justify-center"
+                aria-label="Close"
+              >
+                <X className="w-4 h-4" strokeWidth={2} />
+              </button>
             </div>
 
-            <div className="p-8">
-              <div className="flex justify-between items-start mb-6">
-                <div className="flex-1">
-                  <div className="flex gap-2 mb-3">
-                    <span className={`px-3 py-1 rounded-full text-sm font-semibold ${selectedEvent.mode === 'Online' ? 'bg-[var(--color-blue-soft)] text-[var(--color-blue-primary)]' :
-                      selectedEvent.mode === 'On-campus' ? 'bg-[var(--color-blue-primary)]/20 text-[var(--color-blue-primary)]' :
-                        'bg-[var(--color-blue-soft)]/50 text-[var(--color-blue-primary)]'
-                      }`}>
-                      {selectedEvent.mode}
+            <div className="p-7 md:p-9">
+              <div className="mb-7">
+                <div className="flex flex-wrap gap-1.5 mb-4">
+                  <span className="badge">{selectedEvent.mode}</span>
+                  <span className="badge badge-muted">{selectedEvent.type}</span>
+                  {selectedEvent.isRegistered && (
+                    <span className="badge badge-success inline-flex items-center gap-1">
+                      <Check className="w-3 h-3" strokeWidth={2.5} /> Registered
                     </span>
-                    <span className="bg-slate-100 text-[var(--color-text-primary)] px-3 py-1 rounded-full text-sm font-semibold">
-                      {selectedEvent.type}
-                    </span>
-                    {selectedEvent.isRegistered && (
-                      <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-semibold flex items-center gap-1">
-                        <Check className="w-3 h-3" /> Registered
-                      </span>
-                    )}
-                  </div>
-                  <h2 className="text-3xl font-bold text-[var(--color-text-primary)] mb-2">{selectedEvent.title}</h2>
-                  <p className="text-lg text-slate-500 mb-4">by {selectedEvent.organizer}</p>
+                  )}
                 </div>
-                <button
-                  onClick={() => setSelectedEvent(null)}
-                  className="text-slate-400 hover:text-slate-600 ml-4 transition"
+                <h2
+                  className="text-[var(--color-navy)] mb-2"
+                  style={{
+                    fontFamily: 'var(--font-fraunces), serif',
+                    fontSize: 'clamp(1.5rem, 3vw, 2rem)',
+                    fontWeight: 450,
+                    letterSpacing: '-0.03em',
+                    lineHeight: 1.12,
+                  }}
                 >
-                  <X className="w-6 h-6" />
-                </button>
+                  {selectedEvent.title}
+                </h2>
+                <p className="text-[11px] uppercase tracking-[0.18em] font-semibold text-[var(--color-text-muted)]">
+                  Hosted by {selectedEvent.organizer}
+                </p>
               </div>
 
-              <div className="grid md:grid-cols-3 gap-6 mb-8">
-                  <div className="flex items-start gap-3">
-                  <span className="text-[var(--color-blue-primary)]"><Calendar className="w-6 h-6" /></span>
-                  <div>
-                    <div className="text-sm text-slate-500">Date</div>
-                    <div className="font-semibold">{new Date(selectedEvent.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</div>
+              <div className="grid sm:grid-cols-3 gap-4 mb-7">
+                {[
+                  { icon: Calendar, label: 'Date', value: selectedEvent.date ? new Date(selectedEvent.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'TBA' },
+                  { icon: Clock, label: 'Time', value: selectedEvent.time },
+                  { icon: MapPin, label: 'Location', value: selectedEvent.location },
+                ].map(({ icon: Icon, label, value }) => (
+                  <div key={label} className="card-item px-4 py-3.5 flex items-start gap-3">
+                    <span className="w-8 h-8 rounded-lg bg-[var(--color-accent-soft)] border border-[rgba(11,59,145,0.1)] flex items-center justify-center shrink-0 mt-0.5">
+                      <Icon className="w-4 h-4 text-[var(--color-blue-primary)]" strokeWidth={1.75} />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block text-[9.5px] uppercase tracking-[0.16em] font-bold text-[var(--color-text-soft)]">{label}</span>
+                      <span className="block text-sm font-semibold text-[var(--color-navy)] tracking-tight mt-0.5 break-words">{value}</span>
+                    </span>
                   </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <span className="text-[var(--color-blue-primary)]"><Clock className="w-6 h-6" /></span>
-                  <div>
-                    <div className="text-sm text-slate-500">Time</div>
-                    <div className="font-semibold">{selectedEvent.time}</div>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <span className="text-[var(--color-blue-primary)]"><MapPin className="w-6 h-6" /></span>
-                  <div>
-                    <div className="text-sm text-slate-500">Location</div>
-                    <div className="font-semibold">{selectedEvent.location}</div>
-                  </div>
-                </div>
+                ))}
               </div>
 
               {selectedEvent.capacity && (
-                <div className="mb-6">
-                    <div className="flex justify-between text-sm text-gray-600 mb-2">
-                    <span>Registration Progress</span>
-                    <span>{selectedEvent.registered}/{selectedEvent.capacity} registered</span>
+                <div className="mb-7">
+                  <div className="flex justify-between items-baseline mb-2">
+                    <span className="text-[10px] uppercase tracking-[0.16em] font-semibold text-[var(--color-text-muted)]">Registration</span>
+                    <span className="text-xs font-semibold text-[var(--color-navy)] tabular-nums">
+                      {selectedEvent.registered}<span className="text-[var(--color-text-soft)]">/{selectedEvent.capacity}</span>
+                    </span>
                   </div>
-                  <div className="w-full bg-[var(--color-surface-muted)] rounded-full h-2">
+                  <div className="w-full bg-[var(--color-surface-muted)] border border-[var(--color-border-hairline)] rounded-full h-1.5 overflow-hidden">
                     <div
-                      className="bg-[var(--color-blue-primary)] h-2 rounded-full transition-all"
-                      style={{ width: `${(selectedEvent.registered! / selectedEvent.capacity) * 100}%` }}
+                      className="h-full rounded-full transition-all duration-700"
+                      style={{
+                        width: `${Math.min(100, (selectedEvent.registered! / selectedEvent.capacity) * 100)}%`,
+                        background: 'var(--gradient-soft)',
+                      }}
                     />
                   </div>
                 </div>
               )}
 
               <div className="mb-8">
-                <h3 className="text-xl font-bold text-[var(--color-text-primary)] mb-3">About This Event</h3>
-                <p className="text-slate-500 leading-relaxed">{selectedEvent.longDescription}</p>
+                <p className="label !mb-3">About this event</p>
+                <p className="body-md leading-relaxed whitespace-pre-wrap">{selectedEvent.longDescription}</p>
               </div>
 
               <button
                 onClick={() => handleRegister(selectedEvent.id)}
-                className={`w-full py-4 rounded-lg font-semibold text-lg transition ${selectedEvent.isRegistered
-                  ? 'bg-[var(--color-blue-primary)] text-white hover:bg-[var(--color-blue-primary)]/80'
-                  : 'bg-[var(--color-blue-primary)] text-white hover:bg-[var(--color-blue-primary)]/80'
-                  }`}
+                className="btn-primary w-full !py-3.5 !text-sm"
               >
                 {selectedEvent.source !== 'local' ? (
                   <span className="flex items-center justify-center gap-2">
-                    <ExternalLink className="w-5 h-5" /> Register on {sourceLabel(selectedEvent.source)}
+                    <ExternalLink className="w-4 h-4" strokeWidth={1.75} /> Register on {sourceLabel(selectedEvent.source)}
                   </span>
                 ) : selectedEvent.isRegistered ? (
                   <span className="flex items-center justify-center gap-2">
-                    <Check className="w-5 h-5" /> Registered - Click to Cancel
+                    <Check className="w-4 h-4" strokeWidth={2} /> Registered — tap to cancel
                   </span>
-                ) : 'Register Now'}
+                ) : 'Register now'}
               </button>
             </div>
           </div>
@@ -777,16 +777,35 @@ export default function EventsPage() {
 
           {/* Center - Event Listing */}
           <main className="flex-1 min-w-0">
-            <div className="mb-4 flex items-center justify-between">
-              <span className="text-sm text-slate-500">
-                {filteredEvents.length} {filteredEvents.length === 1 ? 'event' : 'events'} found
-                {totalPages > 1 && <span> &middot; Page {currentPage} of {totalPages}</span>}
+            <div className="flex items-center gap-3 mb-6 text-[var(--color-text-muted)]">
+              <span className="text-[11px] uppercase tracking-[0.18em] font-semibold">
+                {filteredEvents.length} {filteredEvents.length === 1 ? 'event' : 'events'}
+                {totalPages > 1 && <> &middot; Page {currentPage}/{totalPages}</>}
               </span>
+              <span className="flex-1 h-px bg-[var(--color-border-rule)]" />
             </div>
 
             {isLoadingEvents ? (
-                <div className="flex justify-center py-20">
-                <Loader2 className="w-8 h-8 animate-spin text-[var(--color-blue-primary)]" />
+              <div className="space-y-4">
+                {[0, 1, 2].map(i => (
+                  <div key={i} className="card overflow-hidden flex flex-col sm:flex-row" style={{ opacity: 1 - i * 0.25 }}>
+                    <div className="skeleton !rounded-none w-full sm:w-56 h-40 sm:h-auto sm:min-h-[200px] shrink-0" />
+                    <div className="flex-1 p-6 md:p-7">
+                      <div className="flex gap-1.5 mb-4">
+                        <div className="skeleton h-5 w-16 !rounded-full" />
+                        <div className="skeleton h-5 w-20 !rounded-full" />
+                      </div>
+                      <div className="skeleton h-5 w-3/4 mb-3" />
+                      <div className="skeleton h-3 w-32 mb-4" />
+                      <div className="skeleton h-3 w-full mb-2" />
+                      <div className="skeleton h-3 w-2/3 mb-5" />
+                      <div className="flex gap-2">
+                        <div className="skeleton h-10 flex-1 !rounded-[0.625rem]" />
+                        <div className="skeleton h-10 flex-1 !rounded-[0.625rem]" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : (
             <>
@@ -796,7 +815,7 @@ export default function EventsPage() {
                 <button
                   onClick={() => { setCurrentPage(p => Math.max(1, p - 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                   disabled={currentPage === 1}
-                  className="p-2 rounded-lg border border-[var(--color-border-light)] hover:bg-[var(--color-blue-soft)] transition disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="pagination-btn"
                 >
                   <ChevronLeft className="w-5 h-5 text-[var(--color-blue-primary)]" />
                 </button>
@@ -822,7 +841,7 @@ export default function EventsPage() {
                         className={`w-10 h-10 rounded-lg font-semibold text-sm transition ${
                           currentPage === item
                             ? 'gradient-primary text-white shadow-premium'
-                            : 'border border-[var(--color-border-light)] text-[var(--color-text-primary)] hover:bg-[var(--color-blue-soft)]'
+                            : 'pagination-page'
                         }`}
                       >
                         {item}
@@ -833,7 +852,7 @@ export default function EventsPage() {
                 <button
                   onClick={() => { setCurrentPage(p => Math.min(totalPages, p + 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                   disabled={currentPage === totalPages}
-                  className="p-2 rounded-lg border border-[var(--color-border-light)] hover:bg-[var(--color-blue-soft)] transition disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="pagination-btn"
                 >
                   <ChevronRight className="w-5 h-5 text-[var(--color-blue-primary)]" />
                 </button>
@@ -841,18 +860,22 @@ export default function EventsPage() {
             )}
             <div className="space-y-4">
               {filteredEvents.length === 0 ? (
-                <div className="card p-12 text-center">
-                  <div className="w-20 h-20 mx-auto mb-5 rounded-2xl flex items-center justify-center" style={{ background: 'var(--color-accent-soft)' }}>
-                    <Calendar className="w-10 h-10 text-[var(--color-blue-primary)]" />
+                <div className="card p-14 text-center relative overflow-hidden">
+                  <div aria-hidden className="absolute inset-0 dot-grid opacity-40" />
+                  <div className="relative">
+                    <div className="empty-plate">
+                      <Calendar className="w-7 h-7" strokeWidth={1.25} />
+                    </div>
+                    <p className="label justify-center !mb-2">A quiet calendar</p>
+                    <h3 className="heading-3 mb-2">No events <span className="serif-accent">found</span></h3>
+                    <p className="body-md max-w-sm mx-auto mb-6">Try adjusting your filters — or host the first event the community needs.</p>
+                    <button
+                      onClick={() => setShowHostForm(true)}
+                      className="btn-primary inline-flex items-center gap-2 !py-2.5"
+                    >
+                      <Plus className="w-4 h-4" strokeWidth={2} /> Host your own event
+                    </button>
                   </div>
-                  <h3 className="heading-3 mb-2">No events found</h3>
-                  <p className="body-md max-w-sm mx-auto mb-5">Try adjusting your filters &mdash; or host the first event the community needs.</p>
-                  <button
-                    onClick={() => setShowHostForm(true)}
-                    className="btn-primary inline-flex items-center gap-2 !py-2.5"
-                  >
-                    <Plus className="w-4 h-4" /> Host Your Own Event
-                  </button>
                 </div>
               ) : (
                 paginatedEvents.map(event => {
@@ -981,23 +1004,30 @@ export default function EventsPage() {
           <aside className="w-full space-y-6">
             {/* Your Registrations */}
             {registeredEvents.length > 0 && (
-              <div className="card p-6">
-                  <h2 className="heading-3 mb-4 flex items-center gap-2">
-                    <Check className="w-5 h-5 text-[var(--color-blue-primary)]" />
-                    Your Registrations
-                  </h2>
-                <div className="space-y-3">
+              <div className="card p-7">
+                <p className="label !mb-1">Your Diary</p>
+                <h2 className="heading-3 mb-5">Registered</h2>
+                <div className="space-y-0 divide-y divide-[var(--color-border-hairline)]">
                   {registeredEvents.map(event => (
                     <div
                       key={event.id}
                       onClick={() => setSelectedEvent(event)}
-                      className="cursor-pointer group"
+                      className="cursor-pointer group py-3 first:pt-0 last:pb-0"
                     >
-                      <h3 className="text-sm font-semibold text-[var(--color-text-primary)] group-hover:text-[var(--color-blue-primary)] transition line-clamp-2 mb-1">
+                      <h3
+                        className="text-[var(--color-navy)] group-hover:text-[var(--color-blue-primary)] transition-colors line-clamp-2 mb-1"
+                        style={{
+                          fontFamily: 'var(--font-fraunces), serif',
+                          fontSize: '0.9375rem',
+                          fontWeight: 500,
+                          letterSpacing: '-0.015em',
+                          lineHeight: 1.3,
+                        }}
+                      >
                         {event.title}
                       </h3>
-                      <p className="text-xs text-gray-500">
-                        {new Date(event.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} • {event.type}
+                      <p className="text-[10px] uppercase tracking-[0.16em] font-semibold text-[var(--color-text-soft)]">
+                        {new Date(event.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · {event.type}
                       </p>
                     </div>
                   ))}
@@ -1006,54 +1036,67 @@ export default function EventsPage() {
             )}
 
             {/* Featured / Upcoming Events */}
-              <div className="card p-6">
-              <h2 className="heading-3 mb-4 flex items-center gap-2">
-                <Star className="w-5 h-5 text-[var(--color-blue-primary)]" />
-                {featuredEvents.length > 0 ? 'Featured Events' : 'Upcoming Events'}
-              </h2>
+            <div className="card p-7">
+              <div className="flex items-baseline justify-between mb-5">
+                <div>
+                  <p className="label !mb-1">Don&rsquo;t miss</p>
+                  <h2 className="heading-3">{featuredEvents.length > 0 ? 'Featured' : 'Up next'}</h2>
+                </div>
+                <Star className="w-4 h-4 text-[var(--color-text-soft)]" strokeWidth={1.5} />
+              </div>
               {(featuredEvents.length > 0 ? featuredEvents : upcomingEvents).slice(0, 3).length === 0 ? (
-                <p className="text-sm text-slate-400">No upcoming events</p>
+                <p className="text-[0.8125rem] text-[var(--color-text-soft)] serif-accent text-center py-3">Nothing on the horizon yet.</p>
               ) : (
-              <div className="space-y-4">
+              <div className="space-y-5">
                 {(featuredEvents.length > 0 ? featuredEvents : upcomingEvents).slice(0, 3).map(event => (
                   <div
                     key={event.id}
                     onClick={() => setSelectedEvent(event)}
                     className="cursor-pointer group"
                   >
-                    <div className="h-28 rounded-lg mb-2 overflow-hidden relative bg-gradient-to-br from-[var(--color-blue-primary)] to-[var(--color-blue-primary)]">
+                    <div className="h-28 rounded-xl mb-2.5 overflow-hidden relative gradient-ink border border-[var(--color-border-hairline)] shadow-hairline">
                       {event.imageUrl ? (
                         <img
                           src={event.imageUrl}
                           alt={event.title}
-                          className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform"
+                          className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                           onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                         />
                       ) : (
-                        <div className="absolute inset-0 flex items-center justify-center text-white">
-                          {event.type === 'Workshop' ? <Microscope className="w-8 h-8" /> :
-                            event.type === 'Conference' ? <GraduationCap className="w-8 h-8" /> :
-                              event.type === 'Fest' ? <PartyPopper className="w-8 h-8" /> :
-                                event.type === 'Webinar' ? <Monitor className="w-8 h-8" /> : <Zap className="w-8 h-8" />}
+                        <div className="absolute inset-0 flex items-center justify-center text-white/40 dot-grid">
+                          {event.type === 'Workshop' ? <Microscope className="w-8 h-8" strokeWidth={1.25} /> :
+                            event.type === 'Conference' ? <GraduationCap className="w-8 h-8" strokeWidth={1.25} /> :
+                              event.type === 'Fest' ? <PartyPopper className="w-8 h-8" strokeWidth={1.25} /> :
+                                event.type === 'Webinar' ? <Monitor className="w-8 h-8" strokeWidth={1.25} /> : <Zap className="w-8 h-8" strokeWidth={1.25} />}
                         </div>
                       )}
 
-                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2">
-                        <span className="text-white text-[10px] font-medium flex items-center gap-1">
-                          <Calendar className="w-3 h-3" />
+                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-[rgba(0,11,51,0.72)] to-transparent p-2.5">
+                        <span className="text-white/90 text-[9.5px] uppercase tracking-[0.16em] font-semibold flex items-center gap-1.5">
+                          <Calendar className="w-3 h-3" strokeWidth={1.75} />
                           {new Date(event.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                         </span>
                       </div>
                     </div>
-                    <h3 className="text-sm font-semibold text-[var(--color-text-primary)] group-hover:text-[var(--color-blue-primary)] transition line-clamp-2 mb-1">
+                    <h3
+                      className="text-[var(--color-navy)] group-hover:text-[var(--color-blue-primary)] transition-colors line-clamp-2 mb-1.5"
+                      style={{
+                        fontFamily: 'var(--font-fraunces), serif',
+                        fontSize: '0.9375rem',
+                        fontWeight: 500,
+                        letterSpacing: '-0.015em',
+                        lineHeight: 1.3,
+                      }}
+                    >
                       {event.title}
                     </h3>
-                    <div className="flex items-center gap-2 text-xs text-slate-500">
-                      <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {event.location.length > 25 ? event.location.slice(0, 25) + '...' : event.location}</span>
-                    </div>
-                    <div className="flex gap-1 mt-1">
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--color-blue-soft)] text-[var(--color-blue-primary)] font-medium">{event.mode}</span>
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-[var(--color-text-primary)] font-medium">{event.type}</span>
+                    <p className="text-[10px] uppercase tracking-[0.14em] font-semibold text-[var(--color-text-soft)] flex items-center gap-1 mb-2">
+                      <MapPin className="w-3 h-3" strokeWidth={1.75} />
+                      <span className="truncate normal-case tracking-normal text-[11px] font-medium">{event.location.length > 30 ? event.location.slice(0, 30) + '…' : event.location}</span>
+                    </p>
+                    <div className="flex gap-1.5">
+                      <span className="badge badge-sm">{event.mode}</span>
+                      <span className="badge badge-sm badge-muted">{event.type}</span>
                     </div>
                   </div>
                 ))}
@@ -1062,21 +1105,24 @@ export default function EventsPage() {
             </div>
 
             {/* Quick Stats */}
-            <div className="card p-6">
-              <h3 className="font-semibold text-[var(--color-text-primary)] mb-4">Event Statistics</h3>
-              <div className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Total Events</span>
-                  <span className="font-bold text-[var(--color-blue-primary)]">{events.length}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Your Registrations</span>
-                  <span className="font-bold text-[var(--color-blue-primary)]">{registeredEvents.length}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Upcoming This Week</span>
-                  <span className="font-bold text-[var(--color-blue-primary)]">{upcomingThisWeek}</span>
-                </div>
+            <div className="card p-7">
+              <p className="label !mb-4">The Ledger</p>
+              <div className="space-y-0">
+                {[
+                  { label: 'Total events', value: events.length },
+                  { label: 'Your registrations', value: registeredEvents.length },
+                  { label: 'This week', value: upcomingThisWeek },
+                ].map(({ label, value }, i, arr) => (
+                  <div key={label} className={`flex items-baseline justify-between py-2.5 ${i < arr.length - 1 ? 'border-b border-[var(--color-border-hairline)]' : ''}`}>
+                    <span className="text-[10px] uppercase tracking-[0.16em] font-semibold text-[var(--color-text-muted)]">{label}</span>
+                    <span
+                      className="text-[var(--color-navy)] tabular-nums"
+                      style={{ fontFamily: 'var(--font-fraunces), serif', fontSize: '1.25rem', fontWeight: 500 }}
+                    >
+                      {value}
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
           </aside>

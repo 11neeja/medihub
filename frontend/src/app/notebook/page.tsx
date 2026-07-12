@@ -85,7 +85,16 @@ function CsvPreview({ url }: { url: string }) {
       .catch(console.error);
   }, [url]);
 
-  if (rows.length === 0) return <div className="flex items-center justify-center h-full text-slate-400">Loading...</div>;
+  if (rows.length === 0) {
+    return (
+      <div className="h-full p-6 space-y-3">
+        <div className="skeleton h-8 w-full" />
+        {[0, 1, 2, 3, 4].map(i => (
+          <div key={i} className="skeleton h-6 w-full" style={{ opacity: 1 - i * 0.15 }} />
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="overflow-auto h-full p-4">
@@ -1416,9 +1425,14 @@ export default function NotebookPage() {
 
             <div className="flex-1 overflow-y-auto p-5 space-y-2">
               {isLoadingAi ? (
-                <div className="flex flex-col items-center justify-center py-14 text-[var(--color-text-soft)]">
-                  <Loader2 className="w-6 h-6 animate-spin mb-3" strokeWidth={1.5} />
-                  <p className="text-[0.8125rem]">Loading AI conversations…</p>
+                <div className="space-y-2.5 py-2">
+                  {[0, 1, 2, 3].map(i => (
+                    <div key={i} className="card-item p-4" style={{ opacity: 1 - i * 0.2 }}>
+                      <div className="skeleton h-3 w-32 mb-2.5" />
+                      <div className="skeleton h-2.5 w-full mb-1.5" />
+                      <div className="skeleton h-2.5 w-3/4" />
+                    </div>
+                  ))}
                 </div>
               ) : aiMessages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-14 text-center">

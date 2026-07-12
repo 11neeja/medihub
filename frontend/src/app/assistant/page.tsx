@@ -518,22 +518,16 @@ export default function AssistantPage() {
     <div className="min-h-screen gradient-subtle">
       {/* Custom Toast Notification */}
       {toast && (
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] animate-fade-in-down">
-          <div className={`flex items-center gap-2.5 px-5 py-3 rounded-2xl shadow-premium-lg border ${
-            toast.type === 'success'
-              ? 'bg-[var(--color-blue-primary)] text-white border-[var(--color-blue-secondary)]'
-              : 'bg-red-600 text-white border-red-500'
-          }`}>
-            {toast.type === 'success' ? (
-              <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
-            ) : (
-              <AlertCircle className="w-5 h-5 flex-shrink-0" />
-            )}
-            <span className="text-sm font-medium">{toast.message}</span>
-            <button onClick={() => setToast(null)} className="ml-2 opacity-70 hover:opacity-100 transition-opacity">
-              <X className="w-4 h-4" />
-            </button>
-          </div>
+        <div className="toast" data-type={toast.type} role="status">
+          {toast.type === 'success' ? (
+            <CheckCircle2 className="w-4 h-4 flex-shrink-0 text-[#7ba3e8]" strokeWidth={1.75} />
+          ) : (
+            <AlertCircle className="w-4 h-4 flex-shrink-0 text-[#fca5a5]" strokeWidth={1.75} />
+          )}
+          <span>{toast.message}</span>
+          <button onClick={() => setToast(null)} className="ml-1 opacity-60 hover:opacity-100 transition-opacity" aria-label="Dismiss">
+            <X className="w-3.5 h-3.5" strokeWidth={2} />
+          </button>
         </div>
       )}
 
@@ -649,16 +643,24 @@ export default function AssistantPage() {
               {/* Documents List */}
               <div className="flex-1 min-h-0 overflow-y-auto px-3 py-3">
                 {isLoadingDocs ? (
-                  <div className="flex items-center justify-center py-12">
-                    <Loader2 className="w-8 h-8 animate-spin text-[var(--color-blue-primary)]" />
+                  <div className="space-y-2 px-1 py-2">
+                    {[0, 1, 2].map(i => (
+                      <div key={i} className="flex gap-3 p-3" style={{ opacity: 1 - i * 0.25 }}>
+                        <div className="skeleton w-10 h-10 !rounded-xl shrink-0" />
+                        <div className="flex-1 pt-1">
+                          <div className="skeleton h-3 w-3/4 mb-2" />
+                          <div className="skeleton h-2.5 w-1/2" />
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 ) : documents.length === 0 ? (
                   <div className="text-center py-10 px-4">
-                    <div className="w-16 h-16 mx-auto mb-3 rounded-2xl flex items-center justify-center" style={{ background: 'var(--color-accent-soft)' }}>
-                      <FileText className="w-8 h-8 text-[var(--color-blue-primary)]" />
+                    <div className="empty-plate !w-14 !h-14 !mb-3.5">
+                      <FileText className="w-6 h-6" strokeWidth={1.25} />
                     </div>
-                    <p className="text-sm font-semibold text-[var(--color-text-primary)] mb-1">No documents yet</p>
-                    <p className="text-xs text-[var(--color-text-muted)]">Upload a file to start chatting with your library.</p>
+                    <p className="text-sm font-semibold text-[var(--color-navy)] tracking-tight mb-1">No documents yet</p>
+                    <p className="text-xs text-[var(--color-text-muted)] leading-relaxed">Upload a file to start chatting with your library.</p>
                   </div>
                 ) : (
                   <div className="space-y-1.5">
@@ -774,8 +776,12 @@ export default function AssistantPage() {
             {/* Messages Area */}
             <div className="flex-1 min-h-0 overflow-y-auto px-3 sm:px-4 md:px-8 py-4 md:py-6">
               {isLoadingMessages ? (
-                <div className="flex items-center justify-center h-full">
-                  <Loader2 className="w-8 h-8 animate-spin text-[var(--color-blue-primary)]" />
+                <div className="max-w-3xl mx-auto h-full flex flex-col justify-end pb-4 space-y-4">
+                  {[64, 48, 72].map((w, i) => (
+                    <div key={i} className={`flex ${i % 2 === 1 ? 'justify-end' : 'justify-start'}`}>
+                      <div className="skeleton h-14 !rounded-2xl" style={{ width: `${w}%`, maxWidth: '24rem', opacity: 0.45 + i * 0.2 }} />
+                    </div>
+                  ))}
                 </div>
               ) : (
                 <div className="max-w-3xl mx-auto space-y-6">
@@ -937,10 +943,11 @@ export default function AssistantPage() {
                   <button
                     onClick={() => fileInputRef.current?.click()}
                     disabled={isProcessing}
-                    className="w-10 h-10 rounded-xl flex items-center justify-center text-[var(--color-text-muted)] hover:bg-[var(--color-accent-soft)] hover:text-[var(--color-blue-primary)] transition-smooth flex-shrink-0 disabled:opacity-50"
-                    title="Upload a document"
+                    className="icon-btn !w-10 !h-10 !rounded-full disabled:opacity-50"
+                    data-tip="Upload a document"
+                    aria-label="Upload a document"
                   >
-                    <Paperclip className="w-5 h-5" />
+                    <Paperclip className="w-5 h-5" strokeWidth={1.75} />
                   </button>
                   <textarea
                     value={inputText}
@@ -963,11 +970,12 @@ export default function AssistantPage() {
                   <button
                     onClick={handleSendMessage}
                     disabled={!inputText.trim() || isProcessing}
-                    className="w-10 h-10 rounded-xl flex items-center justify-center text-white flex-shrink-0 transition-smooth disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90"
-                    style={{ background: 'var(--gradient-primary)', boxShadow: 'var(--shadow-btn)' }}
-                    title="Send"
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-white flex-shrink-0 transition-smooth disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 active:scale-95"
+                    style={{ background: 'var(--gradient-ink)', boxShadow: 'var(--shadow-btn), var(--shadow-inset)' }}
+                    data-tip="Send"
+                    aria-label="Send message"
                   >
-                    {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                    {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" strokeWidth={1.75} />}
                   </button>
                 </div>
                 <p className="text-[10px] text-[var(--color-text-muted)] mt-1.5 ml-12">
@@ -1005,7 +1013,7 @@ export default function AssistantPage() {
                       <p className="label">Documents</p>
                       <p className="text-xs text-[var(--color-text-muted)]">In your library</p>
                     </div>
-                    <span className="text-2xl font-bold gradient-text">{documents.length}</span>
+                    <span className="text-[var(--color-navy)] tabular-nums" style={{ fontFamily: 'var(--font-fraunces), serif', fontSize: '1.5rem', fontWeight: 500 }}>{documents.length}</span>
                   </div>
                   <div className="flex items-center gap-3 p-3 rounded-2xl bg-[var(--color-surface-muted)] border border-[var(--color-border-light)]">
                     <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'var(--color-accent-soft)' }}>
@@ -1015,7 +1023,7 @@ export default function AssistantPage() {
                       <p className="label">Questions</p>
                       <p className="text-xs text-[var(--color-text-muted)]">Asked this session</p>
                     </div>
-                    <span className="text-2xl font-bold gradient-text">{questionsAsked}</span>
+                    <span className="text-[var(--color-navy)] tabular-nums" style={{ fontFamily: 'var(--font-fraunces), serif', fontSize: '1.5rem', fontWeight: 500 }}>{questionsAsked}</span>
                   </div>
                   <div className="flex items-center gap-3 p-3 rounded-2xl bg-[var(--color-surface-muted)] border border-[var(--color-border-light)]">
                     <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'var(--color-accent-soft)' }}>
@@ -1025,7 +1033,7 @@ export default function AssistantPage() {
                       <p className="label">Responses</p>
                       <p className="text-xs text-[var(--color-text-muted)]">From AI assistant</p>
                     </div>
-                    <span className="text-2xl font-bold gradient-text">{aiResponses}</span>
+                    <span className="text-[var(--color-navy)] tabular-nums" style={{ fontFamily: 'var(--font-fraunces), serif', fontSize: '1.5rem', fontWeight: 500 }}>{aiResponses}</span>
                   </div>
                 </div>
 

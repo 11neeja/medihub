@@ -115,6 +115,7 @@ export default function LandingPage() {
   const [formData, setFormData] = useState({ name: '', email: '', message: '' });
   const [openFaq, setOpenFaq] = useState(0);
   const [heroImageIndex, setHeroImageIndex] = useState(0);
+  const [messageSent, setMessageSent] = useState(false);
   const { loading, isAuthenticated } = useAuth();
   const router = useRouter();
 
@@ -142,8 +143,9 @@ export default function LandingPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    alert('Thank you for your message! We will get back to you soon.');
     setFormData({ name: '', email: '', message: '' });
+    setMessageSent(true);
+    window.setTimeout(() => setMessageSent(false), 3000);
   };
 
   return (
@@ -156,17 +158,22 @@ export default function LandingPage() {
         {/* Watermark — very subtle, behind the heading */}
         <p
           aria-hidden
-          className="pointer-events-none absolute left-1/2 select-none text-center font-extrabold uppercase tracking-tight whitespace-nowrap opacity-50"
+          className="pointer-events-none absolute left-1/2 select-none text-center whitespace-nowrap opacity-60"
           style={{
+            fontFamily: 'var(--font-fraunces), serif',
+            fontStyle: 'italic',
+            fontWeight: 400,
+            fontVariationSettings: "'opsz' 144, 'SOFT' 50, 'WONK' 1",
             fontSize: 'clamp(6rem, 22vw, 20rem)',
             lineHeight: 1,
             zIndex: 0,
             bottom: '4%',
             transform: 'translateX(-50%)',
             color: '#E8ECF4',
+            letterSpacing: '-0.04em',
           }}
         >
-          THE MEDIHUB
+          MediHub
         </p>
 
         {/* Decorative gradient orbs */}
@@ -182,19 +189,30 @@ export default function LandingPage() {
         />
 
         <div className="relative z-10 max-w-4xl mx-auto px-6 text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-[#E2E8F0] text-sm font-medium text-[var(--color-text-secondary)] shadow-sm mb-8 fade-in-up">
-            <BadgeCheck className="w-4 h-4 text-[var(--color-blue-primary)]" />
-            The Future of Medical Learning
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-[var(--color-border-hairline)] text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--color-text-secondary)] shadow-hairline mb-8 fade-in-up">
+            <BadgeCheck className="w-3.5 h-3.5 text-[var(--color-blue-primary)]" strokeWidth={1.75} />
+            The future of medical learning
           </div>
 
-          <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-extrabold tracking-tight text-[var(--color-navy)] mb-6 fade-in-delay-1">
-            Welcome to MediHub
+          <h1
+            className="text-[var(--color-navy)] mb-7 fade-in-delay-1"
+            style={{
+              fontFamily: 'var(--font-fraunces), serif',
+              fontSize: 'clamp(3rem, 8vw, 6.5rem)',
+              fontWeight: 400,
+              fontVariationSettings: "'opsz' 144, 'SOFT' 50, 'WONK' 1",
+              letterSpacing: '-0.04em',
+              lineHeight: 0.98,
+            }}
+          >
+            A practice for
+            <br />
+            <span className="serif-accent">medical minds</span>.
           </h1>
 
           <p className="text-base sm:text-lg md:text-xl text-[var(--color-text-secondary)] leading-relaxed max-w-2xl mx-auto mb-10 fade-in-delay-2">
-            Your complete digital hub for medical learning and collaboration. Medical news, events,
-            workspace tools, social networking, discussion groups, messaging, and an AI-powered study
-            assistant, all in one place.
+            Welcome to MediHub — your complete digital hub for medical learning and collaboration.
+            News, events, notes, groups, messaging, and an AI study assistant, all in one calm place.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 fade-in-delay-3">
@@ -293,28 +311,47 @@ export default function LandingPage() {
       <section id="features" className="py-16 md:py-24 bg-white">
         <div className="max-w-6xl mx-auto px-6">
           <div className="text-center max-w-3xl mx-auto mb-14">
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-[var(--color-navy)] mb-6">
-              Powerful features, one platform.
+            <p className="label justify-center !mb-4">The Toolkit</p>
+            <h2 className="heading-1 mb-6">
+              Powerful features, <span className="serif-accent">one</span> platform.
             </h2>
             <p className="text-base sm:text-lg text-[var(--color-text-secondary)] leading-relaxed">
               Medical professionals and students often juggle separate tools for news, events, notes,
-              communication, and study resources. MediHub solves this by bringing everything together
+              communication, and study resources. MediHub brings everything together
               in one seamless experience.
             </p>
           </div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {FEATURES.map((feature) => {
+            {FEATURES.map((feature, i) => {
               const Icon = feature.icon;
               return (
                 <div
                   key={feature.title}
-                  className="bg-white rounded-3xl border border-[#EEF2F6] p-8 shadow-[0_8px_32px_rgba(11,59,145,0.06)] hover:shadow-[var(--shadow-hover)] transition-shadow"
+                  className="relative bg-white rounded-2xl border border-[var(--color-border-hairline)] p-8 shadow-premium hover-lift"
                 >
-                  <div className="w-11 h-11 rounded-xl bg-[var(--color-accent-soft)] flex items-center justify-center mb-6">
-                    <Icon className="w-5 h-5 text-[var(--color-blue-primary)]" />
+                  <span
+                    aria-hidden
+                    className="absolute top-7 right-7 text-[var(--color-border-strong)] tabular-nums"
+                    style={{ fontFamily: 'var(--font-fraunces), serif', fontStyle: 'italic', fontSize: '1rem' }}
+                  >
+                    {String(i + 1).padStart(2, '0')}
+                  </span>
+                  <div className="w-11 h-11 rounded-xl bg-[var(--color-accent-soft)] border border-[rgba(11,59,145,0.1)] flex items-center justify-center mb-6">
+                    <Icon className="w-5 h-5 text-[var(--color-blue-primary)]" strokeWidth={1.75} />
                   </div>
-                  <h3 className="text-lg font-bold text-[var(--color-navy)] mb-3">{feature.title}</h3>
+                  <h3
+                    className="text-[var(--color-navy)] mb-3"
+                    style={{
+                      fontFamily: 'var(--font-fraunces), serif',
+                      fontSize: '1.1875rem',
+                      fontWeight: 500,
+                      letterSpacing: '-0.02em',
+                      lineHeight: 1.25,
+                    }}
+                  >
+                    {feature.title}
+                  </h3>
                   <p className="text-sm text-[var(--color-text-secondary)] leading-relaxed">
                     {feature.description}
                   </p>
@@ -343,11 +380,19 @@ export default function LandingPage() {
             </div>
 
             <div>
-              <span className="inline-block px-4 py-1.5 rounded-full bg-[var(--color-accent-soft)] text-xs font-semibold uppercase tracking-wider text-[var(--color-blue-primary)] mb-6">
-                Community Feedback
-              </span>
-              <blockquote className="text-2xl sm:text-3xl md:text-4xl font-bold leading-snug text-[var(--color-navy)] mb-8">
-                &ldquo;MediHub finally gave us one calm space for updates, discussions, and study
+              <p className="label !mb-5">Community feedback</p>
+              <blockquote
+                className="text-[var(--color-navy)] mb-8"
+                style={{
+                  fontFamily: 'var(--font-fraunces), serif',
+                  fontSize: 'clamp(1.5rem, 3vw, 2.25rem)',
+                  fontWeight: 450,
+                  fontVariationSettings: "'opsz' 120, 'SOFT' 40",
+                  letterSpacing: '-0.025em',
+                  lineHeight: 1.25,
+                }}
+              >
+                &ldquo;MediHub finally gave us one <span className="serif-accent">calm space</span> for updates, discussions, and study
                 resources without switching between apps.&rdquo;
               </blockquote>
               <div className="flex items-center gap-4">
@@ -372,8 +417,20 @@ export default function LandingPage() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-10 text-center">
             {STATS.map((stat) => (
               <div key={stat.label}>
-                <p className="text-4xl sm:text-5xl font-bold text-white/95 mb-3">{stat.value}</p>
-                <p className="text-sm sm:text-base text-white/70 leading-snug max-w-[200px] mx-auto">
+                <p
+                  className="text-white/95 mb-3 tabular-nums"
+                  style={{
+                    fontFamily: 'var(--font-fraunces), serif',
+                    fontSize: 'clamp(2.5rem, 5vw, 3.5rem)',
+                    fontWeight: 400,
+                    fontVariationSettings: "'opsz' 144, 'SOFT' 50",
+                    letterSpacing: '-0.03em',
+                    lineHeight: 1,
+                  }}
+                >
+                  {stat.value}
+                </p>
+                <p className="text-[11px] uppercase tracking-[0.18em] font-semibold text-white/60 leading-relaxed max-w-[200px] mx-auto">
                   {stat.label}
                 </p>
               </div>
@@ -386,8 +443,9 @@ export default function LandingPage() {
       <section id="faq" className="py-16 md:py-24 bg-[#F8FAFC]">
         <div className="max-w-3xl mx-auto px-6">
           <div className="text-center mb-12">
-            <h2 className="text-3xl sm:text-4xl font-bold text-[var(--color-navy)] mb-4">
-              Frequently Asked Questions
+            <p className="label justify-center !mb-4">Before you begin</p>
+            <h2 className="heading-1 mb-4">
+              Questions, <span className="serif-accent">answered</span>.
             </h2>
             <p className="text-[var(--color-text-secondary)]">
               Everything you need to know before getting started.
@@ -400,27 +458,42 @@ export default function LandingPage() {
               return (
                 <div
                   key={item.question}
-                  className="bg-white rounded-3xl border border-[#EEF2F6] shadow-[0_4px_24px_rgba(11,59,145,0.05)] overflow-hidden"
+                  className={`bg-white rounded-2xl border shadow-premium overflow-hidden transition-colors ${
+                    isOpen ? 'border-[var(--color-border-mid)]' : 'border-[var(--color-border-hairline)]'
+                  }`}
                 >
                   <button
                     type="button"
                     onClick={() => setOpenFaq(isOpen ? -1 : index)}
-                    className="w-full flex items-center justify-between gap-4 p-6 sm:p-8 text-left"
+                    className="w-full flex items-center justify-between gap-4 p-6 sm:p-7 text-left group"
                   >
-                    <span className="text-base sm:text-lg font-bold text-[var(--color-navy)] pr-4">
+                    <span
+                      className="text-[var(--color-navy)] pr-4"
+                      style={{
+                        fontFamily: 'var(--font-fraunces), serif',
+                        fontSize: '1.125rem',
+                        fontWeight: 500,
+                        letterSpacing: '-0.018em',
+                        lineHeight: 1.3,
+                      }}
+                    >
                       {item.question}
                     </span>
-                    <span className="w-9 h-9 rounded-full bg-[#F1F5F9] flex items-center justify-center shrink-0">
+                    <span className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 border transition-colors ${
+                      isOpen
+                        ? 'bg-[var(--color-navy)] border-[var(--color-navy)]'
+                        : 'bg-[var(--color-surface-muted)] border-[var(--color-border-hairline)] group-hover:bg-[var(--color-accent-soft)]'
+                    }`}>
                       {isOpen ? (
-                        <ChevronUp className="w-5 h-5 text-[var(--color-text-muted)]" />
+                        <ChevronUp className="w-4 h-4 text-white" strokeWidth={1.75} />
                       ) : (
-                        <ChevronDown className="w-5 h-5 text-[var(--color-text-muted)]" />
+                        <ChevronDown className="w-4 h-4 text-[var(--color-text-muted)]" strokeWidth={1.75} />
                       )}
                     </span>
                   </button>
                   {isOpen && (
-                    <div className="px-6 sm:px-8 pb-6 sm:pb-8 -mt-2">
-                      <p className="text-[var(--color-text-secondary)] leading-relaxed">
+                    <div className="px-6 sm:px-7 pb-6 sm:pb-7 -mt-1 fade-in">
+                      <p className="text-[var(--color-text-secondary)] leading-relaxed border-t border-[var(--color-border-hairline)] pt-4">
                         {item.answer}
                       </p>
                     </div>
@@ -437,8 +510,9 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto px-6">
           <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-start">
             <div>
-              <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-[var(--color-navy)] mb-6">
-                Get in touch
+              <p className="label !mb-4">Correspondence</p>
+              <h2 className="heading-1 mb-6">
+                Get in <span className="serif-accent">touch</span>.
               </h2>
               <p className="text-[var(--color-text-secondary)] leading-relaxed mb-8 max-w-md">
                 Have questions? We would love to hear from you. Drop us a line and our team will get
@@ -458,7 +532,7 @@ export default function LandingPage() {
             <div className="bg-white rounded-[2rem] border border-[#EEF2F6] shadow-[0_16px_48px_rgba(11,59,145,0.08)] p-8 sm:p-10">
               <form onSubmit={handleSubmit} className="space-y-5">
                 <div>
-                  <label htmlFor="name" className="block text-sm font-bold text-[var(--color-navy)] mb-2">
+                  <label htmlFor="name" className="field-label">
                     Name
                   </label>
                   <input
@@ -472,7 +546,7 @@ export default function LandingPage() {
                   />
                 </div>
                 <div>
-                  <label htmlFor="email" className="block text-sm font-bold text-[var(--color-navy)] mb-2">
+                  <label htmlFor="email" className="field-label">
                     Email
                   </label>
                   <input
@@ -486,7 +560,7 @@ export default function LandingPage() {
                   />
                 </div>
                 <div>
-                  <label htmlFor="message" className="block text-sm font-bold text-[var(--color-navy)] mb-2">
+                  <label htmlFor="message" className="field-label">
                     Message
                   </label>
                   <textarea
@@ -501,10 +575,19 @@ export default function LandingPage() {
                 </div>
                 <button
                   type="submit"
-                  className="w-full btn-primary !py-4 text-base inline-flex items-center justify-center gap-2 !rounded-2xl"
+                  className="w-full btn-primary !py-4 !text-sm inline-flex items-center justify-center gap-2 !rounded-2xl"
                 >
-                  <Send className="w-4 h-4" />
-                  Send Message
+                  {messageSent ? (
+                    <>
+                      <BadgeCheck className="w-4 h-4" strokeWidth={1.75} />
+                      Message sent — we&rsquo;ll be in touch
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4" strokeWidth={1.75} />
+                      Send message
+                    </>
+                  )}
                 </button>
               </form>
             </div>
@@ -515,8 +598,9 @@ export default function LandingPage() {
       {/* ── CTA ───────────────────────────────────────────────── */}
       <section className="py-20 md:py-28 bg-[#F1F5F9]">
         <div className="max-w-3xl mx-auto px-6 text-center">
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-[var(--color-navy)] mb-6 tracking-tight">
-            Ready to simplify your medical workflow?
+          <p className="label justify-center !mb-4">Join the practice</p>
+          <h2 className="heading-1 mb-6">
+            Ready to simplify your <span className="serif-accent">medical workflow</span>?
           </h2>
           <p className="text-base sm:text-lg text-[var(--color-text-secondary)] leading-relaxed mb-10">
             Join thousands of medical professionals using MediHub to learn faster, collaborate better,
@@ -524,10 +608,10 @@ export default function LandingPage() {
           </p>
           <Link
             href="/signup"
-            className="btn-primary !px-10 !py-4 text-base inline-flex items-center gap-2"
+            className="btn-primary !px-10 !py-4 !text-sm inline-flex items-center gap-2"
           >
-            Get Started Now
-            <ArrowRight className="w-5 h-5" />
+            Get started now
+            <ArrowRight className="w-4 h-4" strokeWidth={1.75} />
           </Link>
         </div>
       </section>
@@ -535,7 +619,17 @@ export default function LandingPage() {
       {/* ── Footer ────────────────────────────────────────────── */}
       <footer className="bg-[var(--color-navy)] text-white py-12">
         <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
-          <p className="text-xl font-bold">MediHub</p>
+          <p
+            style={{
+              fontFamily: 'var(--font-fraunces), serif',
+              fontSize: '1.375rem',
+              fontWeight: 500,
+              letterSpacing: '-0.035em',
+              fontVariationSettings: "'opsz' 144, 'SOFT' 50, 'WONK' 1",
+            }}
+          >
+            Medi<span className="italic font-normal">Hub</span>
+          </p>
           <div className="flex flex-wrap justify-center gap-6 text-sm text-white/70">
             <button type="button" onClick={() => scrollToSection('features')} className="hover:text-white transition-colors">
               Features

@@ -535,13 +535,14 @@ export default function ChatPage() {
     return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
   };
 
-  // Get role color
+  // Get role color — tonal chips within the editorial palette
   const getRoleColor = (role: string): string => {
     switch (role) {
-      case 'Doctor': return 'bg-[var(--color-blue-soft)] text-[var(--color-blue-primary)]';
-      case 'Professor': return 'bg-[var(--color-blue-primary)/20] text-[var(--color-blue-primary)]';
-      case 'Researcher': return 'bg-[var(--color-blue-soft)/50] text-[var(--color-blue-primary)]';
-      default: return 'bg-[var(--color-blue-primary)/30] text-[var(--color-blue-primary)]';
+      case 'Professor': return 'bg-[rgba(0,11,51,0.06)] text-[var(--color-navy)] border border-[rgba(0,11,51,0.14)]';
+      case 'Researcher': return 'bg-[var(--color-accent-soft)] text-[var(--color-blue-secondary)] border border-[rgba(30,66,159,0.16)]';
+      case 'Student': return 'bg-[var(--color-surface-muted)] text-[var(--color-text-secondary)] border border-[var(--color-border-light)]';
+      case 'Doctor':
+      default: return 'bg-[var(--color-accent-soft)] text-[var(--color-blue-primary)] border border-[rgba(11,59,145,0.14)]';
     }
   };
 
@@ -648,10 +649,69 @@ export default function ChatPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen gradient-subtle flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-10 h-10 animate-spin text-[var(--color-blue-primary)] mx-auto mb-3" />
-          <p className="text-[var(--color-text-muted)]">Loading conversations...</p>
+      <div className="min-h-screen gradient-subtle">
+        <div className="page-container">
+          {/* Masthead skeleton */}
+          <header className="relative mb-8 pb-8 border-b border-[var(--color-border-rule)]">
+            <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+              <div className="flex-1 max-w-3xl">
+                <div className="skeleton h-3 w-32 mb-5" />
+                <div className="skeleton h-12 w-3/4 max-w-md mb-4" />
+                <div className="skeleton h-3.5 w-2/3 max-w-sm" />
+              </div>
+              <div className="hidden md:flex items-end gap-8 shrink-0">
+                {[0, 1, 2].map(i => (
+                  <div key={i}>
+                    <div className="skeleton h-2.5 w-12 mb-2" />
+                    <div className="skeleton h-8 w-10" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </header>
+
+          {/* Workspace skeleton — mirrors the chat screen layout */}
+          <div className="card workspace-shell rounded-3xl overflow-hidden flex h-[calc(100vh-280px)] min-h-[560px]">
+            <div className="w-full lg:w-[340px] lg:border-r border-[var(--color-border-hairline)] bg-white flex flex-col shrink-0">
+              <div className="p-4 border-b border-[var(--color-border-hairline)] space-y-3">
+                <div className="skeleton h-11 w-full !rounded-[0.625rem]" />
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="skeleton h-9 !rounded-[0.625rem]" />
+                  <div className="skeleton h-9 !rounded-[0.625rem]" />
+                </div>
+              </div>
+              <div className="flex-1 p-4 space-y-5 overflow-hidden">
+                {[0, 1, 2, 3, 4].map(i => (
+                  <div key={i} className="flex items-center gap-3" style={{ opacity: 1 - i * 0.16 }}>
+                    <div className="skeleton skeleton-circle w-12 h-12 shrink-0" />
+                    <div className="flex-1">
+                      <div className="skeleton h-3 w-2/3 mb-2" />
+                      <div className="skeleton h-2.5 w-1/2" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="hidden lg:flex flex-1 flex-col bg-[var(--color-bg-ivory)]">
+              <div className="px-6 py-3.5 bg-white border-b border-[var(--color-border-hairline)] flex items-center gap-3">
+                <div className="skeleton skeleton-circle w-11 h-11" />
+                <div>
+                  <div className="skeleton h-3 w-36 mb-2" />
+                  <div className="skeleton h-2.5 w-20" />
+                </div>
+              </div>
+              <div className="flex-1 px-6 py-5 flex flex-col justify-end space-y-3">
+                {[64, 44, 56, 38].map((w, i) => (
+                  <div key={i} className={`flex ${i % 2 === 0 ? 'justify-start' : 'justify-end'}`}>
+                    <div className="skeleton h-10 !rounded-2xl" style={{ width: `${w}%`, maxWidth: '18rem', opacity: 0.4 + i * 0.15 }} />
+                  </div>
+                ))}
+              </div>
+              <div className="bg-white border-t border-[var(--color-border-hairline)] px-6 py-3">
+                <div className="skeleton h-11 w-full !rounded-2xl" />
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -761,13 +821,13 @@ export default function ChatPage() {
 
                 {filteredConversations.length === 0 && !loading && (
                   <div className="p-8 text-center">
-                    <div className="w-16 h-16 mx-auto mb-3 rounded-2xl flex items-center justify-center" style={{ background: 'var(--color-accent-soft)' }}>
-                      <MessageCircle className="w-8 h-8 text-[var(--color-blue-primary)]" />
+                    <div className="empty-plate !w-14 !h-14 !mb-3.5">
+                      <MessageCircle className="w-6 h-6" strokeWidth={1.25} />
                     </div>
-                    <p className="text-sm font-semibold text-[var(--color-text-primary)] mb-1">
+                    <p className="text-sm font-semibold text-[var(--color-navy)] tracking-tight mb-1">
                       {searchQuery ? 'No matches' : 'No conversations yet'}
                     </p>
-                    <p className="text-xs text-[var(--color-text-muted)]">
+                    <p className="text-xs text-[var(--color-text-muted)] leading-relaxed">
                       {searchQuery ? 'Try a different search term' : 'Start a new chat or create a group'}
                     </p>
                   </div>
@@ -848,16 +908,21 @@ export default function ChatPage() {
                 {/* Messages Area */}
                 <div className="flex-1 min-h-0 overflow-y-auto px-3 sm:px-4 md:px-6 py-4 md:py-5">
                   {messagesLoading ? (
-                    <div className="flex items-center justify-center h-full">
-                      <Loader2 className="w-8 h-8 animate-spin text-[var(--color-blue-primary)]" />
+                    <div className="h-full flex flex-col justify-end pb-2 space-y-3">
+                      {[72, 56, 64].map((w, i) => (
+                        <div key={i} className={`flex ${i % 2 === 0 ? 'justify-start' : 'justify-end'}`}>
+                          <div className="skeleton h-11 !rounded-2xl" style={{ width: `${w}%`, maxWidth: '20rem', opacity: 0.5 + i * 0.2 }} />
+                        </div>
+                      ))}
                     </div>
                   ) : chatMessages.length === 0 ? (
                     <div className="flex items-center justify-center h-full">
                       <div className="text-center max-w-xs">
-                        <div className="w-20 h-20 mx-auto mb-4 rounded-2xl flex items-center justify-center" style={{ background: 'var(--color-accent-soft)' }}>
-                          <Sparkles className="w-10 h-10 text-[var(--color-blue-primary)]" />
+                        <div className="empty-plate">
+                          <Sparkles className="w-7 h-7" strokeWidth={1.25} />
                         </div>
-                        <h3 className="heading-3 mb-2">Start the conversation</h3>
+                        <p className="label justify-center !mb-2">A blank page</p>
+                        <h3 className="heading-3 mb-2">Start the <span className="serif-accent">conversation</span></h3>
                         <p className="body-md">Say hi to {selectedConv.name} — your message will appear here.</p>
                       </div>
                     </div>
@@ -969,10 +1034,11 @@ export default function ChatPage() {
                   <div className="flex items-end gap-2">
                     <button
                       onClick={() => fileInputRef.current?.click()}
-                      className="w-10 h-10 rounded-xl flex items-center justify-center text-[var(--color-text-muted)] hover:bg-[var(--color-accent-soft)] hover:text-[var(--color-blue-primary)] transition-smooth flex-shrink-0"
-                      title="Attach file"
+                      className="icon-btn !w-10 !h-10 !rounded-full"
+                      data-tip="Attach file"
+                      aria-label="Attach file"
                     >
-                      <Paperclip className="w-5 h-5" />
+                      <Paperclip className="w-5 h-5" strokeWidth={1.75} />
                     </button>
                     <input ref={fileInputRef} type="file" onChange={handleFileUpload} className="hidden" />
                     <textarea
@@ -987,18 +1053,19 @@ export default function ChatPage() {
                           handleSendMessage();
                         }
                       }}
-                      placeholder="Type a message..."
-                      className="input flex-1 resize-none py-2.5 leading-snug max-h-32"
+                      placeholder="Write a message…"
+                      className="input flex-1 resize-none !rounded-2xl py-2.5 leading-snug max-h-32"
                       rows={1}
                     />
                     <button
                       onClick={handleSendMessage}
                       disabled={!newMessageText.trim()}
-                      className="w-10 h-10 rounded-xl flex items-center justify-center text-white flex-shrink-0 transition-smooth disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90"
-                      style={{ background: 'var(--gradient-primary)', boxShadow: 'var(--shadow-btn)' }}
-                      title="Send"
+                      className="w-10 h-10 rounded-full flex items-center justify-center text-white flex-shrink-0 transition-smooth disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 active:scale-95"
+                      style={{ background: 'var(--gradient-ink)', boxShadow: 'var(--shadow-btn), var(--shadow-inset)' }}
+                      data-tip="Send"
+                      aria-label="Send message"
                     >
-                      <Send className="w-4 h-4" />
+                      <Send className="w-4 h-4" strokeWidth={1.75} />
                     </button>
                   </div>
                   <p className="text-[10px] text-[var(--color-text-muted)] mt-1.5 ml-12">
@@ -1121,17 +1188,18 @@ export default function ChatPage() {
                           </div>
                           {selectedConv.isGroup && selectedConv.isAdmin && member.id !== user?._id && (
                             showRemoveConfirm === member.id ? (
-                              <div className="flex items-center gap-1 flex-shrink-0">
-                                <button onClick={() => handleRemoveMember(member.id)} className="text-[10px] px-2 py-1 bg-red-500 text-white rounded-md font-semibold hover:bg-red-600 transition-smooth">Yes</button>
-                                <button onClick={() => setShowRemoveConfirm(null)} className="text-[10px] px-2 py-1 bg-slate-200 text-slate-600 rounded-md font-semibold hover:bg-slate-300 transition-smooth">No</button>
+                              <div className="flex items-center gap-1 flex-shrink-0 fade-in">
+                                <button onClick={() => handleRemoveMember(member.id)} className="text-[10px] uppercase tracking-[0.08em] px-2.5 py-1.5 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 transition-smooth">Remove</button>
+                                <button onClick={() => setShowRemoveConfirm(null)} className="text-[10px] uppercase tracking-[0.08em] px-2.5 py-1.5 bg-[var(--color-surface-muted)] text-[var(--color-text-secondary)] border border-[var(--color-border-light)] rounded-lg font-bold hover:bg-[var(--color-accent-soft)] transition-smooth">Keep</button>
                               </div>
                             ) : (
                               <button
                                 onClick={() => setShowRemoveConfirm(member.id)}
-                                className="opacity-0 group-hover:opacity-100 w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-red-50 hover:text-red-500 transition-smooth flex-shrink-0"
-                                title="Remove member"
+                                className="opacity-0 group-hover:opacity-100 icon-btn icon-btn-sm icon-btn-danger flex-shrink-0"
+                                data-tip="Remove member"
+                                aria-label="Remove member"
                               >
-                                <UserMinus className="w-4 h-4" />
+                                <UserMinus className="w-4 h-4" strokeWidth={1.75} />
                               </button>
                             )
                           )}
@@ -1233,8 +1301,16 @@ export default function ChatPage() {
 
               <div className="max-h-72 overflow-y-auto space-y-1.5">
                 {searchingUsers && (
-                  <div className="text-center py-6">
-                    <Loader2 className="w-6 h-6 animate-spin text-[var(--color-blue-primary)] mx-auto" />
+                  <div className="space-y-2 py-1">
+                    {[0, 1, 2].map(i => (
+                      <div key={i} className="flex items-center gap-3 p-3" style={{ opacity: 1 - i * 0.25 }}>
+                        <div className="skeleton skeleton-circle w-10 h-10 shrink-0" />
+                        <div className="flex-1">
+                          <div className="skeleton h-3 w-32 mb-2" />
+                          <div className="skeleton h-2.5 w-44" />
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
                 {!searchingUsers && searchResults.length === 0 && userSearchQuery && (
@@ -1400,15 +1476,16 @@ export default function ChatPage() {
             className="card rounded-3xl w-full max-w-sm shadow-premium-xl overflow-hidden fade-in-up relative"
           >
             <div className="px-6 pt-7 pb-5 text-center">
-              <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Trash2 className="w-8 h-8 text-red-500" />
+              <div className="w-14 h-14 bg-red-50 border border-red-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Trash2 className="w-6 h-6 text-red-600" strokeWidth={1.5} />
               </div>
-              <h2 className="heading-3 mb-2">Are you sure?</h2>
-              <p className="text-sm text-[var(--color-text-muted)]">
-                This will permanently delete {selectedConv.isGroup ? <>the group <span className="font-semibold text-[var(--color-text-primary)]">&ldquo;{selectedConv.name}&rdquo;</span></> : <>your chat with <span className="font-semibold text-[var(--color-text-primary)]">{selectedConv.name}</span></>} and all messages. This action cannot be undone.
+              <p className="label justify-center !mb-2">Confirm delete</p>
+              <h2 className="heading-3 mb-2.5">Are you <span className="serif-accent">sure</span>?</h2>
+              <p className="text-sm text-[var(--color-text-body)] leading-relaxed">
+                This will permanently delete {selectedConv.isGroup ? <>the group <span className="font-semibold text-[var(--color-navy)]">&ldquo;{selectedConv.name}&rdquo;</span></> : <>your chat with <span className="font-semibold text-[var(--color-navy)]">{selectedConv.name}</span></>} and all messages. This action cannot be undone.
               </p>
             </div>
-            <div className="px-6 py-4 border-t border-[var(--color-border-light)] bg-[var(--color-surface-muted)] flex gap-3">
+            <div className="px-6 py-4 border-t border-[var(--color-border-hairline)] bg-[var(--color-surface-elevated)] flex gap-2.5">
               <button
                 onClick={() => setShowDeleteConfirm(false)}
                 className="btn-secondary flex-1"
@@ -1417,7 +1494,7 @@ export default function ChatPage() {
               </button>
               <button
                 onClick={handleDeleteConversation}
-                className="flex-1 bg-red-500 text-white py-2.5 rounded-xl font-semibold hover:bg-red-600 transition-smooth shadow-sm"
+                className="flex-1 bg-red-600 text-white py-2.5 px-4 rounded-[0.625rem] font-semibold text-[0.8125rem] hover:bg-red-700 transition-smooth shadow-sm"
               >
                 Delete
               </button>

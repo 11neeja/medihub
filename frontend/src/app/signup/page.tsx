@@ -85,14 +85,35 @@ export default function SignupPage() {
         {/* Content overlay */}
         <div className="relative z-10 h-full flex flex-col justify-between p-10 lg:p-14 text-white">
           <div className="fade-in-delay-1">
-            <p className="text-sm font-bold uppercase tracking-[0.25em] text-white/80">MediHub</p>
+            <p
+              className="text-white/90"
+              style={{
+                fontFamily: 'var(--font-fraunces), serif',
+                fontSize: '1.375rem',
+                fontWeight: 500,
+                letterSpacing: '-0.035em',
+                fontVariationSettings: "'opsz' 144, 'SOFT' 50, 'WONK' 1",
+              }}
+            >
+              Medi<span className="italic font-normal">Hub</span>
+            </p>
           </div>
 
           <div className="fade-in-delay-2">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/70 mb-4">
               Join the community
             </p>
-            <h2 className="text-3xl lg:text-4xl font-bold leading-tight tracking-tight mb-6 text-white">
+            <h2
+              className="mb-6 text-white"
+              style={{
+                fontFamily: 'var(--font-fraunces), serif',
+                fontSize: 'clamp(1.75rem, 2.5vw, 2.25rem)',
+                fontWeight: 450,
+                fontVariationSettings: "'opsz' 120, 'SOFT' 40",
+                letterSpacing: '-0.025em',
+                lineHeight: 1.22,
+              }}
+            >
               &ldquo;Start your medical journey with the right tools from day one.&rdquo;
             </h2>
             <ul className="space-y-3 text-sm text-white/85">

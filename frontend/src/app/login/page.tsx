@@ -299,14 +299,35 @@ export default function LoginPage() {
         {/* Content overlay */}
         <div className="relative z-10 h-full flex flex-col justify-between p-10 lg:p-14 text-white">
           <div className="fade-in-delay-1">
-            <p className="text-sm font-bold uppercase tracking-[0.25em] text-white/80">MediHub</p>
+            <p
+              className="text-white/90"
+              style={{
+                fontFamily: 'var(--font-fraunces), serif',
+                fontSize: '1.375rem',
+                fontWeight: 500,
+                letterSpacing: '-0.035em',
+                fontVariationSettings: "'opsz' 144, 'SOFT' 50, 'WONK' 1",
+              }}
+            >
+              Medi<span className="italic font-normal">Hub</span>
+            </p>
           </div>
 
           <div className="fade-in-delay-2">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/70 mb-4">
               Today on MediHub
             </p>
-            <blockquote className="text-3xl lg:text-4xl font-bold leading-tight tracking-tight mb-6">
+            <blockquote
+              className="mb-6"
+              style={{
+                fontFamily: 'var(--font-fraunces), serif',
+                fontSize: 'clamp(1.75rem, 2.5vw, 2.25rem)',
+                fontWeight: 450,
+                fontVariationSettings: "'opsz' 120, 'SOFT' 40",
+                letterSpacing: '-0.025em',
+                lineHeight: 1.22,
+              }}
+            >
               &ldquo;One calm space for our updates, discussions, and study resources — without switching between apps.&rdquo;
             </blockquote>
             <div className="flex items-center gap-3">
