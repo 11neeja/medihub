@@ -4,7 +4,8 @@ import { useEffect, useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
-import { Mail, Lock, ArrowRight, ArrowLeft, AlertCircle, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { Mail, ArrowRight, ArrowLeft, AlertCircle, CheckCircle2, ShieldCheck } from 'lucide-react';
+import PasswordInput from '@/components/PasswordInput';
 import { forgotPasswordAPI, resetPasswordAPI } from '@/lib/api';
 
 const LOGIN_HERO_IMAGE =
@@ -199,18 +200,13 @@ export default function LoginPage() {
                 <label htmlFor="password" className="block label mb-2">
                   Password
                 </label>
-                <div className="relative">
-                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--color-text-muted)]" />
-                  <input
-                    type="password"
-                    id="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter your password"
-                    className="input w-full pl-11 pr-4"
-                    required
-                  />
-                </div>
+                <PasswordInput
+                  id="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter your password"
+                  required
+                />
               </div>
 
               <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -468,38 +464,28 @@ export default function LoginPage() {
                     <label htmlFor="new-password" className="block label mb-2">
                       New Password
                     </label>
-                    <div className="relative">
-                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--color-text-muted)]" />
-                      <input
-                        type="password"
-                        id="new-password"
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        placeholder="Create a strong password"
-                        className="input w-full pl-11 pr-4"
-                        required
-                        minLength={8}
-                      />
-                    </div>
+                    <PasswordInput
+                      id="new-password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="Create a strong password"
+                      required
+                      minLength={8}
+                    />
                   </div>
 
                   <div>
                     <label htmlFor="confirm-password" className="block label mb-2">
                       Confirm Password
                     </label>
-                    <div className="relative">
-                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--color-text-muted)]" />
-                      <input
-                        type="password"
-                        id="confirm-password"
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        placeholder="Repeat the password"
-                        className="input w-full pl-11 pr-4"
-                        required
-                        minLength={8}
-                      />
-                    </div>
+                    <PasswordInput
+                      id="confirm-password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Repeat the password"
+                      required
+                      minLength={8}
+                    />
                   </div>
 
                   <div className="rounded-xl border border-[var(--color-border-light)] bg-white p-4 text-sm text-[var(--color-text-secondary)]">

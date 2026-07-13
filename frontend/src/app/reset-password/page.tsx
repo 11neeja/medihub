@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Lock, ArrowLeft, ArrowRight, AlertCircle, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, ArrowRight, AlertCircle, CheckCircle2, ShieldCheck } from 'lucide-react';
+import PasswordInput from '@/components/PasswordInput';
 import { resetPasswordAPI } from '@/lib/api';
 
 const strongPassword = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/;
@@ -88,36 +89,26 @@ export default function ResetPasswordPage() {
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
             <label htmlFor="password" className="block label mb-2">New Password</label>
-            <div className="relative">
-              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--color-text-muted)]" />
-              <input
-                type="password"
-                id="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Create a strong password"
-                className="input w-full pl-11 pr-4"
-                required
-                minLength={8}
-              />
-            </div>
+            <PasswordInput
+              id="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Create a strong password"
+              required
+              minLength={8}
+            />
           </div>
 
           <div>
             <label htmlFor="confirmPassword" className="block label mb-2">Confirm Password</label>
-            <div className="relative">
-              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--color-text-muted)]" />
-              <input
-                type="password"
-                id="confirmPassword"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Repeat your new password"
-                className="input w-full pl-11 pr-4"
-                required
-                minLength={8}
-              />
-            </div>
+            <PasswordInput
+              id="confirmPassword"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="Repeat your new password"
+              required
+              minLength={8}
+            />
           </div>
 
           <div className={`rounded-xl border p-4 text-sm ${passwordIsStrong ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-[var(--color-border-light)] bg-white text-[var(--color-text-secondary)]'}`}>

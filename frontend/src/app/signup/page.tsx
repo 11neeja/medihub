@@ -4,7 +4,8 @@ import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
-import { User, Mail, Lock, ArrowRight, ArrowLeft, AlertCircle, ShieldCheck } from 'lucide-react';
+import { User, Mail, ArrowRight, ArrowLeft, AlertCircle, ShieldCheck } from 'lucide-react';
+import PasswordInput from '@/components/PasswordInput';
 
 const SIGNUP_HERO_IMAGE =
   'https://images.unsplash.com/photo-1666214280391-8ff5bd3c0bf0?w=1200&h=1600&fit=crop&q=80';
@@ -211,19 +212,14 @@ export default function SignupPage() {
                 <label htmlFor="password" className="block label mb-2">
                   Password
                 </label>
-                <div className="relative">
-                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--color-text-muted)]" />
-                  <input
-                    type="password"
-                    id="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Create a strong password"
-                    className="input w-full pl-11 pr-4"
-                    required
-                    minLength={8}
-                  />
-                </div>
+                <PasswordInput
+                  id="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Create a strong password"
+                  required
+                  minLength={8}
+                />
                 <div className="mt-3 rounded-xl border border-[var(--color-border-light)] bg-white p-4 text-sm text-[var(--color-text-secondary)]">
                   <div className="flex items-center gap-2 font-semibold text-[var(--color-navy)] mb-2">
                     <ShieldCheck className="w-4 h-4 text-[var(--color-blue-primary)]" />
@@ -241,19 +237,14 @@ export default function SignupPage() {
                 <label htmlFor="confirmPassword" className="block label mb-2">
                   Confirm Password
                 </label>
-                <div className="relative">
-                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--color-text-muted)]" />
-                  <input
-                    type="password"
-                    id="confirmPassword"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Re-enter your password"
-                    className="input w-full pl-11 pr-4"
-                    required
-                    minLength={8}
-                  />
-                </div>
+                <PasswordInput
+                  id="confirmPassword"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Re-enter your password"
+                  required
+                  minLength={8}
+                />
               </div>
 
               <label className="inline-flex items-center gap-2 text-sm text-[var(--color-text-secondary)] cursor-pointer">
