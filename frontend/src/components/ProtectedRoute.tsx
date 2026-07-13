@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import SessionSplash from '@/components/SessionSplash';
 
 export default function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loading } = useAuth();
@@ -10,7 +11,7 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
   const pathname = usePathname();
 
   // Public routes that don't require authentication
-  const publicRoutes = ['/', '/login', '/signup'];
+  const publicRoutes = ['/', '/login', '/signup', '/forgot-password', '/reset-password'];
   const isPublicRoute = publicRoutes.includes(pathname);
 
   useEffect(() => {
@@ -25,9 +26,11 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
     return <>{children}</>;
   }
 
-  // While auth is hydrating, keep protected pages blank to avoid false redirects.
+  // While auth is hydrating on a protected page, show the branded splash
+  // instead of a blank screen — session restore can ride out a backend
+  // cold start, and the user should see that something is happening.
   if (loading) {
-    return null;
+    return <SessionSplash />;
   }
 
   // If not authenticated and on protected route, show nothing (will redirect)

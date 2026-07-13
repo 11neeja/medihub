@@ -9,10 +9,11 @@ export const api = axios.create({
   },
 })
 
-// Request interceptor for adding auth token
+// Request interceptor for adding auth token.
+// Sessions without "remember me" store the token in sessionStorage, so check both.
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token')
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token')
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }

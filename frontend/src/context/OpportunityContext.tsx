@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { Opportunity, Application, OpportunityType, ApplicationStatus } from '@/types';
+import { useAuth } from '@/context/AuthContext';
 import { useNotifications } from '@/context/NotificationContext';
 import {
   getOpportunitiesAPI,
@@ -68,9 +69,12 @@ export function OpportunityProvider({ children }: { children: ReactNode }) {
   });
 
   const { addNotification } = useNotifications();
+  const { isAuthenticated } = useAuth();
 
-  // Fetch opportunities from API on mount
+  // Fetch opportunities once signed in — these are authenticated endpoints,
+  // and anonymous visitors on the landing page shouldn't hit the API at all.
   useEffect(() => {
+    if (!isAuthenticated) return;
     const fetchData = async () => {
       try {
         setIsLoading(true);
@@ -87,7 +91,7 @@ export function OpportunityProvider({ children }: { children: ReactNode }) {
       }
     };
     fetchData();
-  }, []);
+  }, [isAuthenticated]);
 
   // Derive unique departments & locations from current data
   const departments = ['All', ...Array.from(new Set(opportunities.map(o => o.department)))];

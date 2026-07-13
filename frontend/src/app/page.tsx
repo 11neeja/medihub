@@ -17,7 +17,8 @@ import {
   Stethoscope,
 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { useAuth } from '@/context/AuthContext';
+import SessionSplash from '@/components/SessionSplash';
+import { useAuth, hasStoredSession } from '@/context/AuthContext';
 
 const ECOSYSTEM_PILLS = [
   'Medical Students',
@@ -116,6 +117,7 @@ export default function LandingPage() {
   const [openFaq, setOpenFaq] = useState(0);
   const [heroImageIndex, setHeroImageIndex] = useState(0);
   const [messageSent, setMessageSent] = useState(false);
+  const [sessionHint, setSessionHint] = useState(false);
   const { loading, isAuthenticated } = useAuth();
   const router = useRouter();
 
@@ -127,15 +129,21 @@ export default function LandingPage() {
     return () => clearInterval(timer);
   }, []);
 
+  // Runs after hydration only — keeps server and first client render identical.
+  useEffect(() => {
+    setSessionHint(hasStoredSession());
+  }, []);
+
   useEffect(() => {
     if (!loading && isAuthenticated) {
       router.replace('/home');
     }
   }, [loading, isAuthenticated, router]);
 
-  if (loading || isAuthenticated) {
-    return null;
-  }
+  // The landing content always renders (and is part of the prerendered HTML),
+  // so first paint never waits on the backend. The splash overlays it only
+  // while a stored session is being restored or the redirect to /home runs.
+  const restoringSession = (sessionHint && loading) || isAuthenticated;
 
   const scrollToSection = (sectionId: string) => {
     document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -150,6 +158,8 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen w-full bg-[#F8FAFC] text-[var(--color-navy)]">
+      {restoringSession && <SessionSplash />}
+
       {/* ── Hero copy ───────────────────────────────────────── */}
       <section
         id="home"

@@ -27,6 +27,32 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const REMEMBER_ME_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
 const TOKEN_KEY = 'token';
 const TOKEN_EXPIRY_KEY = 'token_expires_at';
+// Keep-alive cadence: free-tier hosts spin down after ~15 min idle, so an
+// open tab pinging every 4 min keeps the API warm without being noisy.
+const HEALTH_POLL_MS = 4 * 60 * 1000;
+
+const getStoredToken = () => {
+  if (typeof window === 'undefined') return null;
+
+  const persistentToken = localStorage.getItem(TOKEN_KEY);
+  if (persistentToken) {
+    const expiresAt = Number(localStorage.getItem(TOKEN_EXPIRY_KEY) || 0);
+    if (expiresAt && Date.now() > expiresAt) {
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(TOKEN_EXPIRY_KEY);
+      return null;
+    }
+
+    return persistentToken;
+  }
+
+  return sessionStorage.getItem(TOKEN_KEY);
+};
+
+// Synchronous hint that a session token exists locally — lets pages decide
+// whether a "restoring your session" splash is warranted without waiting on
+// the network.
+export const hasStoredSession = () => Boolean(getStoredToken());
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -35,24 +61,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [dbConnected, setDbConnected] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  const getStoredToken = () => {
-    if (typeof window === 'undefined') return null;
-
-    const persistentToken = localStorage.getItem(TOKEN_KEY);
-    if (persistentToken) {
-      const expiresAt = Number(localStorage.getItem(TOKEN_EXPIRY_KEY) || 0);
-      if (expiresAt && Date.now() > expiresAt) {
-        localStorage.removeItem(TOKEN_KEY);
-        localStorage.removeItem(TOKEN_EXPIRY_KEY);
-        return null;
-      }
-
-      return persistentToken;
-    }
-
-    return sessionStorage.getItem(TOKEN_KEY);
-  };
 
   const storeToken = (token: string, rememberMe: boolean) => {
     localStorage.removeItem(TOKEN_KEY);
@@ -86,50 +94,68 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // On mount: check backend health + restore session from token
+  // On mount: restore session from token. This must NEVER block first paint
+  // on a network call — the API host can take a minute+ to cold-start, and
+  // visitors without a session have nothing to wait for.
   useEffect(() => {
     const init = async () => {
-      setLoading(true);
-      const healthy = await checkHealth();
+      const token = getStoredToken();
 
-      if (healthy) {
-        const token = getStoredToken();
-        if (token) {
-          try {
-            const userData = await getMeAPI();
-            setUser(userData);
-            setIsAuthenticated(true);
-          } catch {
-            // Token invalid/expired
-            clearStoredToken();
-            setIsAuthenticated(false);
-            setUser(null);
-          }
-        }
+      if (!token) {
+        // Nothing to restore — unblock the UI immediately. Ping health in the
+        // background so a sleeping backend starts waking while the visitor
+        // reads the landing page or types their credentials.
+        setLoading(false);
+        checkHealth();
+        return;
       }
-      setLoading(false);
+
+      try {
+        const userData = await getMeAPI();
+        setUser(userData);
+        setIsAuthenticated(true);
+        setBackendConnected(true);
+        setDbConnected(true);
+      } catch (err: any) {
+        const status = err?.response?.status;
+        if (status === 401 || status === 403) {
+          // Token invalid/expired
+          clearStoredToken();
+        }
+        // On network errors keep the token — the backend may just be
+        // unreachable; the next page load retries.
+        setIsAuthenticated(false);
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
     };
 
     init();
 
-    // Periodically check backend health every 30 seconds
-    const interval = setInterval(checkHealth, 30000);
+    // Periodic background ping doubles as a keep-alive for the backend.
+    const interval = setInterval(checkHealth, HEALTH_POLL_MS);
     return () => clearInterval(interval);
   }, [checkHealth]);
+
+  // No health-check preflight here: on a cold backend it doubles the wait,
+  // and the auth request itself reports failure just as well.
+  const friendlyNetworkMessage =
+    'Could not reach the server — it may be waking up. Please try again in about 30 seconds.';
 
   const login = async (email: string, password: string, rememberMe = false) => {
     setError(null);
     try {
-      const healthy = await checkHealth();
-      if (!healthy) {
-        throw new Error('Backend server or database is not connected. Please start the backend server first.');
-      }
       const data = await loginAPI(email, password, rememberMe);
       storeToken(data.token, rememberMe);
       setUser({ _id: data._id, name: data.name, email: data.email });
       setIsAuthenticated(true);
+      setBackendConnected(true);
+      setDbConnected(true);
     } catch (err: any) {
-      const message = err.response?.data?.message || err.message || 'Login failed';
+      const message = err.response
+        ? err.response.data?.message || 'Login failed'
+        : friendlyNetworkMessage;
       setError(message);
       throw new Error(message);
     }
@@ -138,16 +164,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signup = async (name: string, email: string, password: string, rememberMe = false) => {
     setError(null);
     try {
-      const healthy = await checkHealth();
-      if (!healthy) {
-        throw new Error('Backend server or database is not connected. Please start the backend server first.');
-      }
       const data = await registerAPI(name, email, password, rememberMe);
       storeToken(data.token, rememberMe);
       setUser({ _id: data._id, name: data.name, email: data.email });
       setIsAuthenticated(true);
+      setBackendConnected(true);
+      setDbConnected(true);
     } catch (err: any) {
-      const message = err.response?.data?.message || err.message || 'Registration failed';
+      const message = err.response
+        ? err.response.data?.message || 'Registration failed'
+        : friendlyNetworkMessage;
       setError(message);
       throw new Error(message);
     }
