@@ -27,6 +27,11 @@ services:
       # Gmail SMTP below stays as the automatic fallback.
       - key: BREVO_API_KEY
         sync: false
+      # brevo first — Render cannot reach smtp.gmail.com (connection timeout
+      # on 465/587), so SMTP-first would only add timeout latency per send.
+      # SMTP stays as fallback in case that ever changes.
+      - key: MAIL_PROVIDER_ORDER
+        value: brevo,smtp
       # Gmail SMTP is fixed config, not a secret — pin it here so the only
       # dashboard-managed values are the account (SMTP_USER/SMTP_FROM_EMAIL)
       # and the app password (SMTP_PASS). 465 = implicit TLS, reliable on Render.

@@ -54,7 +54,7 @@ const sanitizeErrorMessage = (message) =>
 export const getMailerStatus = () => (hasMailConfig() ? mailerStatus : 'not_configured')
 
 export const getMailerDiagnostics = () => ({
-  configured: [hasBrevoConfig() && 'brevo', hasSmtpConfig() && 'smtp'].filter(Boolean),
+  configured: getProviders().map((provider) => provider.name), // in try-order
   status: getMailerStatus(),
   lastSuccess,
   lastError,
@@ -308,11 +308,30 @@ const sendViaSmtp = async ({ label, to, subject, html, text }) => {
 
 // ── Unified dispatch ────────────────────────────────────────────
 
+// Provider order (MAIL_PROVIDER_ORDER, default "brevo,smtp"). Brevo first
+// because Render can't reach smtp.gmail.com at all (connection timeout on
+// 465 and 587, confirmed via production diagnostics) — SMTP-first there
+// would add 15s+ of timeout latency to every send, including the awaited
+// password-reset mail. Local dev may prefer "smtp,brevo": authenticated
+// gmail.com mail lands in Gmail inboxes directly, while Brevo rewrites
+// unauthenticated senders to @<id>.brevosend.com, which Gmail rate-limits
+// (421 deferrals) until a real domain is authenticated in Brevo.
 const getProviders = () => {
-  const providers = []
-  if (hasBrevoConfig()) providers.push({ name: 'brevo', send: sendViaBrevo })
-  if (hasSmtpConfig()) providers.push({ name: 'smtp', send: sendViaSmtp })
-  return providers
+  const registry = {
+    brevo: { name: 'brevo', available: hasBrevoConfig, send: sendViaBrevo },
+    smtp: { name: 'smtp', available: hasSmtpConfig, send: sendViaSmtp },
+  }
+
+  const order = trimmed(process.env.MAIL_PROVIDER_ORDER || 'brevo,smtp')
+    .split(',')
+    .map((name) => name.trim().toLowerCase())
+    .filter(Boolean)
+
+  // Always append both known providers so a typo in the env var can only
+  // change the order, never silently disable a configured provider.
+  return [...new Set([...order, 'smtp', 'brevo'])]
+    .map((name) => registry[name])
+    .filter((provider) => provider && provider.available())
 }
 
 const deliver = async (label, message) => {

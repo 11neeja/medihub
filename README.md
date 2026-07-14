@@ -191,7 +191,8 @@ Set these environment variables on Render:
 - `DATABASE_URL`
 - `JWT_SECRET`
 - `FRONTEND_URL` — deployed frontend URL; password-reset links break without it
-- `BREVO_API_KEY` — recommended: primary mail provider over HTTPS (free at https://app.brevo.com; verify `SMTP_FROM_EMAIL` under Senders first). Keeps mail working when Google blocks SMTP logins from Render IPs.
+- `BREVO_API_KEY` — required in practice: Render cannot reach smtp.gmail.com (connection timeouts), so Brevo over HTTPS is the only working mail path there (free at https://app.brevo.com; verify `SMTP_FROM_EMAIL` under Senders first).
+- `MAIL_PROVIDER_ORDER` — optional; defaults to `brevo,smtp`. Use `smtp,brevo` locally where Gmail SMTP is reachable.
 - `SMTP_HOST`
 - `SMTP_PORT`
 - `SMTP_REQUIRE_TLS=true`
