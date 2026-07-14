@@ -20,6 +20,13 @@ services:
       # (password reset, welcome). MUST be set or reset links point to localhost.
       - key: FRONTEND_URL
         sync: false
+      # Brevo (https://app.brevo.com) — primary mail provider, sent over HTTPS
+      # so it works even when Google blocks SMTP logins from Render's IPs.
+      # Free tier: 300 emails/day, no domain needed. Setup: verify
+      # SMTP_FROM_EMAIL under Senders, create an API key, paste it here.
+      # Gmail SMTP below stays as the automatic fallback.
+      - key: BREVO_API_KEY
+        sync: false
       # Gmail SMTP is fixed config, not a secret — pin it here so the only
       # dashboard-managed values are the account (SMTP_USER/SMTP_FROM_EMAIL)
       # and the app password (SMTP_PASS). 465 = implicit TLS, reliable on Render.

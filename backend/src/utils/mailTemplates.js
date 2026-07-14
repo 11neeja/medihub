@@ -43,6 +43,18 @@ export const buildWelcomeEmail = ({ name }) => shell({
   `,
 })
 
+export const buildDiagnosticEmail = ({ name }) => shell({
+  title: 'Mail Delivery Check',
+  subtitle: 'A diagnostic message confirming MediHub can deliver email from this environment.',
+  body: `
+    <p style="margin:0 0 18px;font-size:16px;line-height:1.8;">Hi ${name},</p>
+    <p style="margin:0 0 18px;font-size:15px;line-height:1.8;">You requested a mail delivery check. Since this message reached you, welcome and password-reset emails are working from this server.</p>
+    <div style="background:${theme.softBlue};border:1px solid ${theme.border};border-radius:18px;padding:18px 20px;margin:24px 0;">
+      <p style="margin:0;font-size:14px;line-height:1.7;color:${theme.text};">Sent ${new Date().toUTCString()} via the /api/users/test-email diagnostic endpoint.</p>
+    </div>
+  `,
+})
+
 export const buildPasswordResetEmail = ({ name, resetUrl }) => shell({
   title: 'Reset Your Password',
   subtitle: 'We received a request to reset your MediHub password. This link expires in 1 hour.',

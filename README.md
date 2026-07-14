@@ -190,6 +190,8 @@ Set these environment variables on Render:
 
 - `DATABASE_URL`
 - `JWT_SECRET`
+- `FRONTEND_URL` — deployed frontend URL; password-reset links break without it
+- `BREVO_API_KEY` — recommended: primary mail provider over HTTPS (free at https://app.brevo.com; verify `SMTP_FROM_EMAIL` under Senders first). Keeps mail working when Google blocks SMTP logins from Render IPs.
 - `SMTP_HOST`
 - `SMTP_PORT`
 - `SMTP_REQUIRE_TLS=true`
@@ -198,6 +200,8 @@ Set these environment variables on Render:
 - `SMTP_PASS`
 - `SMTP_FROM_NAME` if you want a custom sender name
 - `SMTP_FROM_EMAIL` if your SMTP provider supports a custom from address
+
+Mail debugging in production: `GET /api/health` returns a `mail` block with the configured providers plus the last success/error, and a logged-in `POST /api/users/test-email` sends a probe to your own address and reports which provider delivered it.
 - `AI_PROVIDER=gemini`
 - `GEMINI_API_KEY`
 - `GEMINI_MODEL` if you want to change the default model

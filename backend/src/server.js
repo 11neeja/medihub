@@ -18,7 +18,7 @@ import newsRoutes from './routes/newsRoutes.js'
 import opportunityRoutes from './routes/opportunityRoutes.js'
 import groupRoutes from './routes/groupRoutes.js'
 import seedDatabase from './utils/seed.js'
-import { hasSmtpConfig, verifyMailerConnection, getMailerStatus } from './utils/mailer.js'
+import { hasMailConfig, verifyMailerConnection, getMailerStatus, getMailerDiagnostics } from './utils/mailer.js'
 
 const app = express()
 const PORT = process.env.PORT || 5000
@@ -139,14 +139,14 @@ const startServer = async () => {
 
   await seedDatabase()
 
-  // Verify SMTP in the background — never delay or block server startup on
-  // an external mail server (Gmail timeouts would stall cold starts on Render).
-  if (hasSmtpConfig()) {
+  // Verify mail providers in the background — never delay or block server
+  // startup on an external mail service (timeouts would stall Render cold starts).
+  if (hasMailConfig()) {
     verifyMailerConnection()
-      .then(() => console.log('SMTP transporter verified'))
-      .catch((error) => console.warn('SMTP verification failed:', error.message))
+      .then((summary) => console.log('Mail delivery verified:', summary))
+      .catch((error) => console.warn('Mail verification failed:', error.message))
   } else {
-    console.warn('SMTP not configured; welcome/reset emails will not be sent. Set SMTP_* in backend/.env (local) or the Render dashboard (production).')
+    console.warn('Mail not configured; welcome/reset emails will not be sent. Set BREVO_API_KEY or SMTP_* in backend/.env (local) or the Render dashboard (production).')
   }
 
   // Middleware
@@ -166,6 +166,7 @@ const startServer = async () => {
         server: true,
         database: 'connected',
         smtp: getMailerStatus(),
+        mail: getMailerDiagnostics(),
         timestamp: new Date().toISOString(),
       })
     } catch {
@@ -174,6 +175,7 @@ const startServer = async () => {
         server: true,
         database: 'disconnected',
         smtp: getMailerStatus(),
+        mail: getMailerDiagnostics(),
         timestamp: new Date().toISOString(),
       })
     }

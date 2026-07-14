@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken'
 import bcrypt from 'bcryptjs'
 import prisma from '../config/prisma.js'
-import { hasSmtpConfig, sendWelcomeEmail, sendPasswordResetEmail } from '../utils/mailer.js'
+import { hasMailConfig, sendWelcomeEmail, sendPasswordResetEmail, sendTestEmail } from '../utils/mailer.js'
 
 const PASSWORD_POLICY = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/
 
@@ -129,9 +129,9 @@ export const forgotPassword = async (req, res) => {
       return res.json({ message: 'If that email exists, a password reset link has been sent.' })
     }
 
-    if (!hasSmtpConfig()) {
+    if (!hasMailConfig()) {
       return res.status(503).json({
-        message: 'Email service is not configured in production. Set SMTP_HOST, SMTP_PORT, SMTP_USER, and SMTP_PASS in Render.',
+        message: 'Email service is not configured in production. Set BREVO_API_KEY or the SMTP_* variables in Render.',
       })
     }
 
@@ -201,6 +201,29 @@ export const resetPassword = async (req, res) => {
     res.json({ message: 'Password updated successfully' })
   } catch (error) {
     res.status(500).json({ message: error.message })
+  }
+}
+
+// @desc    Send a diagnostic email to the logged-in user's own address and
+//          report which provider delivered it — a one-click production probe
+//          for "why are welcome/reset emails not arriving?"
+// @route   POST /api/users/test-email
+const MAIL_TEST_COOLDOWN_MS = 60 * 1000
+const lastMailTestByUser = new Map()
+
+export const sendMailDiagnostic = async (req, res) => {
+  const last = lastMailTestByUser.get(req.user.id) || 0
+  const waitMs = MAIL_TEST_COOLDOWN_MS - (Date.now() - last)
+  if (waitMs > 0) {
+    return res.status(429).json({ ok: false, message: `Please wait ${Math.ceil(waitMs / 1000)}s before sending another test email.` })
+  }
+  lastMailTestByUser.set(req.user.id, Date.now())
+
+  try {
+    const result = await sendTestEmail({ name: req.user.name, email: req.user.email })
+    res.json({ ok: true, provider: result.provider, messageId: result.messageId, to: req.user.email })
+  } catch (error) {
+    res.status(502).json({ ok: false, message: error.message })
   }
 }
 
