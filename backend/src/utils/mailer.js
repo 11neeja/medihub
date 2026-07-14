@@ -5,17 +5,24 @@ import { buildWelcomeEmail, buildPasswordResetEmail, buildDiagnosticEmail } from
 dotenv.config()
 
 // ── Delivery architecture ───────────────────────────────────────
-// Two independent providers, tried in order until one delivers:
+// Independent providers, tried in order until one delivers:
 //
-//   1. brevo — transactional mail over HTTPS (api.brevo.com, port 443).
-//      Immune to the two ways Gmail SMTP dies on cloud hosts: blocked or
-//      throttled SMTP egress, and Google rejecting logins from datacenter
-//      IPs even when the app password is valid. Enabled by BREVO_API_KEY.
-//   2. smtp — Gmail/Nodemailer with sanitized credentials and 465/587
+//   1. gmail-relay — a Google Apps Script web app (see
+//      backend/scripts/gmail-relay.gs) that sends through the real Gmail
+//      account over HTTPS. Best inbox deliverability (authenticated
+//      gmail.com mail) and reachable from hosts that block SMTP, but
+//      capped at ~100 recipients/day on consumer Gmail. Enabled by
+//      GMAIL_RELAY_URL + GMAIL_RELAY_SECRET.
+//   2. brevo — transactional mail over HTTPS (api.brevo.com, port 443).
+//      No daily send window that small, but free accounts get the sender
+//      rewritten to @<id>.brevosend.com, which Gmail often 421-defers
+//      until a real domain is authenticated. Enabled by BREVO_API_KEY.
+//   3. smtp — Gmail/Nodemailer with sanitized credentials and 465/587
 //      port fallback. Enabled by SMTP_HOST + SMTP_USER + SMTP_PASS.
+//      Unreachable from Render (connection timeouts), works locally.
 //
-// With both configured, Brevo is primary and SMTP the automatic
-// fallback, so no single provider outage can stop mail.
+// Any provider alone works; with several configured, the next one is the
+// automatic fallback, so no single provider outage can stop mail.
 
 const trimmed = (value) => (value || '').trim()
 
@@ -34,14 +41,17 @@ const smtpPass = () => {
 }
 
 const brevoApiKey = () => trimmed(process.env.BREVO_API_KEY)
+const gmailRelayUrl = () => trimmed(process.env.GMAIL_RELAY_URL)
+const gmailRelaySecret = () => trimmed(process.env.GMAIL_RELAY_SECRET)
 
 export const hasSmtpConfig = () => Boolean(smtpHost() && smtpUser() && smtpPass())
 export const hasBrevoConfig = () => Boolean(brevoApiKey())
-export const hasMailConfig = () => hasBrevoConfig() || hasSmtpConfig()
+export const hasGmailRelayConfig = () => Boolean(gmailRelayUrl() && gmailRelaySecret())
+export const hasMailConfig = () => hasGmailRelayConfig() || hasBrevoConfig() || hasSmtpConfig()
 
 const NOT_CONFIGURED_HINT =
-  'Mail is not configured. Set BREVO_API_KEY (recommended for production) or SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASS ' +
-  'in backend/.env (local) or the Render dashboard (production).'
+  'Mail is not configured. Set GMAIL_RELAY_URL + GMAIL_RELAY_SECRET (Apps Script relay), BREVO_API_KEY, ' +
+  'or SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASS in backend/.env (local) or the Render dashboard (production).'
 
 // ── Status + diagnostics — surfaced by /api/health and /api/users/test-email
 let mailerStatus = 'unverified' // 'not_configured' | 'unverified' | 'ok' | 'error'
@@ -88,6 +98,93 @@ const assertMailAccepted = (info, label) => {
       `${label} was not accepted by the SMTP server. accepted=${JSON.stringify(info.accepted || [])} rejected=${JSON.stringify(info.rejected || [])}`
     )
   }
+}
+
+// ── Provider: Gmail relay (Google Apps Script web app) ─────────
+// The script (backend/scripts/gmail-relay.gs) always answers HTTP 200 with
+// a JSON body — Apps Script cannot set status codes — so failures are
+// detected via the `ok` field, and non-JSON bodies mean the deployment
+// itself is wrong (not deployed as "Anyone", or a /dev URL instead of /exec).
+
+const describeGmailRelayFailure = (detail) => {
+  const text = String(detail || '')
+
+  if (/unauthorized/i.test(text)) {
+    return (
+      'Gmail relay rejected the shared secret. GMAIL_RELAY_SECRET must exactly match the SECRET constant ' +
+      'inside the Apps Script (script.google.com) — update one of them so they are identical.'
+    )
+  }
+
+  if (/invoked too many times|quota/i.test(text)) {
+    return (
+      'Gmail relay hit the Gmail daily sending quota (~100 recipients/day on consumer accounts). ' +
+      'It resets within 24h; meanwhile delivery falls back to the next provider automatically.'
+    )
+  }
+
+  return `Gmail relay error: ${text || 'no detail'}`
+}
+
+const gmailRelayRequest = async (payload) => {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), Number(process.env.GMAIL_RELAY_TIMEOUT || 20000))
+
+  try {
+    const response = await fetch(gmailRelayUrl(), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ secret: gmailRelaySecret(), ...payload }),
+      redirect: 'follow', // Apps Script answers /exec POSTs via a 302 to a one-time result URL
+      signal: controller.signal,
+    })
+
+    const text = await response.text()
+    let data = null
+    try {
+      data = JSON.parse(text)
+    } catch {
+      data = null
+    }
+
+    if (!data || typeof data !== 'object') {
+      throw new Error(
+        `Gmail relay returned a non-JSON response (HTTP ${response.status}). Use the web app /exec URL and ` +
+        'deploy it with "Execute as: Me" + "Who has access: Anyone" at script.google.com.'
+      )
+    }
+
+    if (!data.ok) throw new Error(describeGmailRelayFailure(data.error))
+
+    if (typeof data.remaining === 'number' && data.remaining <= 10) {
+      console.warn(`Gmail relay daily quota nearly exhausted: ${data.remaining} sends left`)
+    }
+
+    return data
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      throw new Error('Gmail relay request timed out — check GMAIL_RELAY_URL and that the web app is deployed.')
+    }
+    if (error?.cause) {
+      const detail = error.cause.code || error.cause.message || 'network error'
+      throw new Error(`Gmail relay unreachable (${detail}) — check GMAIL_RELAY_URL.`)
+    }
+    throw error
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+const sendViaGmailRelay = async ({ to, subject, html, text }) => {
+  await gmailRelayRequest({
+    to,
+    subject,
+    html,
+    text,
+    fromName: trimmed(process.env.SMTP_FROM_NAME) || 'MediHub',
+  })
+  // Apps Script cannot report the Gmail message id — acceptance is the signal.
+  return { messageId: null }
 }
 
 // ── Provider: Brevo (HTTPS API) ─────────────────────────────────
@@ -145,6 +242,10 @@ const brevoRequest = async (path, { method = 'GET', body } = {}) => {
   } catch (error) {
     if (error.name === 'AbortError') {
       throw new Error('Brevo API request timed out — check outbound HTTPS connectivity to api.brevo.com.')
+    }
+    if (error?.cause) {
+      const detail = error.cause.code || error.cause.message || 'network error'
+      throw new Error(`Brevo API unreachable (${detail}) — check outbound HTTPS connectivity.`)
     }
     throw error
   } finally {
@@ -308,28 +409,28 @@ const sendViaSmtp = async ({ label, to, subject, html, text }) => {
 
 // ── Unified dispatch ────────────────────────────────────────────
 
-// Provider order (MAIL_PROVIDER_ORDER, default "brevo,smtp"). Brevo first
-// because Render can't reach smtp.gmail.com at all (connection timeout on
-// 465 and 587, confirmed via production diagnostics) — SMTP-first there
-// would add 15s+ of timeout latency to every send, including the awaited
-// password-reset mail. Local dev may prefer "smtp,brevo": authenticated
-// gmail.com mail lands in Gmail inboxes directly, while Brevo rewrites
-// unauthenticated senders to @<id>.brevosend.com, which Gmail rate-limits
-// (421 deferrals) until a real domain is authenticated in Brevo.
+// Provider order (MAIL_PROVIDER_ORDER, default "gmail-relay,brevo,smtp").
+// gmail-relay first: authenticated gmail.com mail that reaches Gmail
+// inboxes, sent over HTTPS so it works from Render. Brevo next — no small
+// daily cap, but its @<id>.brevosend.com rewrite gets 421-deferred by
+// Gmail until a real domain is authenticated. SMTP last: best locally,
+// but unreachable from Render (connection timeouts on 465/587), so trying
+// it earlier there would only add 15s+ latency per send.
 const getProviders = () => {
   const registry = {
+    'gmail-relay': { name: 'gmail-relay', available: hasGmailRelayConfig, send: sendViaGmailRelay },
     brevo: { name: 'brevo', available: hasBrevoConfig, send: sendViaBrevo },
     smtp: { name: 'smtp', available: hasSmtpConfig, send: sendViaSmtp },
   }
 
-  const order = trimmed(process.env.MAIL_PROVIDER_ORDER || 'brevo,smtp')
+  const order = trimmed(process.env.MAIL_PROVIDER_ORDER || 'gmail-relay,brevo,smtp')
     .split(',')
     .map((name) => name.trim().toLowerCase())
     .filter(Boolean)
 
-  // Always append both known providers so a typo in the env var can only
+  // Always append every known provider so a typo in the env var can only
   // change the order, never silently disable a configured provider.
-  return [...new Set([...order, 'smtp', 'brevo'])]
+  return [...new Set([...order, 'gmail-relay', 'brevo', 'smtp'])]
     .map((name) => registry[name])
     .filter((provider) => provider && provider.available())
 }
@@ -363,6 +464,17 @@ export const verifyMailerConnection = async () => {
 
   const results = []
   const failures = []
+
+  if (hasGmailRelayConfig()) {
+    try {
+      const pong = await gmailRelayRequest({ ping: true })
+      const remaining = typeof pong.remaining === 'number' ? `${pong.remaining} sends left today` : 'reachable'
+      results.push(`gmail-relay ok (${remaining})`)
+    } catch (error) {
+      recordFailure('gmail-relay', 'Gmail relay verification', error)
+      failures.push(`gmail-relay: ${sanitizeErrorMessage(error.message)}`)
+    }
+  }
 
   if (hasBrevoConfig()) {
     try {

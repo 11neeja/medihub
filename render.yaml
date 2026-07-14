@@ -27,11 +27,19 @@ services:
       # Gmail SMTP below stays as the automatic fallback.
       - key: BREVO_API_KEY
         sync: false
-      # brevo first — Render cannot reach smtp.gmail.com (connection timeout
-      # on 465/587), so SMTP-first would only add timeout latency per send.
-      # SMTP stays as fallback in case that ever changes.
+      # Gmail relay (Apps Script web app, backend/scripts/gmail-relay.gs):
+      # free path to authenticated gmail.com inbox delivery over HTTPS.
+      # URL is the deployed /exec URL; SECRET must match the script's constant.
+      - key: GMAIL_RELAY_URL
+        sync: false
+      - key: GMAIL_RELAY_SECRET
+        sync: false
+      # gmail-relay first (inbox-grade delivery, ~100/day), brevo next (no
+      # small cap, but brevosend.com sender gets 421-deferred by Gmail until
+      # a real domain is authenticated), smtp last — Render cannot reach
+      # smtp.gmail.com (connection timeouts on 465/587).
       - key: MAIL_PROVIDER_ORDER
-        value: brevo,smtp
+        value: gmail-relay,brevo,smtp
       # Gmail SMTP is fixed config, not a secret — pin it here so the only
       # dashboard-managed values are the account (SMTP_USER/SMTP_FROM_EMAIL)
       # and the app password (SMTP_PASS). 465 = implicit TLS, reliable on Render.
