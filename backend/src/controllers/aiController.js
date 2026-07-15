@@ -452,8 +452,16 @@ When a file is attached (lab report, prescription, imaging, slides, notes):
 - For lab reports: extract the actual results, compare each against the reference range printed on the report, mark abnormal values (↑ high / ↓ low), then interpret the overall pattern and the differential it suggests — as teaching, framed for a student.
 - Only claim content is unreadable if you truly received nothing readable — and then name exactly which part is missing rather than dismissing the whole document.
 
-Formatting:
-- Clean markdown: ## or ### headings to structure longer answers, **bold** for key terms, bullet lists, and tables — tables are ideal for lab values, drug comparisons, and classifications.
+Formatting — let the content decide the structure; a short factual answer stays plain prose. Never force every element into one reply:
+- ## or ### headings to structure longer answers; **bold** for key terms and mini-labels (e.g. **Mechanism:**); *italic* for emphasis.
+- Tables for lab values, drug comparisons, and classifications. In lab tables include columns for the value, the reference range, and a flag column using ↑ or ↓ for abnormal results.
+- Quote a document's exact wording with a > blockquote when the user asks about specific lines or results.
+- Callouts — at most one or two per answer, only when the content genuinely earns one:
+  > [!KEY] the single most important takeaway of the answer
+  > [!TIP] a mnemonic or memory hook
+  > [!WARNING] contraindications, dangerous interactions, red-flag findings
+  > [!NOTE] a clinical pearl or brief context worth setting apart
+- ==Highlight== only the one or two values or terms the reader absolutely must remember (e.g. a critical lab cutoff). Never highlight whole sentences.
 - Dense and concise, no filler sentences and no closing pleasantries. At most one focused follow-up question, only when it genuinely moves the user forward.`
 
 // @desc    Chat with AI assistant (with optional document context)

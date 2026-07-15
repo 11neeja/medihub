@@ -360,7 +360,7 @@ export default function AssistantPage() {
 
   // Parse markdown text into notebook blocks
   const parseMarkdownToBlocks = (text: string) => {
-    const lines = text.split('\n');
+    const lines = text.replace(/==/g, '').split('\n');
     const blocks: { type: 'heading' | 'text' | 'bullet' | 'checklist' | 'divider'; text: string; checked?: boolean }[] = [];
     let currentTextLines: string[] = [];
 
@@ -380,6 +380,14 @@ export default function AssistantPage() {
       // Skip empty lines (flush accumulated text)
       if (!line) {
         flushText();
+        continue;
+      }
+
+      // Blockquotes / callouts: keep the content, drop the > and [!TYPE] marker
+      if (/^>\s?/.test(line)) {
+        flushText();
+        const quoteText = line.replace(/^>\s?/, '').replace(/^\[!\w+\]\s*/, '').replace(/\*\*/g, '').trim();
+        if (quoteText) blocks.push({ type: 'text', text: quoteText });
         continue;
       }
 
