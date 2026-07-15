@@ -2,6 +2,7 @@ import prisma from '../config/prisma.js'
 import fs from 'fs'
 import path from 'path'
 import { extractTextFromFile } from '../utils/extractText.js'
+import { isRemoteUrl } from '../utils/storage.js'
 
 // ── AI provider configuration ──
 const AI_PROVIDER = process.env.AI_PROVIDER || (process.env.GEMINI_API_KEY ? 'gemini' : 'ollama')
@@ -198,6 +199,67 @@ function extractGeminiText(data) {
   return { text, blocked, finishReason: candidate?.finishReason }
 }
 
+// ── Document payloads ──
+// Gemini is multimodal, and it reads lab reports, scans, and slides far more
+// accurately from the original file than from local Tesseract OCR text. So we
+// send images/PDFs as inline media when we can get the bytes (local uploads
+// dir, or Cloudinary URL), and fall back to the extracted text stored in the
+// DB (which also survives Render's ephemeral disk).
+const GEMINI_IMAGE_MIMES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/heic', 'image/heif'])
+const INLINE_IMAGE_LIMIT = 6 * 1024 * 1024 // raw bytes per image
+const INLINE_PDF_LIMIT = 12 * 1024 * 1024 // raw bytes per PDF
+const INLINE_TOTAL_LIMIT = 13 * 1024 * 1024 // raw bytes per request (~17MB as base64; API cap is 20MB)
+const DOC_TEXT_LIMIT = 20_000 // chars of extracted text per document
+
+async function loadDocumentBytes(doc) {
+  if (isRemoteUrl(doc.filePath)) {
+    const response = await fetch(doc.filePath, { signal: AbortSignal.timeout(20_000) })
+    if (!response.ok) throw new Error(`fetch failed (HTTP ${response.status})`)
+    return Buffer.from(await response.arrayBuffer())
+  }
+  const relative = doc.filePath.replace(/^\/?uploads\//, '')
+  const fullPath = path.join(process.cwd(), 'uploads', relative)
+  if (!fs.existsSync(fullPath)) throw new Error('file missing on disk')
+  return fs.readFileSync(fullPath)
+}
+
+export async function buildDocumentPayload(documents) {
+  const mediaParts = []
+  let textContext = ''
+  let mediaBudget = INLINE_TOTAL_LIMIT
+
+  for (const doc of documents) {
+    const mime = doc.mimeType || ''
+    const isImage = GEMINI_IMAGE_MIMES.has(mime)
+    const isPdf = mime === 'application/pdf'
+    const perFileLimit = isImage ? INLINE_IMAGE_LIMIT : INLINE_PDF_LIMIT
+
+    let attached = false
+    if (isGeminiEnabled() && (isImage || isPdf) && doc.filePath && (doc.size || 0) <= perFileLimit) {
+      try {
+        const bytes = await loadDocumentBytes(doc)
+        if (bytes.length > 0 && bytes.length <= perFileLimit && bytes.length <= mediaBudget) {
+          mediaParts.push({ text: `[Attached file: ${doc.name}]` })
+          mediaParts.push({ inlineData: { mimeType: mime, data: bytes.toString('base64') } })
+          mediaBudget -= bytes.length
+          attached = true
+        }
+      } catch (err) {
+        console.error(`Could not attach "${doc.name}" (${err?.message || err}) — falling back to extracted text`)
+      }
+    }
+
+    if (!attached && doc.extractedText) {
+      const text = doc.extractedText.length > DOC_TEXT_LIMIT
+        ? doc.extractedText.slice(0, DOC_TEXT_LIMIT) + '\n… [truncated]'
+        : doc.extractedText
+      textContext += `\n[Document: ${doc.name}]\n${text}\n`
+    }
+  }
+
+  return { mediaParts, textContext }
+}
+
 async function geminiRequest(body, options = {}) {
   if (!isGeminiEnabled()) {
     throw new AIProviderError('not_configured', 'GEMINI_API_KEY is not set')
@@ -320,7 +382,9 @@ async function geminiChat(messages, options = {}) {
     .filter(m => m.role !== 'system')
     .map(m => ({
       role: m.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: m.content }],
+      // A message may carry rich parts (inline images/PDFs); plain messages
+      // wrap their text content.
+      parts: Array.isArray(m.parts) && m.parts.length > 0 ? m.parts : [{ text: m.content }],
     }))
   return geminiRequest(
     { systemInstruction: { parts: [{ text: systemMessage }] }, contents: conversation },
@@ -370,22 +434,27 @@ function setCachedSuggestions(docIds = [], questions = []) {
   suggestionCache.ts = Date.now()
 }
 
-// System prompt for medical assistant
-const SYSTEM_PROMPT = `You are MediHub AI Assistant — a knowledgeable, friendly medical study assistant. 
-You help medical students and healthcare professionals with:
-- Answering medical questions accurately
-- Explaining complex medical concepts clearly
-- Summarizing medical documents and research papers
-- Providing study tips and exam preparation guidance
+// System prompt for the medical assistant. Tuned hard against generic
+// AI-disclaimer prose: answers must be direct, specific, and grounded in the
+// attached document when there is one.
+const SYSTEM_PROMPT = `You are MediHub AI — an expert medical education assistant inside MediHub, a study platform used by medical students and healthcare professionals.
 
-Guidelines:
-- Always provide evidence-based medical information
-- Use clear formatting with headings, bullet points, and bold text
-- When discussing treatments or medications, mention important side effects and contraindications
-- If a question is outside your knowledge, state that clearly
-- Be concise but thorough
-- Use medical terminology appropriately but explain it when needed
-- Format responses with markdown for readability`
+Core rules:
+- Answer the exact question asked, and lead with the answer. Never open with "As an AI…", never restate the question, never describe what you're about to do.
+- Be specific and factual: real values, reference ranges, mechanisms, drug names, doses, classifications, diagnostic criteria. Vague generalities are failures.
+- Your users are studying or practicing medicine, so skip "consult a physician" boilerplate — it is understood. Add one short safety line only if someone describes a personal medical emergency.
+- Match depth to the question: a factual question gets a tight, complete answer; an "explain/teach" question gets structure — headings, a table where it helps, and a mnemonic or memory hook where a good one exists.
+- If a question is ambiguous, make the most reasonable clinical/educational reading, answer it fully, and note your assumption in one line at the end.
+- Ground everything in current evidence-based medicine and guidelines. If something is genuinely uncertain or contested, say so in one line rather than hedging throughout.
+
+When a file is attached (lab report, prescription, imaging, slides, notes):
+- Read it carefully and answer FROM its actual content — quote the real values, findings, names, and wording it contains.
+- For lab reports: extract the actual results, compare each against the reference range printed on the report, mark abnormal values (↑ high / ↓ low), then interpret the overall pattern and the differential it suggests — as teaching, framed for a student.
+- Only claim content is unreadable if you truly received nothing readable — and then name exactly which part is missing rather than dismissing the whole document.
+
+Formatting:
+- Clean markdown: ## or ### headings to structure longer answers, **bold** for key terms, bullet lists, and tables — tables are ideal for lab values, drug comparisons, and classifications.
+- Dense and concise, no filler sentences and no closing pleasantries. At most one focused follow-up question, only when it genuinely moves the user forward.`
 
 // @desc    Chat with AI assistant (with optional document context)
 // @route   POST /api/ai/chat
@@ -397,30 +466,19 @@ export const chatWithAI = async (req, res) => {
       return res.status(400).json({ message: 'Message is required' })
     }
 
-    // Build context from documents if any
-    let documentContext = ''
+    // Build document context: original files go to Gemini as inline media
+    // (it reads lab reports and scans far better than OCR text), with the
+    // extracted text as fallback for text formats and lost files.
+    let docPayload = { mediaParts: [], textContext: '' }
     if (documentIds && documentIds.length > 0) {
       const documents = await prisma.document.findMany({
         where: {
           id: { in: documentIds },
           userId: req.user.id,
         },
-        select: { name: true, extractedText: true },
+        select: { name: true, extractedText: true, filePath: true, mimeType: true, size: true },
       })
-
-      if (documents.length > 0) {
-        documentContext = '\n\n--- UPLOADED DOCUMENT CONTEXT ---\n'
-        documents.forEach(doc => {
-          if (doc.extractedText) {
-            // Limit each doc to ~6000 chars to fit within context window
-            const text = doc.extractedText.length > 6000
-              ? doc.extractedText.slice(0, 6000) + '\n... [truncated]'
-              : doc.extractedText
-            documentContext += `\n[Document: ${doc.name}]\n${text}\n`
-          }
-        })
-        documentContext += '\n--- END DOCUMENT CONTEXT ---\n\nUse the above document content to answer the user\'s question when relevant. If the question is about the document, base your answer on the document content. If it\'s a general medical question, you can answer from your knowledge but mention what the document says if relevant.'
-      }
+      docPayload = await buildDocumentPayload(documents)
     }
 
     // Build messages array for Gemini chat
@@ -439,13 +497,21 @@ export const chatWithAI = async (req, res) => {
     }
 
     // Add current message with document context
-    const fullPrompt = documentContext
-      ? `${documentContext}\n\nUser Question: ${message}`
-      : message
+    const contextText = docPayload.textContext
+      ? `--- DOCUMENT CONTENT (extracted text) ---${docPayload.textContext}--- END DOCUMENT CONTENT ---\n\n`
+      : ''
+    const instruction = docPayload.mediaParts.length > 0 || contextText
+      ? 'Answer from the attached file(s) and document text when the question relates to them — quote their actual content.\n\n'
+      : ''
+    const questionText = `${contextText}${instruction}${message}`
 
-    messages.push({ role: 'user', content: fullPrompt })
+    messages.push({
+      role: 'user',
+      content: questionText, // text-only fallback (Ollama)
+      parts: [...docPayload.mediaParts, { text: questionText }],
+    })
 
-    const response = await generateAIResponse(messages)
+    const response = await generateAIResponse(messages, { temperature: 0.35 })
 
     res.json({ response })
   } catch (error) {
@@ -478,20 +544,26 @@ export const summarizeDocument = async (req, res) => {
       return res.status(404).json({ message: 'Document not found' })
     }
 
-    // If no extracted text yet, extract it first using local libraries
-    let textContent = document.extractedText
-    if (!textContent && document.filePath) {
+    // Prefer sending the original file to Gemini (multimodal) — far more
+    // accurate for lab reports and scans than local OCR, and much faster
+    // than running Tesseract on the request path.
+    let payload = await buildDocumentPayload([document])
+
+    // No usable media and no extracted text yet — extract locally now.
+    if (payload.mediaParts.length === 0 && !payload.textContext && document.filePath && !isRemoteUrl(document.filePath)) {
       const uploadsDir = path.join(process.cwd(), 'uploads')
       const fullPath = path.join(uploadsDir, document.filePath)
 
       if (fs.existsSync(fullPath)) {
         try {
-          textContent = await extractTextFromFile(fullPath, document.mimeType)
+          const textContent = await extractTextFromFile(fullPath, document.mimeType)
           // Save extracted text
           await prisma.document.update({
             where: { id: document.id },
             data: { extractedText: textContent },
           })
+          document.extractedText = textContent
+          payload = await buildDocumentPayload([document])
         } catch (extractErr) {
           console.error('Text extraction failed:', extractErr)
           return res.json({
@@ -503,18 +575,28 @@ export const summarizeDocument = async (req, res) => {
       }
     }
 
-    if (!textContent) {
-      return res.json({ summary: '⚠️ **No text could be extracted** from this document. You can still ask me questions and I\'ll do my best to help!' })
+    if (payload.mediaParts.length === 0 && !payload.textContext) {
+      return res.json({ summary: 'I couldn\'t find readable content in this document. You can still ask me questions about the topic and I\'ll do my best to help!' })
     }
 
-    // Truncate for context window
-    const truncated = textContent.length > 6000
-      ? textContent.slice(0, 6000) + '\n... [truncated]'
-      : textContent
+    const prompt = `Summarize the attached document "${document.name}" for a medical student's personal library.
+- First line: what this document is (type, subject, source) in one sentence.
+- Then 3-6 bullets with the key content. For lab reports: the actual measured values with their reference ranges, marking abnormal ones (↑/↓), plus one bullet interpreting the overall pattern. For slides/notes: the main topics and highest-yield facts. For papers: objective, methods, key findings.
+- Last line: what this document is most useful for.
+Be specific to THIS document — do not describe what such documents "typically" contain.`
 
-    const prompt = `${SYSTEM_PROMPT}\n\nProvide a brief summary (4-6 sentences max) of the following document titled "${document.name}":\n\n${truncated}\n\nKeep it concise. Mention what the document is about and its key points. Do not list every detail.`
+    const contextText = payload.textContext
+      ? `--- DOCUMENT CONTENT (extracted text) ---${payload.textContext}--- END DOCUMENT CONTENT ---\n\n`
+      : ''
+    const summaryAsk = `${contextText}${prompt}`
 
-    const summary = await generateAIResponse(prompt)
+    const summary = await generateAIResponse(
+      [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: summaryAsk, parts: [...payload.mediaParts, { text: summaryAsk }] },
+      ],
+      { temperature: 0.3 }
+    )
 
     return res.json({ summary })
   } catch (error) {

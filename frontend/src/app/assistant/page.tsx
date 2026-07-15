@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import ConfirmModal from '@/components/ConfirmModal';
 import ResizableSidebar from '@/components/ResizableSidebar';
+import MarkdownMessage from '@/components/MarkdownMessage';
 import {
   getDocumentsAPI,
   uploadDocumentAPI,
@@ -508,12 +509,13 @@ export default function AssistantPage() {
     return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
   };
 
-  // Quick prompt suggestions for the welcome state
+  // Quick prompt suggestions for the welcome state — concrete asks so the
+  // first reply is a real answer, not a "which topic?" counter-question.
   const quickPrompts = [
-    { icon: BookOpen, text: 'Explain a medical concept' },
+    { icon: BookOpen, text: 'Explain the RAAS and where each drug class acts on it' },
     { icon: FileText, text: 'Summarize my uploaded document' },
-    { icon: Lightbulb, text: 'Give me study tips' },
-    { icon: Sparkles, text: 'Quiz me on cardiology' },
+    { icon: Lightbulb, text: 'Build me a 7-day study plan for cardiology' },
+    { icon: Sparkles, text: 'Quiz me with 5 USMLE-style pharmacology questions' },
   ];
 
   // Stats
@@ -857,22 +859,12 @@ export default function AssistantPage() {
                           </div>
 
                           {/* Message bubble */}
-                          <div className={`px-4 py-3 ${isUser ? 'user-prompt-bubble shadow-sm' : 'ai-response-card'}`}>
-                            <div className="prose prose-sm max-w-none">
-                              {message.text.split('\n').map((line, i) => {
-                                const parts = line.split(/(\*\*.*?\*\*)/g);
-                                return (
-                                  <p key={i} className="mb-1.5 last:mb-0 text-sm leading-relaxed whitespace-pre-wrap">
-                                    {parts.map((part, j) => {
-                                      if (part.startsWith('**') && part.endsWith('**')) {
-                                        return <strong key={j} className="font-semibold">{part.slice(2, -2)}</strong>;
-                                      }
-                                      return <span key={j}>{part}</span>;
-                                    })}
-                                  </p>
-                                );
-                              })}
-                            </div>
+                          <div className={`px-4 py-3 min-w-0 ${isUser ? 'user-prompt-bubble shadow-sm' : 'ai-response-card'}`}>
+                            {isUser ? (
+                              <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.text}</p>
+                            ) : (
+                              <MarkdownMessage text={message.text} />
+                            )}
                           </div>
 
                           {/* Actions for assistant messages (skip the welcome) */}
