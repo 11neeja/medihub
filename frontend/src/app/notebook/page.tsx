@@ -11,6 +11,7 @@ import {
 import { getNotesAPI, createNoteAPI, updateNoteAPI, deleteNoteAPI, getTasksAPI, createTaskAPI, toggleTaskAPI, deleteTaskAPI, getSubjectsAPI, createSubjectAPI, renameSubjectAPI, deleteSubjectAPI, getDocumentsAPI, uploadDocumentAPI, downloadDocumentAPI, deleteDocumentAPI, getAiMessagesAPI, reorderNotesAPI } from '@/lib/api';
 import ResizableSidebar from '@/components/ResizableSidebar';
 import ConfirmModal from '@/components/ConfirmModal';
+import { markdownToBlocks } from '@/lib/markdownToBlocks';
 
 // Type definitions
 type BlockType = 'heading' | 'text' | 'checklist' | 'bullet' | 'divider';
@@ -496,84 +497,6 @@ export default function NotebookPage() {
     }
   };
 
-  // Parse markdown text into notebook blocks
-  const parseMarkdownToBlocks = (text: string) => {
-    const lines = text.split('\n');
-    const blocks: { type: 'heading' | 'text' | 'bullet' | 'checklist' | 'divider'; text: string; checked?: boolean }[] = [];
-    let currentTextLines: string[] = [];
-
-    const flushText = () => {
-      if (currentTextLines.length > 0) {
-        const content = currentTextLines.join('\n').trim();
-        if (content) {
-          blocks.push({ type: 'text', text: content });
-        }
-        currentTextLines = [];
-      }
-    };
-
-    for (const line of lines) {
-      if (line.trim() === '') {
-        flushText();
-        continue;
-      }
-
-      // Headings: # Heading, ## Heading, ### Heading
-      if (/^#{1,3}\s+/.test(line)) {
-        flushText();
-        const headingText = line.replace(/^#{1,3}\s+/, '').replace(/\*\*/g, '');
-        blocks.push({ type: 'heading', text: headingText });
-        continue;
-      }
-
-      // Bold-only lines as headings: **Some Title**
-      if (/^\*\*[^*]+\*\*[:\s]*$/.test(line)) {
-        flushText();
-        const headingText = line.replace(/^\*\*/, '').replace(/\*\*[:\s]*$/, '').trim();
-        blocks.push({ type: 'heading', text: headingText });
-        continue;
-      }
-
-      // Dividers: ---, ***, ___
-      if (/^[-*_]{3,}$/.test(line)) {
-        flushText();
-        blocks.push({ type: 'divider', text: '' });
-        continue;
-      }
-
-      // Checklist items: - [ ] or - [x]
-      if (/^[-*]\s*\[[ xX]\]\s+/.test(line)) {
-        flushText();
-        const checked = /\[[xX]\]/.test(line);
-        const itemText = line.replace(/^[-*]\s*\[[ xX]\]\s+/, '').replace(/\*\*/g, '');
-        blocks.push({ type: 'checklist', text: itemText, checked });
-        continue;
-      }
-
-      // Bullet points: - item, * item, • item, or numbered 1. item
-      if (/^[-*•]\s+/.test(line) || /^\d+[.)\s]\s*/.test(line)) {
-        flushText();
-        const bulletText = line
-          .replace(/^[-*•]\s+/, '')
-          .replace(/^\d+[.)\s]\s*/, '')
-          .replace(/\*\*/g, '');
-        blocks.push({ type: 'bullet', text: bulletText });
-        continue;
-      }
-
-      // Regular text line
-      currentTextLines.push(line.replace(/\*\*/g, ''));
-    }
-
-    flushText();
-
-    if (blocks.length === 0) {
-      blocks.push({ type: 'text', text: text.replace(/\*\*/g, '') });
-    }
-
-    return blocks;
-  };
-
   // Open AI picker modal - fetches latest AI messages
   const openAiPicker = async () => {
     setShowAiPicker(true);
@@ -618,7 +541,7 @@ export default function NotebookPage() {
   // Save a specific AI message as a notebook note
   const addNoteFromAI = async (message: { question: string; text: string }) => {
     try {
-      const parsedBlocks = parseMarkdownToBlocks(message.text);
+      const parsedBlocks = markdownToBlocks(message.text);
       const title = message.question || `AI Response - ${new Date().toLocaleDateString()}`;
 
       // Ensure 'AI Assistant' subject exists in sidebar

@@ -12,6 +12,7 @@ import {
 import ConfirmModal from '@/components/ConfirmModal';
 import ResizableSidebar from '@/components/ResizableSidebar';
 import MarkdownMessage from '@/components/MarkdownMessage';
+import { markdownToBlocks } from '@/lib/markdownToBlocks';
 import {
   getDocumentsAPI,
   uploadDocumentAPI,
@@ -358,97 +359,6 @@ export default function AssistantPage() {
     }
   };
 
-  // Parse markdown text into notebook blocks
-  const parseMarkdownToBlocks = (text: string) => {
-    const lines = text.replace(/==/g, '').split('\n');
-    const blocks: { type: 'heading' | 'text' | 'bullet' | 'checklist' | 'divider'; text: string; checked?: boolean }[] = [];
-    let currentTextLines: string[] = [];
-
-    const flushText = () => {
-      if (currentTextLines.length > 0) {
-        const content = currentTextLines.join('\n').trim();
-        if (content) {
-          blocks.push({ type: 'text', text: content });
-        }
-        currentTextLines = [];
-      }
-    };
-
-    for (const rawLine of lines) {
-      const line = rawLine.trim();
-
-      // Skip empty lines (flush accumulated text)
-      if (!line) {
-        flushText();
-        continue;
-      }
-
-      // Blockquotes / callouts: keep the content, drop the > and [!TYPE] marker
-      if (/^>\s?/.test(line)) {
-        flushText();
-        const quoteText = line.replace(/^>\s?/, '').replace(/^\[!\w+\]\s*/, '').replace(/\*\*/g, '').trim();
-        if (quoteText) blocks.push({ type: 'text', text: quoteText });
-        continue;
-      }
-
-      // Markdown headings: # Heading, ## Heading, ### Heading
-      if (/^#{1,3}\s+/.test(line)) {
-        flushText();
-        const headingText = line.replace(/^#{1,3}\s+/, '').replace(/\*\*/g, '');
-        blocks.push({ type: 'heading', text: headingText });
-        continue;
-      }
-
-      // Bold-only lines as headings: **Some Title**
-      if (/^\*\*[^*]+\*\*[:\s]*$/.test(line)) {
-        flushText();
-        const headingText = line.replace(/^\*\*/, '').replace(/\*\*[:\s]*$/, '').trim();
-        blocks.push({ type: 'heading', text: headingText });
-        continue;
-      }
-
-      // Dividers: ---, ***, ___
-      if (/^[-*_]{3,}$/.test(line)) {
-        flushText();
-        blocks.push({ type: 'divider', text: '' });
-        continue;
-      }
-
-      // Checklist items: - [ ] or - [x]
-      if (/^[-*]\s*\[[ xX]\]\s+/.test(line)) {
-        flushText();
-        const checked = /\[[xX]\]/.test(line);
-        const itemText = line.replace(/^[-*]\s*\[[ xX]\]\s+/, '').replace(/\*\*/g, '');
-        blocks.push({ type: 'checklist', text: itemText, checked });
-        continue;
-      }
-
-      // Bullet points: - item, * item, • item, or numbered 1. item
-      if (/^[-*•]\s+/.test(line) || /^\d+[.)\s]\s*/.test(line)) {
-        flushText();
-        const bulletText = line
-          .replace(/^[-*•]\s+/, '')
-          .replace(/^\d+[.)\s]\s*/, '')
-          .replace(/\*\*/g, '');
-        blocks.push({ type: 'bullet', text: bulletText });
-        continue;
-      }
-
-      // Regular text line - accumulate
-      currentTextLines.push(line.replace(/\*\*/g, ''));
-    }
-
-    // Flush any remaining text
-    flushText();
-
-    // Fallback: if no blocks were created, add the whole text
-    if (blocks.length === 0) {
-      blocks.push({ type: 'text', text: text.replace(/\*\*/g, '') });
-    }
-
-    return blocks;
-  };
-
   // Find the user question that preceded this assistant message
   const findUserQuestion = (message: AssistantMessage): string => {
     const msgIndex = messages.findIndex(m => m.id === message.id);
@@ -466,7 +376,7 @@ export default function AssistantPage() {
   // Save to notebook via API
   const handleSaveToNotebook = async (message: AssistantMessage) => {
     try {
-      const blocks = parseMarkdownToBlocks(message.text);
+      const blocks = markdownToBlocks(message.text);
       const title = findUserQuestion(message);
 
       await addNote({
