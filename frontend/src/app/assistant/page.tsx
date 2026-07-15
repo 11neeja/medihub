@@ -255,10 +255,13 @@ export default function AssistantPage() {
 
     } catch (err: any) {
       console.error('Upload failed:', err);
+      const uploadErrorText = err?.response?.status === 413
+        ? `**"${file.name}" is too large to upload.** Please try a smaller file.`
+        : `**The upload for "${file.name}" didn't go through.** Please check your connection and try again.`;
       const errorMsg: AssistantMessage = {
         id: `m${Date.now()}`,
         sender: 'assistant',
-        text: `❌ **Upload failed**: ${err?.response?.data?.message || err.message || 'Unknown error'}. Please try again.`,
+        text: uploadErrorText,
         createdAt: new Date().toISOString(),
       };
       setMessages(prev => [...prev, errorMsg]);
@@ -331,12 +334,16 @@ export default function AssistantPage() {
       }).catch(console.error);
     } catch (err: any) {
       console.error('Chat error:', err);
+      // Whatever went wrong, keep the message human — no status codes,
+      // provider names, or raw API errors in the chat.
       const status = err?.response?.status;
-      let errorText = '❌ Sorry, I encountered an error processing your question. Please try again.';
+      let errorText = 'I couldn\'t finish answering that just now. Please try asking again in a moment.';
       if (status === 429) {
-        errorText = '⚠️ **AI is temporarily unavailable** due to rate limits. Please wait about a minute and try again.';
-      } else if (err?.response?.data?.message) {
-        errorText = `❌ ${err.response.data.message}`;
+        errorText = 'I\'m getting a lot of questions right now. Give me a minute to catch up, then ask again.';
+      } else if (err?.code === 'ECONNABORTED') {
+        errorText = 'That one took longer than expected, so I stopped waiting. Please try again — shorter questions usually come back faster.';
+      } else if (!err?.response) {
+        errorText = 'I couldn\'t reach the server — it may just be waking up. Please try again in a few seconds.';
       }
       const errorMsg: AssistantMessage = {
         id: `m${Date.now() + 1}`,

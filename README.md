@@ -205,8 +205,8 @@ Set these environment variables on Render:
 
 Mail debugging in production: `GET /api/health` returns a `mail` block with the configured providers plus the last success/error, and a logged-in `POST /api/users/test-email` sends a probe to your own address and reports which provider delivered it.
 - `AI_PROVIDER=gemini`
-- `GEMINI_API_KEY`
-- `GEMINI_MODEL` if you want to change the default model
+- `GEMINI_API_KEY` — create one at https://aistudio.google.com/apikey
+- `GEMINI_MODEL` — optional; defaults to `gemini-flash-latest` (a rolling alias, so it survives Google's model retirements). Retired names like `gemini-1.5-flash` are ignored, and the backend automatically falls back across current Gemini models. AI debugging in production: the `ai` block of `GET /api/health` shows the active model and any models the API has retired.
 - `EVENTBRITE_TOKEN` if you use events
 - `NEWS_API_KEY` if you use news
 

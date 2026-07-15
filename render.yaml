@@ -67,8 +67,13 @@ services:
         value: gemini
       - key: GEMINI_API_KEY
         sync: false
+      # Rolling alias that always points at Google's current stable Flash
+      # model. Never pin a dated model here again — Google retires them
+      # (gemini-1.5-* now 404s) and the assistant went down with it. The
+      # backend also walks a fallback chain automatically if this model
+      # ever disappears; see the `ai` block of GET /api/health for status.
       - key: GEMINI_MODEL
-        value: gemini-1.5-flash
+        value: gemini-flash-latest
       - key: EVENTBRITE_TOKEN
         sync: false
       - key: NEWS_API_KEY

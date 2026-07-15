@@ -19,6 +19,7 @@ import opportunityRoutes from './routes/opportunityRoutes.js'
 import groupRoutes from './routes/groupRoutes.js'
 import seedDatabase from './utils/seed.js'
 import { hasMailConfig, verifyMailerConnection, getMailerStatus, getMailerDiagnostics } from './utils/mailer.js'
+import { getAIDiagnostics } from './controllers/aiController.js'
 
 const app = express()
 const PORT = process.env.PORT || 5000
@@ -167,6 +168,7 @@ const startServer = async () => {
         database: 'connected',
         smtp: getMailerStatus(),
         mail: getMailerDiagnostics(),
+        ai: getAIDiagnostics(),
         timestamp: new Date().toISOString(),
       })
     } catch {
@@ -176,6 +178,7 @@ const startServer = async () => {
         database: 'disconnected',
         smtp: getMailerStatus(),
         mail: getMailerDiagnostics(),
+        ai: getAIDiagnostics(),
         timestamp: new Date().toISOString(),
       })
     }

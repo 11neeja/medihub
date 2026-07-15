@@ -201,17 +201,21 @@ export const deleteDocumentAPI = async (id: string) => {
 }
 
 // ─── AI Assistant API ──────────────────────────────────────────────
+// Generation can be slow (model fallbacks + a sleeping Render backend waking
+// up), so give these calls a long leash — but never let them hang forever.
+const AI_REQUEST_TIMEOUT_MS = 150_000
+
 export const aiChatAPI = async (data: {
   message: string
   documentIds?: string[]
   chatHistory?: { sender: string; text: string }[]
 }) => {
-  const res = await api.post('/ai/chat', data)
+  const res = await api.post('/ai/chat', data, { timeout: AI_REQUEST_TIMEOUT_MS })
   return res.data
 }
 
 export const aiSummarizeAPI = async (documentId: string) => {
-  const res = await api.post('/ai/summarize', { documentId })
+  const res = await api.post('/ai/summarize', { documentId }, { timeout: AI_REQUEST_TIMEOUT_MS })
   return res.data
 }
 
