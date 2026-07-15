@@ -18,6 +18,7 @@ type Block =
   | { kind: 'table'; header: string[]; rows: string[][] }
   | { kind: 'quote'; lines: string[] }
   | { kind: 'callout'; variant: CalloutVariant; lines: string[] }
+  | { kind: 'code'; lang: string; lines: string[] }
   | { kind: 'divider' };
 
 const CALLOUT_MARKER_RE = /^\[!(\w+)\]\s*/;
@@ -48,6 +49,20 @@ export function parseBlocks(text: string): Block[] {
     const trimmed = lines[i].trim();
 
     if (!trimmed) { i++; continue; }
+
+    // Fenced code block: ```lang … ``` (kept verbatim, no inline formatting)
+    if (trimmed.startsWith('```')) {
+      const lang = trimmed.slice(3).trim();
+      i++;
+      const codeLines: string[] = [];
+      while (i < lines.length && !lines[i].trim().startsWith('```')) {
+        codeLines.push(lines[i]);
+        i++;
+      }
+      i++; // skip the closing fence (harmless if it was missing)
+      blocks.push({ kind: 'code', lang, lines: codeLines });
+      continue;
+    }
 
     // Blockquote / callout: consecutive lines starting with ">"
     if (trimmed.startsWith('>')) {
@@ -123,6 +138,7 @@ export function parseBlocks(text: string): Block[] {
       if (
         !next ||
         next.startsWith('>') ||
+        next.startsWith('```') ||
         HEADING_RE.test(next) ||
         BULLET_RE.test(next) ||
         ORDERED_RE.test(next) ||
@@ -233,6 +249,20 @@ export default function MarkdownMessage({ text }: { text: string }) {
 
           case 'divider':
             return <hr key={bi} className="border-[var(--color-border-light)]" />;
+
+          case 'code':
+            return (
+              <div key={bi} className="overflow-x-auto rounded-xl border border-[var(--color-border-light)] bg-[var(--color-surface-muted)]">
+                {block.lang && (
+                  <p className="px-3.5 pt-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--color-text-muted)]">
+                    {block.lang}
+                  </p>
+                )}
+                <pre className="px-3.5 py-2.5 font-mono text-[12.5px] leading-relaxed text-[var(--color-text-primary)]">
+                  <code>{block.lines.join('\n')}</code>
+                </pre>
+              </div>
+            );
 
           case 'quote':
             return (

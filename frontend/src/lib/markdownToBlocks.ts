@@ -4,6 +4,7 @@
 //   - tables      → one bullet per row, cells paired with their column header
 //   - callouts    → labeled text blocks ("⚠️ Caution: …", "💡 Study tip: …")
 //   - blockquotes → plain text without the > markers
+//   - code fences → plain text with the ``` fence lines dropped
 //   - inline **bold** / ==highlight== / `code` markers are stripped
 // Used by the assistant's "Save to Notebook" and the notebook's "Add note
 // from AI" — keep both flows on this single implementation.
@@ -48,6 +49,21 @@ export function markdownToBlocks(markdown: string): NoteBlockInput[] {
     if (!line) {
       flushText();
       i++;
+      continue;
+    }
+
+    // Fenced code block → plain text block, code kept verbatim, fences dropped
+    if (line.startsWith('```')) {
+      flushText();
+      i++;
+      const codeLines: string[] = [];
+      while (i < lines.length && !lines[i].trim().startsWith('```')) {
+        codeLines.push(lines[i]);
+        i++;
+      }
+      i++; // skip the closing fence (harmless if it was missing)
+      const content = codeLines.join('\n').trim();
+      if (content) blocks.push({ type: 'text', text: content });
       continue;
     }
 
