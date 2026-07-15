@@ -128,13 +128,13 @@ function CsvPreview({ url }: { url: string }) {
 export default function NotebookPage() {
   const [pages, setPages] = useState<NotePage[]>([]);
   const [selectedPage, setSelectedPage] = useState<NotePage | null>(null);
-  const [selectedSubject, setSelectedSubject] = useState<string>('Anatomy');
+  const [selectedSubject, setSelectedSubject] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
   const [showBlockMenu, setShowBlockMenu] = useState(false);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [isLoading, setIsLoading] = useState(true);
-  const [subjects, setSubjects] = useState<string[]>(['Anatomy', 'Pathology', 'Pharmacology', 'Surgery']);
+  const [subjects, setSubjects] = useState<string[]>([]);
   const [showNewSubjectInput, setShowNewSubjectInput] = useState(false);
   const [newSubjectName, setNewSubjectName] = useState('');
   const [renamingSubject, setRenamingSubject] = useState<string | null>(null);
@@ -191,9 +191,7 @@ export default function NotebookPage() {
           .map(mapAPINote);
         setPages(mappedNotes);
         setTasks(tasksData.map(mapAPITask));
-        if (subjectsData && subjectsData.length > 0) {
-          setSubjects(subjectsData);
-        }
+        setSubjects(subjectsData || []);
         // Map backend documents to frontend shape
         const mappedDocs: UploadedFile[] = documentsData.map((d: any) => ({
           id: d._id,
@@ -316,6 +314,12 @@ export default function NotebookPage() {
 
   // Create new page (saved to database)
   const createNewPage = async () => {
+    // No folder yet — send the user to folder creation first
+    if (!selectedSubject) {
+      setMobileView('list');
+      setShowNewSubjectInput(true);
+      return;
+    }
     try {
       const apiNote = await createNoteAPI({
         title: 'Untitled Page',
@@ -638,6 +642,7 @@ export default function NotebookPage() {
                           try {
                             await createSubjectAPI(newSubjectName.trim());
                             setSubjects([...subjects, newSubjectName.trim()]);
+                            setSelectedSubject(newSubjectName.trim());
                             setNewSubjectName('');
                             setShowNewSubjectInput(false);
                           } catch (err: any) {
@@ -822,6 +827,29 @@ export default function NotebookPage() {
                   </div>
                 );
               })}
+
+              {/* Loading skeleton while folders fetch */}
+              {isLoading && subjects.length === 0 && (
+                <div className="px-2 space-y-2">
+                  {[0, 1, 2].map(i => (
+                    <div key={i} className="skeleton h-9 w-full rounded-xl" style={{ opacity: 1 - i * 0.25 }} />
+                  ))}
+                </div>
+              )}
+
+              {/* Empty state — no folders yet */}
+              {!isLoading && subjects.length === 0 && !showNewSubjectInput && (
+                <button
+                  onClick={() => setShowNewSubjectInput(true)}
+                  className="w-full mt-1 px-4 py-6 rounded-xl border border-dashed border-[var(--color-border-hairline)] flex flex-col items-center gap-2 text-[var(--color-text-soft)] hover:border-[var(--color-navy)] hover:text-[var(--color-navy)] hover:bg-[var(--color-accent-soft)] transition-all group/empty"
+                >
+                  <FolderPlus className="w-5 h-5 transition-transform group-hover/empty:scale-110" strokeWidth={1.5} />
+                  <span className="text-[0.8125rem] font-semibold tracking-tight">Create your first folder</span>
+                  <span className="text-[11px] italic leading-relaxed max-w-[180px]" style={{ fontFamily: 'var(--font-fraunces), serif' }}>
+                    Organise your notes by subject — Anatomy, Pathology, anything you like.
+                  </span>
+                </button>
+              )}
           </div>
 
           {/* Add Note from AI Button — refined inline */}

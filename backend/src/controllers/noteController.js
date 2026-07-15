@@ -1,8 +1,5 @@
 import prisma from '../config/prisma.js'
 
-// Default subjects for new users
-const DEFAULT_SUBJECTS = ['Anatomy', 'Pathology', 'Pharmacology', 'Surgery']
-
 // @desc    Get all subjects for logged-in user
 // @route   GET /api/notes/subjects
 export const getSubjects = async (req, res) => {
@@ -12,9 +9,7 @@ export const getSubjects = async (req, res) => {
       select: { subject: true },
       distinct: ['subject'],
     })
-    const noteSubjects = notes.map(n => n.subject)
-    const allSubjects = [...new Set([...DEFAULT_SUBJECTS, ...noteSubjects])]
-    res.json(allSubjects)
+    res.json([...new Set(notes.map(n => n.subject))])
   } catch (error) {
     res.status(500).json({ message: error.message })
   }
