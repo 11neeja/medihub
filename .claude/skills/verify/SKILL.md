@@ -43,8 +43,13 @@ while requests were pending.
   labels via CSS and innerText returns rendered case.
 - The landing content stays in the DOM under the SessionSplash overlay — assert on
   `document.querySelector('[role=status]')` (splash) presence/absence, not on landing text.
-- Layout's `<main>` is a stacking context (z-2) below the sticky navbar (z-50): anything
-  that must cover the navbar has to portal to `document.body`.
+- Body children no longer carry a z-index (the old `body > * { z-index: 2 }` trapped
+  in-page modals below the navbar — fixed 2026-07-16). In-page overlays with z > 50
+  (`.modal-overlay` is 100, `.toast` is 120) now cover the sticky navbar (z-50) without
+  portaling; the grain texture sits at `body::before { z-index: -1 }` and must stay negative.
+- To drive the events "View details" modal without a backend: seed
+  `localStorage.medihub_events_cache_v2` (JSON array of events) + `_ts` = Date.now() —
+  the page renders straight from cache.
 
 ## Flows worth driving
 

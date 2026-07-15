@@ -123,13 +123,17 @@
     background-image: var(--texture-grain);
     opacity: 0.45;
     pointer-events: none;
-    z-index: 1;
+    /* Behind all content (but above the body background). Must stay negative:
+       a positive value here forces body's children into their own stacking
+       contexts, which traps page modals/toasts below the sticky navbar. */
+    z-index: -1;
     mix-blend-mode: multiply;
   }
 
+  /* No z-index here: giving body's children one would create stacking
+     contexts that cap every in-page modal overlay below the navbar. */
   body > * {
     position: relative;
-    z-index: 2;
   }
 
   ::selection {
