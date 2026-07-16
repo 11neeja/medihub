@@ -14,11 +14,17 @@ import {
   TrendingUp,
   Mail,
   Send,
+  Loader2,
   Stethoscope,
 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import SessionSplash from '@/components/SessionSplash';
 import { useAuth, hasStoredSession } from '@/context/AuthContext';
+import { sendContactMessageAPI } from '@/lib/api';
+
+// Where the "Get in touch" form is delivered (kept in sync with the backend
+// CONTACT_RECIPIENT_EMAIL default) and shown as the public contact address.
+const CONTACT_EMAIL = 'suva.neeja11@gmail.com';
 
 const ECOSYSTEM_PILLS = [
   'Medical Students',
@@ -117,6 +123,8 @@ export default function LandingPage() {
   const [openFaq, setOpenFaq] = useState(0);
   const [heroImageIndex, setHeroImageIndex] = useState(0);
   const [messageSent, setMessageSent] = useState(false);
+  const [sendingMessage, setSendingMessage] = useState(false);
+  const [contactError, setContactError] = useState<string | null>(null);
   const [sessionHint, setSessionHint] = useState(false);
   const { loading, isAuthenticated } = useAuth();
   const router = useRouter();
@@ -149,11 +157,24 @@ export default function LandingPage() {
     document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setFormData({ name: '', email: '', message: '' });
-    setMessageSent(true);
-    window.setTimeout(() => setMessageSent(false), 3000);
+    if (sendingMessage) return;
+    setContactError(null);
+    setSendingMessage(true);
+    try {
+      await sendContactMessageAPI(formData);
+      setFormData({ name: '', email: '', message: '' });
+      setMessageSent(true);
+      window.setTimeout(() => setMessageSent(false), 4000);
+    } catch (err: unknown) {
+      const message =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        'We couldn’t send your message just now. Please try again in a moment.';
+      setContactError(message);
+    } finally {
+      setSendingMessage(false);
+    }
   };
 
   return (
@@ -529,13 +550,13 @@ export default function LandingPage() {
                 back to you shortly.
               </p>
               <a
-                href="mailto:contact@medihub.example"
-                className="inline-flex items-center gap-3 px-5 py-3 rounded-full bg-[var(--color-accent-soft)] border border-[var(--color-border-mid)]"
+                href={`mailto:${CONTACT_EMAIL}`}
+                className="inline-flex items-center gap-3 px-5 py-3 rounded-full bg-[var(--color-accent-soft)] border border-[var(--color-border-mid)] max-w-full"
               >
-                <span className="w-9 h-9 rounded-full bg-[var(--color-blue-primary)] flex items-center justify-center">
+                <span className="w-9 h-9 rounded-full bg-[var(--color-blue-primary)] flex items-center justify-center flex-shrink-0">
                   <Mail className="w-4 h-4 text-white" />
                 </span>
-                <span className="font-semibold text-[var(--color-navy)]">contact@medihub.example</span>
+                <span className="font-semibold text-[var(--color-navy)] truncate">{CONTACT_EMAIL}</span>
               </a>
             </div>
 
@@ -583,11 +604,22 @@ export default function LandingPage() {
                     required
                   />
                 </div>
+                {contactError && (
+                  <p role="alert" className="text-sm text-red-600 -mt-1">
+                    {contactError}
+                  </p>
+                )}
                 <button
                   type="submit"
-                  className="w-full btn-primary !py-4 !text-sm inline-flex items-center justify-center gap-2 !rounded-2xl"
+                  disabled={sendingMessage}
+                  className="w-full btn-primary !py-4 !text-sm inline-flex items-center justify-center gap-2 !rounded-2xl disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  {messageSent ? (
+                  {sendingMessage ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" strokeWidth={1.75} />
+                      Sending…
+                    </>
+                  ) : messageSent ? (
                     <>
                       <BadgeCheck className="w-4 h-4" strokeWidth={1.75} />
                       Message sent — we&rsquo;ll be in touch

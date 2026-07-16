@@ -1,6 +1,6 @@
 import dotenv from 'dotenv'
 import nodemailer from 'nodemailer'
-import { buildWelcomeEmail, buildPasswordResetEmail, buildDiagnosticEmail } from './mailTemplates.js'
+import { buildWelcomeEmail, buildPasswordResetEmail, buildDiagnosticEmail, buildContactEmail } from './mailTemplates.js'
 
 dotenv.config()
 
@@ -175,12 +175,13 @@ const gmailRelayRequest = async (payload) => {
   }
 }
 
-const sendViaGmailRelay = async ({ to, subject, html, text }) => {
+const sendViaGmailRelay = async ({ to, subject, html, text, replyTo }) => {
   await gmailRelayRequest({
     to,
     subject,
     html,
     text,
+    ...(replyTo ? { replyTo } : {}),
     fromName: trimmed(process.env.SMTP_FROM_NAME) || 'MediHub',
   })
   // Apps Script cannot report the Gmail message id — acceptance is the signal.
@@ -253,7 +254,7 @@ const brevoRequest = async (path, { method = 'GET', body } = {}) => {
   }
 }
 
-const sendViaBrevo = async ({ to, toName, subject, html, text }) => {
+const sendViaBrevo = async ({ to, toName, subject, html, text, replyTo }) => {
   const { email: fromEmail, name: fromName } = getFromParts()
   if (!fromEmail) {
     throw new Error('Brevo needs a sender address — set SMTP_FROM_EMAIL (or SMTP_USER) to the address verified in Brevo.')
@@ -264,6 +265,7 @@ const sendViaBrevo = async ({ to, toName, subject, html, text }) => {
     body: {
       sender: { email: fromEmail, name: fromName },
       to: [{ email: to, ...(toName ? { name: toName } : {}) }],
+      ...(replyTo ? { replyTo: { email: replyTo } } : {}),
       subject,
       htmlContent: html,
       textContent: text,
@@ -399,9 +401,9 @@ const withTransportFallback = async (label, action) => {
   throw lastAttemptError || new Error(`${label} failed for all SMTP connection attempts.`)
 }
 
-const sendViaSmtp = async ({ label, to, subject, html, text }) => {
+const sendViaSmtp = async ({ label, to, subject, html, text, replyTo }) => {
   const info = await withTransportFallback(label, (transporter) =>
-    transporter.sendMail({ from: getFromAddress(), to, subject, html, text })
+    transporter.sendMail({ from: getFromAddress(), to, subject, html, text, ...(replyTo ? { replyTo } : {}) })
   )
   assertMailAccepted(info, label)
   return { messageId: info.messageId || null }
@@ -538,4 +540,20 @@ export const sendTestEmail = async ({ name, email }) =>
     subject: 'MediHub mail delivery check',
     html: buildDiagnosticEmail({ name }),
     text: 'Mail delivery from MediHub is working. Welcome and password-reset emails will reach users.',
+  })
+
+// Where the landing-page "Get in touch" form is delivered. Overridable via
+// CONTACT_RECIPIENT_EMAIL (Render dashboard); defaults to the MediHub inbox.
+export const getContactRecipient = () =>
+  trimmed(process.env.CONTACT_RECIPIENT_EMAIL) || 'suva.neeja11@gmail.com'
+
+// Public contact form (POST /api/users/contact): delivered to the MediHub
+// inbox with the sender set as reply-to, so a reply goes straight to them.
+export const sendContactEmail = async ({ name, email, message }) =>
+  deliver('Contact message', {
+    to: getContactRecipient(),
+    subject: `New MediHub inquiry from ${name}`,
+    replyTo: email,
+    html: buildContactEmail({ name, email, message }),
+    text: `New contact message via the MediHub "Get in touch" form.\n\nFrom: ${name} <${email}>\n\n${message}`,
   })

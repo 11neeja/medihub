@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken'
 import bcrypt from 'bcryptjs'
 import prisma from '../config/prisma.js'
-import { hasMailConfig, sendWelcomeEmail, sendPasswordResetEmail, sendTestEmail } from '../utils/mailer.js'
+import { hasMailConfig, sendWelcomeEmail, sendPasswordResetEmail, sendTestEmail, sendContactEmail } from '../utils/mailer.js'
 
 const PASSWORD_POLICY = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/
 
@@ -224,6 +224,49 @@ export const sendMailDiagnostic = async (req, res) => {
     res.json({ ok: true, provider: result.provider, messageId: result.messageId, to: req.user.email })
   } catch (error) {
     res.status(502).json({ ok: false, message: error.message })
+  }
+}
+
+// @desc    Public "Get in touch" contact form → emails the MediHub inbox
+// @route   POST /api/users/contact
+const CONTACT_COOLDOWN_MS = 30 * 1000
+const CONTACT_MESSAGE_MAX = 5000
+const lastContactByIp = new Map()
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+export const submitContactMessage = async (req, res) => {
+  try {
+    const name = (req.body?.name || '').trim()
+    const email = normalizeEmail(req.body?.email || '')
+    const message = (req.body?.message || '').trim()
+
+    if (!name || !email || !message) {
+      return res.status(400).json({ message: 'Name, email, and message are all required.' })
+    }
+    if (!EMAIL_PATTERN.test(email)) {
+      return res.status(400).json({ message: 'Please enter a valid email address.' })
+    }
+    if (message.length > CONTACT_MESSAGE_MAX) {
+      return res.status(400).json({ message: `Message is too long — please keep it under ${CONTACT_MESSAGE_MAX} characters.` })
+    }
+
+    if (!hasMailConfig()) {
+      return res.status(503).json({ message: 'Messaging is temporarily unavailable. Please email us directly instead.' })
+    }
+
+    // Light per-IP throttle so the public endpoint can't be used to spam the inbox.
+    const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.ip || 'unknown'
+    const waitMs = CONTACT_COOLDOWN_MS - (Date.now() - (lastContactByIp.get(ip) || 0))
+    if (waitMs > 0) {
+      return res.status(429).json({ message: `Please wait ${Math.ceil(waitMs / 1000)}s before sending another message.` })
+    }
+    lastContactByIp.set(ip, Date.now())
+
+    await sendContactEmail({ name, email, message })
+    res.json({ ok: true, message: 'Thanks for reaching out — your message has been sent. We\'ll be in touch shortly.' })
+  } catch (error) {
+    console.error('Contact message failed:', error.message)
+    res.status(502).json({ message: 'We couldn\'t send your message just now. Please try again in a moment.' })
   }
 }
 

@@ -9,6 +9,15 @@ const theme = {
   border: '#D8E2F1',
 }
 
+// Escape user-supplied values before interpolating them into email HTML —
+// the contact form's name/email/message come straight from a public form.
+const esc = (value) =>
+  String(value == null ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+
 const shell = (content) => `
   <div style="margin:0;padding:0;background:${theme.background};font-family:Arial,Helvetica,sans-serif;color:${theme.text};">
     <div style="max-width:640px;margin:0 auto;padding:32px 16px;">
@@ -52,6 +61,20 @@ export const buildDiagnosticEmail = ({ name }) => shell({
     <div style="background:${theme.softBlue};border:1px solid ${theme.border};border-radius:18px;padding:18px 20px;margin:24px 0;">
       <p style="margin:0;font-size:14px;line-height:1.7;color:${theme.text};">Sent ${new Date().toUTCString()} via the /api/users/test-email diagnostic endpoint.</p>
     </div>
+  `,
+})
+
+export const buildContactEmail = ({ name, email, message }) => shell({
+  title: 'New Contact Message',
+  subtitle: 'Someone reached out through the MediHub “Get in touch” form.',
+  body: `
+    <div style="background:${theme.softBlue};border:1px solid ${theme.border};border-radius:18px;padding:18px 20px;margin:0 0 24px;">
+      <p style="margin:0 0 8px;font-size:13px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:${theme.blue};">From</p>
+      <p style="margin:0;font-size:15px;line-height:1.7;color:${theme.text};">${esc(name)} &lt;<a href="mailto:${esc(email)}" style="color:${theme.blue};text-decoration:none;">${esc(email)}</a>&gt;</p>
+    </div>
+    <p style="margin:0 0 8px;font-size:13px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:${theme.blue};">Message</p>
+    <p style="margin:0;font-size:15px;line-height:1.8;color:${theme.text};white-space:pre-wrap;">${esc(message)}</p>
+    <a href="mailto:${esc(email)}" style="display:inline-block;background:${theme.navy};color:#fff;text-decoration:none;padding:14px 24px;border-radius:14px;font-weight:700;margin-top:26px;">Reply to ${esc(name)}</a>
   `,
 })
 

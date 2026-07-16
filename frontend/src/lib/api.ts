@@ -58,6 +58,11 @@ export const getMeAPI = async () => {
   return res.data
 }
 
+export const sendContactMessageAPI = async (data: { name: string; email: string; message: string }) => {
+  const res = await api.post('/users/contact', data)
+  return res.data
+}
+
 // ─── Posts API ──────────────────────────────────────────────────────
 export const getPostsAPI = async () => {
   const res = await api.get('/posts')
