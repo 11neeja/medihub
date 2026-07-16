@@ -78,15 +78,16 @@ export default function EventsPage() {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [sourceFilter, setSourceFilter] = useState<string>('All');
   const [regionFilter, setRegionFilter] = useState<string>('All');
-  const [isCached, setIsCached] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const EVENTS_PER_PAGE = 5;
 
   // ─── LocalStorage cache helpers ──────────────────────────────────
+  // The cache is only used to paint something instantly on load; every visit
+  // still fetches fresh events (see the effect below), so we never surface a
+  // stale timestamp — the header always reflects the current session.
   // v2: events now carry a `region` field — bump key to drop stale caches.
   const CACHE_KEY = 'medihub_events_cache_v2';
   const CACHE_TS_KEY = 'medihub_events_cache_v2_ts';
-  const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 
   const saveToCache = (eventsList: Event[]) => {
     try {
@@ -95,18 +96,15 @@ export default function EventsPage() {
     } catch { /* localStorage full or unavailable */ }
   };
 
-  const loadFromCache = (): { events: Event[]; timestamp: number } | null => {
+  const loadFromCache = (): { events: Event[] } | null => {
     try {
       const raw = localStorage.getItem(CACHE_KEY);
-      const ts = localStorage.getItem(CACHE_TS_KEY);
-      if (raw && ts) {
-        return { events: JSON.parse(raw), timestamp: Number(ts) };
+      if (raw) {
+        return { events: JSON.parse(raw) };
       }
     } catch { /* parse error */ }
     return null;
   };
-
-  const isCacheStale = (timestamp: number) => Date.now() - timestamp > CACHE_TTL;
 
   // Helper to map local DB event to frontend Event shape
   const mapAPIEvent = (apiEvent: any): Event => ({
@@ -152,28 +150,28 @@ export default function EventsPage() {
     region: e.region || regionFromLocation(e.location, e.mode),
   });
 
-  // Stale-while-revalidate: show cache instantly, fetch fresh in background
+  // Every visit fetches fresh events. The cache only paints something instantly
+  // on load; the header is stamped with THIS visit's time (≈ login time), never
+  // an old cache time — so a returning user always sees current events, dated now.
   useEffect(() => {
-    // 1) Immediately load from cache (instant render, no spinner)
+    // The "last updated" line reflects the current session from the moment the
+    // page opens, then stays current as fresh events land below.
+    setLastUpdated(new Date());
+
+    // 1) Immediately paint from cache (instant render, no spinner) — but always
+    //    refresh below, so this is only a placeholder, never the source of truth.
     const cached = loadFromCache();
     if (cached && cached.events.length > 0) {
       setEvents(cached.events);
-      setLastUpdated(new Date(cached.timestamp));
       setIsLoadingEvents(false);
-      setIsCached(true);
-
-      // If cache is fresh (<24hrs), skip network fetch entirely
-      if (!isCacheStale(cached.timestamp)) {
-        return;
-      }
     }
 
-    // 2) Fetch fresh data from API
+    // 2) Always fetch fresh data from the API.
     const fetchAllEvents = async () => {
       const hadCache = !!cached?.events.length;
 
-      // With a stale cache already on screen, refresh quietly and swap once
-      // both sources are in — avoids the list flashing smaller mid-refresh.
+      // With cache already on screen, refresh quietly and swap once both
+      // sources are in — avoids the list flashing smaller mid-refresh.
       if (hadCache) {
         const [localData, externalData] = await Promise.allSettled([
           getEventsAPI(),
@@ -182,10 +180,9 @@ export default function EventsPage() {
         const localEvents = localData.status === 'fulfilled' ? localData.value.map(mapAPIEvent) : [];
         const externalEvents = externalData.status === 'fulfilled' ? externalData.value.map(mapExternalEvent) : [];
         const allEvents = [...externalEvents, ...localEvents];
+        setLastUpdated(new Date());
         if (allEvents.length) {
           setEvents(allEvents);
-          setLastUpdated(new Date());
-          setIsCached(false);
           saveToCache(allEvents);
         }
         return;
@@ -205,7 +202,6 @@ export default function EventsPage() {
         if (localDone || externalDone) setIsLoadingEvents(false);
         if (localDone && externalDone) {
           setLastUpdated(new Date());
-          setIsCached(false);
           saveToCache([...externalEvents, ...localEvents]);
         }
       };
@@ -240,7 +236,6 @@ export default function EventsPage() {
         return updated;
       });
       setLastUpdated(new Date());
-      setIsCached(false);
     } catch (err) {
       console.error('Failed to refresh external events:', err);
     } finally {
@@ -419,9 +414,8 @@ export default function EventsPage() {
               </p>
               {lastUpdated && (
                 <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--color-text-soft)] mt-5 flex items-center gap-2 font-semibold">
-                  <Clock className="w-3 h-3" strokeWidth={1.75} />
-                  Last refresh · {lastUpdated.toLocaleString()}
-                  {isCached && <span className="ml-1 text-amber-600 font-semibold normal-case tracking-normal">(cached)</span>}
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Updated · {lastUpdated.toLocaleString()}
                 </p>
               )}
             </div>

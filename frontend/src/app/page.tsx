@@ -66,7 +66,9 @@ const FEATURES = [
 
 const STATS = [
   { value: '7', label: 'Tools Unified in One Platform' },
-  { value: '3.5K+', label: 'Active Medical Community Members' },
+  // Grounded in the NewsAPI integration (see backend/newsController.js): the
+  // feed is drawn from a large global source network, health-filtered.
+  { value: '50K+', label: 'Global Medical News Sources' },
   { value: '24/7', label: 'AI-Powered Study Assistance' },
   { value: '100%', label: 'Focus on Learning and Collaboration' },
 ];
