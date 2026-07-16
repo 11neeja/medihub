@@ -131,7 +131,7 @@ function getCategoryColor(cat: string) {
 
 function CategoryChip({ category, className = '' }: { category: string; className?: string }) {
   return (
-    <span className={`inline-flex items-center px-2 py-[3px] rounded-full text-[9.5px] font-bold uppercase tracking-[0.1em] border ${getCategoryColor(category)} ${className}`}>
+    <span className={`inline-flex items-center whitespace-nowrap px-2 py-[3px] rounded-full text-[9.5px] font-bold uppercase tracking-[0.1em] border ${getCategoryColor(category)} ${className}`}>
       {category}
     </span>
   );
@@ -538,7 +538,7 @@ export default function GroupsPage() {
                           )}
                         </div>
                         <p className="text-xs text-[var(--color-text-muted)] mt-0.5 line-clamp-2 leading-relaxed">{c.description}</p>
-                        <div className="flex items-center gap-2 mt-2">
+                        <div className="flex flex-wrap items-center gap-2 mt-2">
                           <CategoryChip category={c.category} />
                           <span className="text-[10px] uppercase tracking-[0.14em] font-semibold text-[var(--color-text-soft)]">
                             {c.membersCount.toLocaleString()} members
@@ -566,7 +566,20 @@ export default function GroupsPage() {
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
-            <span className="text-sm font-semibold text-[var(--color-text-primary)] truncate">{selectedCommunity.name}</span>
+            <span className="flex-1 min-w-0 text-sm font-semibold text-[var(--color-text-primary)] truncate">{selectedCommunity.name}</span>
+            {/* The right info sidebar is desktop-only; on phones the shared
+                library stays reachable through the existing resources modal. */}
+            <button
+              onClick={() => setShowAllResources(true)}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[var(--color-surface-muted)] border border-[var(--color-border-light)] text-[var(--color-text-secondary)] hover:bg-[var(--color-accent-soft)] hover:text-[var(--color-blue-primary)] transition-smooth shrink-0"
+              aria-label="Open shared library"
+            >
+              <BookOpen className="w-4 h-4" />
+              <span className="text-xs font-semibold">Library</span>
+              {resources.length > 0 && (
+                <span className="text-[10px] font-bold bg-[var(--color-accent-soft)] text-[var(--color-blue-primary)] px-1.5 py-0.5 rounded-full">{resources.length}</span>
+              )}
+            </button>
           </div>
         )}
         {!selectedCommunity ? (
@@ -584,14 +597,14 @@ export default function GroupsPage() {
         ) : selectedThread ? (
           /* ── Thread detail view ─────────────────────── */
           <div className="flex-1 flex flex-col overflow-hidden">
-            <div className="px-6 py-5 border-b border-[var(--color-border-hairline)] bg-[var(--color-surface-white)]">
+            <div className="px-4 py-4 sm:px-6 sm:py-5 border-b border-[var(--color-border-hairline)] bg-[var(--color-surface-white)]">
               <button
                 onClick={() => { setSelectedThread(null); setReplies([]); setReplyText(''); }}
                 className="btn-ghost inline-flex items-center gap-1.5 !px-2 -ml-2 mb-3 text-[0.8125rem]"
               >
                 <ArrowLeft className="w-4 h-4" strokeWidth={1.75} /> Back to threads
               </button>
-              <div className="flex items-start gap-4">
+              <div className="flex items-start gap-3 sm:gap-4">
                 <div className="vote-pill">
                   <button
                     onClick={() => handleVote(selectedThread.id, 1)}
@@ -618,7 +631,7 @@ export default function GroupsPage() {
                     </span>
                   )}
                   <h2
-                    className="text-[var(--color-navy)]"
+                    className="text-[var(--color-navy)] break-words"
                     style={{
                       fontFamily: 'var(--font-fraunces), serif',
                       fontSize: '1.375rem',
@@ -630,9 +643,9 @@ export default function GroupsPage() {
                     {selectedThread.title}
                   </h2>
                   {selectedThread.content && (
-                    <p className="text-[0.9375rem] text-[var(--color-text-body)] mt-2 whitespace-pre-wrap leading-[1.7]">{selectedThread.content}</p>
+                    <p className="text-[0.9375rem] text-[var(--color-text-body)] mt-2 whitespace-pre-wrap break-words leading-[1.7]">{selectedThread.content}</p>
                   )}
-                  <div className="flex items-center gap-2 mt-3">
+                  <div className="flex flex-wrap items-center gap-2 mt-3">
                     <span className="text-xs font-semibold text-[var(--color-navy)] tracking-tight">{selectedThread.authorName}</span>
                     <span className="w-[3px] h-[3px] rounded-full bg-[var(--color-border-strong)]" />
                     <span className="text-[10px] uppercase tracking-[0.16em] font-semibold text-[var(--color-text-soft)]">{getTimeAgo(selectedThread.createdAt)}</span>
@@ -653,7 +666,7 @@ export default function GroupsPage() {
             </div>
 
             {/* Replies */}
-            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-3 bg-[var(--color-bg-paper)]">
+            <div className="flex-1 overflow-y-auto px-3 py-4 sm:px-6 sm:py-5 space-y-3 bg-[var(--color-bg-paper)]">
               {loadingReplies ? (
                 <div className="space-y-3">
                   {[0, 1].map(i => (
@@ -675,13 +688,13 @@ export default function GroupsPage() {
                 replies.map(reply => (
                   <div key={reply.id} className="flex gap-3">
                     <UserAvatar userId={reply.authorId} name={reply.authorName} size={32} className="mt-1 ring-1 ring-[var(--color-border-hairline)]" />
-                    <div className="flex-1 card-item px-4 py-3">
-                      <div className="flex items-center gap-2 mb-1.5">
+                    <div className="flex-1 min-w-0 card-item px-4 py-3">
+                      <div className="flex flex-wrap items-center gap-2 mb-1.5">
                         <span className="font-semibold text-[0.8125rem] text-[var(--color-navy)] tracking-tight">{reply.authorName}</span>
                         <span className="text-[9.5px] uppercase tracking-[0.12em] font-bold text-[var(--color-text-soft)]">{reply.authorRole}</span>
                         <span className="text-[10px] uppercase tracking-[0.14em] font-semibold text-[var(--color-text-soft)] ml-auto">{getTimeAgo(reply.createdAt)}</span>
                       </div>
-                      <p className="text-[0.8125rem] text-[var(--color-text-primary)] whitespace-pre-wrap leading-relaxed">{reply.content}</p>
+                      <p className="text-[0.8125rem] text-[var(--color-text-primary)] whitespace-pre-wrap break-words leading-relaxed">{reply.content}</p>
                     </div>
                   </div>
                 ))
@@ -690,7 +703,7 @@ export default function GroupsPage() {
 
             {/* Reply input */}
             {selectedCommunity.isJoined && (
-              <div className="px-6 py-4 border-t border-[var(--color-border-hairline)] bg-[var(--color-surface-white)]">
+              <div className="px-3 py-3 sm:px-6 sm:py-4 border-t border-[var(--color-border-hairline)] bg-[var(--color-surface-white)] mobile-safe-bottom">
                 <div className="flex gap-2">
                   <input
                     value={replyText}
@@ -714,8 +727,8 @@ export default function GroupsPage() {
           /* ── Community thread list ─────────────────── */
           <div className="flex-1 flex flex-col overflow-hidden">
             {/* Community header */}
-            <div className="bg-[var(--color-surface-white)] border-b border-[var(--color-border-hairline)] px-6 py-5">
-              <div className="flex items-start justify-between gap-4 mb-4">
+            <div className="bg-[var(--color-surface-white)] border-b border-[var(--color-border-hairline)] px-4 py-4 sm:px-6 sm:py-5">
+              <div className="flex flex-wrap items-start justify-between gap-3 sm:gap-4 mb-4">
                 <div className="flex items-center gap-4 min-w-0">
                   {(() => {
                     const Icon = getCommunityIcon(selectedCommunity.emoji);
@@ -739,7 +752,7 @@ export default function GroupsPage() {
                       {selectedCommunity.name}
                     </h1>
                     <p className="text-[0.8125rem] text-[var(--color-text-muted)] mt-1 line-clamp-1">{selectedCommunity.description}</p>
-                    <div className="flex items-center gap-2.5 mt-2">
+                    <div className="flex flex-wrap items-center gap-2.5 mt-2">
                       <CategoryChip category={selectedCommunity.category} />
                       <span className="text-[10px] uppercase tracking-[0.16em] font-semibold text-[var(--color-text-soft)]">
                         {selectedCommunity.membersCount.toLocaleString()} members
@@ -763,7 +776,7 @@ export default function GroupsPage() {
               </div>
 
               {/* Sort tabs + New Thread */}
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center justify-between gap-2.5">
                 <div className="seg">
                   {([
                     { key: 'hot' as SortMode, icon: Flame, label: 'Hot' },
@@ -789,7 +802,7 @@ export default function GroupsPage() {
             </div>
 
             {/* Threads list */}
-            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-3 bg-[var(--color-bg-paper)]">
+            <div className="flex-1 overflow-y-auto px-3 py-4 sm:px-6 sm:py-5 space-y-3 bg-[var(--color-bg-paper)]">
               {loadingThreads ? (
                 <div className="space-y-3">
                   {[0, 1, 2].map(i => (
@@ -818,7 +831,7 @@ export default function GroupsPage() {
                     key={thread.id}
                     className="card hover-lift group"
                   >
-                    <div className="flex items-start gap-4 p-4">
+                    <div className="flex items-start gap-3 p-3.5 sm:gap-4 sm:p-4">
                       {/* Vote column */}
                       <div className="vote-pill">
                         <button
@@ -849,7 +862,7 @@ export default function GroupsPage() {
                             </span>
                           )}
                           <h3
-                            className="text-[var(--color-navy)] group-hover:text-[var(--color-blue-primary)] transition-colors duration-300"
+                            className="min-w-0 break-words text-[var(--color-navy)] group-hover:text-[var(--color-blue-primary)] transition-colors duration-300"
                             style={{
                               fontFamily: 'var(--font-fraunces), serif',
                               fontSize: '1.0625rem',
@@ -868,7 +881,7 @@ export default function GroupsPage() {
                             ))}
                           </div>
                         )}
-                        <div className="flex items-center gap-2 mt-2.5">
+                        <div className="flex flex-wrap items-center gap-2 mt-2.5">
                           <span className="text-xs font-semibold text-[var(--color-text-secondary)] tracking-tight">{thread.authorName}</span>
                           <span className="w-[3px] h-[3px] rounded-full bg-[var(--color-border-strong)]" />
                           <span className="text-[10px] uppercase tracking-[0.16em] font-semibold text-[var(--color-text-soft)]">{getTimeAgo(thread.createdAt)}</span>
@@ -884,7 +897,7 @@ export default function GroupsPage() {
                       {isAdmin && (
                         <button
                           onClick={() => handlePinThread(thread.id)}
-                          className="icon-btn icon-btn-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="icon-btn icon-btn-sm lg:opacity-0 lg:group-hover:opacity-100 transition-opacity"
                           data-tip={thread.isPinned ? 'Unpin' : 'Pin'}
                           aria-label={thread.isPinned ? 'Unpin thread' : 'Pin thread'}
                         >
@@ -902,7 +915,7 @@ export default function GroupsPage() {
 
       {/* Right Sidebar — Stats & Resources */}
       {selectedCommunity && !selectedThread && (
-        <ResizableSidebar side="right" defaultWidth={300} minWidth={260} maxWidth={400} className="bg-[var(--color-surface-muted)] border-l border-[var(--color-border-light)]">
+        <ResizableSidebar side="right" defaultWidth={300} minWidth={260} maxWidth={400} className="bg-[var(--color-surface-muted)] lg:border-l border-[var(--color-border-light)]" responsive mobileVisible={false}>
           <div className="p-5 space-y-5">
             {/* Group Stats */}
             <div className="card p-5">
@@ -1171,7 +1184,7 @@ export default function GroupsPage() {
                     {m.memberRole !== 'creator' && m.id !== user?._id && (
                       <button
                         onClick={() => handleRemoveMember(m.id)}
-                        className="icon-btn icon-btn-sm icon-btn-danger opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="icon-btn icon-btn-sm icon-btn-danger lg:opacity-0 lg:group-hover:opacity-100 transition-opacity"
                         data-tip="Remove"
                         aria-label={`Remove ${m.name}`}
                       >
