@@ -22,6 +22,24 @@ const HEALTH_QUERIES = [
   'vaccine',
 ]
 
+// ── Medical relevance gate ─────────────────────────────────────────
+// NewsAPI's "health" category and keyword searches still return off-topic
+// stories (lifestyle, business "healthy economy", "price surge", celebrity
+// health, etc.). Every article must match this before it reaches the feed,
+// so the feed stays medical/health-only — never general news.
+//
+// Stems use a leading word boundary only, so "cardiolog" matches
+// "cardiology/cardiologist", "therap" matches "therapy/therapeutic", etc.
+// Ambiguous short words (flu, gene, drug) are boundary-locked, and known
+// false-positive traps are avoided (no bare "surge", "cardio", "immunity",
+// "heart", "who").
+const MEDICAL_RE = /\b(?:health|medic|clinic|hospital|patient|doctor|physician|nurse|nursing|surgery|surgical|surgeon|disease|illness|infect|virus|viral|bacteri|epidemi|pandemi|outbreak|covid|coronavirus|influenza|\bflu\b|vaccin|immuniz|immunolog|immunotherap|immune system|autoimmun|antibiotic|antiviral|antibod|cancer|oncolog|tumou?r|leukemia|lymphoma|melanoma|carcinoma|chemo|cardiac|cardiolog|cardiovascular|heart disease|heart attack|stroke|hypertension|cholesterol|neuro|alzheimer|dementia|parkinson|epilep|seizure|migraine|diabet|insulin|obesity|asthma|arthritis|respiratory|psychiatr|psycholog|mental health|depression|anxiety|autism|adhd|pediatr|paediatr|infant|newborn|maternal|pregnan|fertility|prenatal|genetic|genom|crispr|gene therap|gene edit|stem cell|therap|treatment|transplant|\bdrug|medication|pharma|clinical trial|\bfda\b|biotech|medtech|life science|telemedicine|telehealth|epidemiolog|radiolog|patholog|dermatolog|orthop|obstetric|an[ae]sth|nephrolog|gastroenterolog|endocrin|h[ae]matolog|urolog|ophthalmolog|nutrition|malnutrition|wellness|public health|world health)/i
+
+// True only for genuinely medical/health articles. Checks title + description
+// (the fields NewsAPI reliably populates on the free tier).
+export const isMedicalArticle = (article) =>
+  MEDICAL_RE.test(`${article?.title || ''} ${article?.description || ''}`)
+
 // Map article to our standard shape
 const mapArticle = (raw, index) => {
   // Derive specialty from keywords in title + description
@@ -102,7 +120,7 @@ const fetchNews = async () => {
       const data = await headlinesRes.json()
       if (data.articles) {
         for (const a of data.articles) {
-          if (a.title && !a.title.includes('[Removed]') && !seenTitles.has(a.title)) {
+          if (a.title && !a.title.includes('[Removed]') && !seenTitles.has(a.title) && isMedicalArticle(a)) {
             seenTitles.add(a.title)
             allArticles.push(a)
           }
@@ -120,7 +138,9 @@ const fetchNews = async () => {
           const data = await res.json()
           if (data.articles) {
             for (const a of data.articles) {
-              if (a.title && !a.title.includes('[Removed]') && !seenTitles.has(a.title)) {
+              // The keyword search is the leakiest source of off-topic stories,
+              // so the medical gate matters most here.
+              if (a.title && !a.title.includes('[Removed]') && !seenTitles.has(a.title) && isMedicalArticle(a)) {
                 seenTitles.add(a.title)
                 allArticles.push(a)
               }
