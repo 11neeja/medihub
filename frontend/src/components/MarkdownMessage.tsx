@@ -230,7 +230,7 @@ export default function MarkdownMessage({ text }: { text: string }) {
   const blocks = React.useMemo(() => parseBlocks(text), [text]);
 
   return (
-    <div className="text-sm leading-relaxed space-y-2.5 min-w-0">
+    <div className="text-sm leading-relaxed space-y-2.5 min-w-0 break-words">
       {blocks.map((block, bi) => {
         switch (block.kind) {
           case 'heading':
@@ -252,7 +252,7 @@ export default function MarkdownMessage({ text }: { text: string }) {
 
           case 'code':
             return (
-              <div key={bi} className="overflow-x-auto rounded-xl border border-[var(--color-border-light)] bg-[var(--color-surface-muted)]">
+              <div key={bi} className="max-w-full overflow-x-auto overscroll-x-contain rounded-xl border border-[var(--color-border-light)] bg-[var(--color-surface-muted)]">
                 {block.lang && (
                   <p className="px-3.5 pt-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--color-text-muted)]">
                     {block.lang}
@@ -309,7 +309,7 @@ export default function MarkdownMessage({ text }: { text: string }) {
 
           case 'table':
             return (
-              <div key={bi} className="overflow-x-auto rounded-xl border border-[var(--color-border-light)] bg-white">
+              <div key={bi} className="max-w-full overflow-x-auto overscroll-x-contain rounded-xl border border-[var(--color-border-light)] bg-white">
                 <table className="w-full text-[13px] border-collapse">
                   <thead>
                     <tr className="bg-[var(--color-surface-muted)]">

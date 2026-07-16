@@ -1888,6 +1888,11 @@ select:focus-visible {
   .mobile-safe-bottom {
     padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
   }
+
+  /* ≥16px input font stops iOS Safari from auto-zooming into focused fields */
+  .input {
+    font-size: 1rem;
+  }
 }
 
 /* Mobile-only / desktop-only utility helpers */

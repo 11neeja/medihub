@@ -111,6 +111,9 @@ export default function AssistantPage() {
   // Mobile-only view switcher: 'chat' shows the conversation, 'library' shows the document library.
   // Desktop ignores this (panels render side-by-side via lg: classes).
   const [mobileView, setMobileView] = useState<'chat' | 'library'>('chat');
+  // Tracks the <lg breakpoint so JSX can adapt (shorter placeholder copy, view switching).
+  const [isMobile, setIsMobile] = useState(false);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const toastTimer = useRef<NodeJS.Timeout | null>(null);
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
@@ -123,6 +126,23 @@ export default function AssistantPage() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Watch the mobile breakpoint (same cutoff as the lg: layout classes)
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 1023.98px)');
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
+
+  // Auto-grow the composer with its content, capped by max-h-40 (160px)
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+  }, [inputText]);
 
   // Load chat history from database on mount
   useEffect(() => {
@@ -599,9 +619,7 @@ export default function AssistantPage() {
                           onClick={() => {
                             setSelectedDocument(isActive ? null : doc);
                             // On mobile, return to the chat view so the user sees the active doc badge.
-                            if (typeof window !== 'undefined' && window.matchMedia('(max-width: 1023.98px)').matches) {
-                              setMobileView('chat');
-                            }
+                            if (isMobile) setMobileView('chat');
                           }}
                           className={`group relative rounded-2xl p-3 cursor-pointer transition-smooth border ${
                             isActive
@@ -701,7 +719,7 @@ export default function AssistantPage() {
             </div>
 
             {/* Messages Area */}
-            <div className="flex-1 min-h-0 overflow-y-auto px-3 sm:px-4 md:px-8 py-4 md:py-6">
+            <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-3 sm:px-4 md:px-8 py-4 md:py-6">
               {isLoadingMessages ? (
                 <div className="max-w-3xl mx-auto h-full flex flex-col justify-end pb-4 space-y-4">
                   {[64, 48, 72].map((w, i) => (
@@ -766,7 +784,10 @@ export default function AssistantPage() {
                           )}
                         </div>
 
-                        <div className={`flex flex-col gap-1 max-w-[80%] ${isUser ? 'items-end' : 'items-start'}`}>
+                        {/* min-w-0 + max-w caps keep wide content (tables, code) from
+                            forcing the bubble past the viewport on phones — the inner
+                            overflow-x-auto wrappers scroll instead. */}
+                        <div className={`flex flex-col gap-1 min-w-0 max-w-full sm:max-w-[85%] lg:max-w-[80%] ${isUser ? 'items-end' : 'items-start'}`}>
                           {/* Sender + time */}
                           <div className="flex items-center gap-2 text-[11px]">
                             <span className="font-semibold text-[var(--color-text-primary)]">
@@ -777,9 +798,9 @@ export default function AssistantPage() {
                           </div>
 
                           {/* Message bubble */}
-                          <div className={`px-4 py-3 min-w-0 ${isUser ? 'user-prompt-bubble shadow-sm' : 'ai-response-card'}`}>
+                          <div className={`px-4 py-3 min-w-0 max-w-full ${isUser ? 'user-prompt-bubble shadow-sm' : 'ai-response-card'}`}>
                             {isUser ? (
-                              <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.text}</p>
+                              <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{message.text}</p>
                             ) : (
                               <MarkdownMessage text={message.text} />
                             )}
@@ -842,14 +863,14 @@ export default function AssistantPage() {
             <div className="border-t border-[var(--color-border-light)] bg-white px-3 sm:px-4 md:px-6 py-3 md:py-4 flex-shrink-0 mobile-safe-bottom">
               <div className="max-w-3xl mx-auto">
                 {selectedDocument && (
-                  <div className="mb-2.5 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--color-accent-soft)] border border-[var(--color-border-mid)]">
+                  <div className="mb-2.5 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--color-accent-soft)] border border-[var(--color-border-mid)] max-w-full">
                     <FileIconBadge type={selectedDocument.type} size="sm" />
-                    <span className="text-xs font-medium text-[var(--color-blue-primary)] truncate max-w-[240px]">
+                    <span className="text-xs font-medium text-[var(--color-blue-primary)] truncate min-w-0 sm:max-w-[240px]">
                       Asking about: {selectedDocument.name}
                     </span>
                     <button
                       onClick={() => setSelectedDocument(null)}
-                      className="ml-1 text-[var(--color-blue-primary)] hover:text-red-500 transition-smooth"
+                      className="ml-1 flex-shrink-0 text-[var(--color-blue-primary)] hover:text-red-500 transition-smooth"
                       title="Deselect"
                     >
                       <X className="w-3.5 h-3.5" />
@@ -860,13 +881,14 @@ export default function AssistantPage() {
                   <button
                     onClick={() => fileInputRef.current?.click()}
                     disabled={isProcessing}
-                    className="icon-btn !w-10 !h-10 !rounded-full disabled:opacity-50"
+                    className="icon-btn !w-10 !h-10 !rounded-full flex-shrink-0 disabled:opacity-50"
                     data-tip="Upload a document"
                     aria-label="Upload a document"
                   >
                     <Paperclip className="w-5 h-5" strokeWidth={1.75} />
                   </button>
                   <textarea
+                    ref={inputRef}
                     value={inputText}
                     onChange={(e) => setInputText(e.target.value)}
                     onKeyDown={(e) => {
@@ -877,10 +899,10 @@ export default function AssistantPage() {
                     }}
                     placeholder={
                       selectedDocument
-                        ? `Ask about "${selectedDocument.name}"...`
-                        : 'Ask a medical question, request a summary, or paste an idea...'
+                        ? isMobile ? 'Ask about this document…' : `Ask about "${selectedDocument.name}"...`
+                        : isMobile ? 'Ask a medical question…' : 'Ask a medical question, request a summary, or paste an idea...'
                     }
-                    className="input flex-1 resize-none py-2.5 leading-snug max-h-40"
+                    className="input flex-1 min-w-0 resize-none py-2.5 leading-snug max-h-40"
                     rows={1}
                     disabled={isProcessing}
                   />
@@ -895,7 +917,8 @@ export default function AssistantPage() {
                     {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" strokeWidth={1.75} />}
                   </button>
                 </div>
-                <p className="text-[10px] text-[var(--color-text-muted)] mt-1.5 ml-12">
+                {/* Keyboard hint is desktop-only — soft keyboards make it noise on phones */}
+                <p className="hidden sm:block text-[10px] text-[var(--color-text-muted)] mt-1.5 ml-12">
                   Press <kbd className="px-1 py-0.5 rounded bg-[var(--color-surface-muted)] border border-[var(--color-border-light)] text-[9px] font-mono">Enter</kbd> to send · <kbd className="px-1 py-0.5 rounded bg-[var(--color-surface-muted)] border border-[var(--color-border-light)] text-[9px] font-mono">Shift+Enter</kbd> for new line
                 </p>
               </div>
