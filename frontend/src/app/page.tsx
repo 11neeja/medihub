@@ -21,6 +21,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import SessionSplash from '@/components/SessionSplash';
 import { useAuth, hasStoredSession } from '@/context/AuthContext';
 import { sendContactMessageAPI } from '@/lib/api';
+import { jsonLd } from '@/lib/seo';
 
 // Where the "Get in touch" form is delivered (kept in sync with the backend
 // CONTACT_RECIPIENT_EMAIL default) and shown as the public contact address.
@@ -74,6 +75,11 @@ const STATS = [
 ];
 
 const FAQ_ITEMS = [
+  {
+    question: 'What is MediHub?',
+    answer:
+      'MediHub is an all-in-one medical platform — a digital health hub where medical students, doctors, professors, and researchers read curated medical news, discover events, organize notebooks, join groups, chat in real time, and study with an AI assistant. It is free to join and runs in any modern browser.',
+  },
   {
     question: 'Who is MediHub designed for?',
     answer:
@@ -181,6 +187,22 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen w-full bg-[#F8FAFC] text-[var(--color-navy)]">
+      {/* FAQ structured data — mirrors the visible FAQ section below and
+          makes the landing page eligible for FAQ rich results. */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: jsonLd({
+            '@context': 'https://schema.org',
+            '@type': 'FAQPage',
+            mainEntity: FAQ_ITEMS.map((item) => ({
+              '@type': 'Question',
+              name: item.question,
+              acceptedAnswer: { '@type': 'Answer', text: item.answer },
+            })),
+          }),
+        }}
+      />
       {restoringSession && <SessionSplash />}
 
       {/* ── Hero copy ───────────────────────────────────────── */}
@@ -238,13 +260,13 @@ export default function LandingPage() {
               lineHeight: 0.98,
             }}
           >
-            A practice for
+            <span className="sr-only">MediHub — </span>A practice for
             <br />
             <span className="serif-accent">medical minds</span>.
           </h1>
 
           <p className="text-base sm:text-lg md:text-xl text-[var(--color-text-secondary)] leading-relaxed max-w-2xl mx-auto mb-10 fade-in-delay-2">
-            Welcome to MediHub — your complete digital hub for medical learning and collaboration.
+            Welcome to MediHub — the all-in-one medical platform for learning and collaboration.
             News, events, notes, groups, messaging, and an AI study assistant, all in one calm place.
           </p>
 
@@ -663,17 +685,22 @@ export default function LandingPage() {
       {/* ── Footer ────────────────────────────────────────────── */}
       <footer className="bg-[var(--color-navy)] text-white py-12">
         <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
-          <p
-            style={{
-              fontFamily: 'var(--font-fraunces), serif',
-              fontSize: '1.375rem',
-              fontWeight: 500,
-              letterSpacing: '-0.035em',
-              fontVariationSettings: "'opsz' 144, 'SOFT' 50, 'WONK' 1",
-            }}
-          >
-            Medi<span className="italic font-normal">Hub</span>
-          </p>
+          <div className="text-center md:text-left">
+            <p
+              style={{
+                fontFamily: 'var(--font-fraunces), serif',
+                fontSize: '1.375rem',
+                fontWeight: 500,
+                letterSpacing: '-0.035em',
+                fontVariationSettings: "'opsz' 144, 'SOFT' 50, 'WONK' 1",
+              }}
+            >
+              Medi<span className="italic font-normal">Hub</span>
+            </p>
+            <p className="text-xs text-white/50 mt-1.5 max-w-[260px] leading-relaxed">
+              The medical learning platform for students, doctors, professors, and researchers.
+            </p>
+          </div>
           <div className="flex flex-wrap justify-center gap-6 text-sm text-white/70">
             <button type="button" onClick={() => scrollToSection('features')} className="hover:text-white transition-colors">
               Features
