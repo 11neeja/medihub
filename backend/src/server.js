@@ -20,6 +20,7 @@ import groupRoutes from './routes/groupRoutes.js'
 import seedDatabase from './utils/seed.js'
 import { hasMailConfig, verifyMailerConnection, getMailerStatus, getMailerDiagnostics } from './utils/mailer.js'
 import { getAIDiagnostics } from './controllers/aiController.js'
+import { warmExternalEvents } from './controllers/eventController.js'
 
 const app = express()
 const PORT = process.env.PORT || 5000
@@ -149,6 +150,13 @@ const startServer = async () => {
   } else {
     console.warn('Mail not configured; welcome/reset emails will not be sent. Set BREVO_API_KEY or SMTP_* in backend/.env (local) or the Render dashboard (production).')
   }
+
+  // Pre-warm the external events cache in the background so the first visitor
+  // after a cold start (Render free tier wipes the in-memory cache on wake)
+  // reads a ready cache instead of blocking on slow third-party aggregation.
+  warmExternalEvents()
+    .then((events) => console.log(`External events cache warmed: ${events.length} events`))
+    .catch((error) => console.warn('External events warm-up failed:', error.message))
 
   // Middleware
   app.use(cors())

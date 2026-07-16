@@ -37,24 +37,24 @@ const fetchImageUrl = async (imageId) => {
   return ''
 }
 
-// Helper: resolve image URL from multiple possible fields on the event object
+// Helper: resolve image URL from multiple possible fields on the event object.
+// Inline fields are checked first (no network); the media API — a separate
+// round-trip per event, historically the biggest source of latency in the
+// cold aggregation — is only used when nothing inline is available.
 const resolveImageUrl = async (event) => {
-  // 1) Try the image_id via media API
-  const fromMedia = await fetchImageUrl(event.image_id)
-  if (fromMedia) return fromMedia
-
-  // 2) Direct image object (some API responses include this)
+  // 1) Direct image object (some API responses include this)
   if (event.image?.url) return event.image.url
   if (event.image?.original?.url) return event.image.original.url
 
-  // 3) Logo object
+  // 2) Logo object
   if (event.logo?.url) return event.logo.url
   if (event.logo?.original?.url) return event.logo.original.url
 
-  // 4) Primary image
+  // 3) Primary image
   if (event.primary_image?.url) return event.primary_image.url
 
-  return ''
+  // 4) Last resort: resolve the image_id via the media API
+  return await fetchImageUrl(event.image_id)
 }
 
 // Helper: extract city location from locations array
@@ -124,8 +124,10 @@ const fetchEventbriteEvents = async () => {
     'clinical research',
   ]
 
-  for (const q of queries) {
-    try {
+  // Run all searches in parallel — they're independent, so there's no reason
+  // to pay for them one after another (5× the latency).
+  const searchResults = await Promise.allSettled(
+    queries.map(async (q) => {
       const res = await fetch(`${EVENTBRITE_BASE}/destination/search/?token=${EVENTBRITE_TOKEN}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -137,19 +139,15 @@ const fetchEventbriteEvents = async () => {
           },
         }),
       })
-
-      if (res.ok) {
-        const data = await res.json()
-        if (data.events?.results?.length) {
-          allEvents.push(...data.events.results)
-        }
-      } else {
-        console.error(`[Eventbrite] Search for "${q}" failed with status ${res.status}`)
-      }
-    } catch (err) {
-      console.error(`[Eventbrite] Search error for "${q}":`, err.message)
-    }
-  }
+      if (!res.ok) throw new Error(`status ${res.status}`)
+      const data = await res.json()
+      return data.events?.results || []
+    })
+  )
+  searchResults.forEach((r, i) => {
+    if (r.status === 'fulfilled') allEvents.push(...r.value)
+    else console.error(`[Eventbrite] Search for "${queries[i]}" failed:`, r.reason?.message || r.reason)
+  })
 
   // Deduplicate by event ID
   const seen = new Set()
@@ -374,15 +372,16 @@ const fetchDevpostEvents = async () => {
 }
 
 // ── Aggregator: merge every source behind one 24hr in-memory cache ──
+// Serving is stale-while-revalidate: a warm cache (even an expired one) is
+// returned instantly and refreshed in the background, so a user only ever
+// waits on the third-party APIs when the cache is completely empty (a brand
+// new deploy, or the first hit after Render's free tier slept and wiped it —
+// which startup warming pre-empts). This is what makes it feel like news.
 let externalCache = { events: [], fetchedAt: 0 }
+let externalRefreshInFlight = null
 
-const fetchExternalEvents = async () => {
-  const now = Date.now()
-  if (externalCache.events.length > 0 && now - externalCache.fetchedAt < CACHE_TTL_MS) {
-    console.log(`[External] Returning ${externalCache.events.length} cached events`)
-    return externalCache.events
-  }
-
+// Run the actual multi-source aggregation and repopulate the cache.
+const refreshExternalCache = async () => {
   const [ebRes, hcRes, dpRes] = await Promise.allSettled([
     fetchEventbriteEvents(),
     fetchHackClubEvents(),
@@ -418,6 +417,40 @@ const fetchExternalEvents = async () => {
   return merged
 }
 
+// Deduped refresh — only one aggregation runs at a time, so concurrent
+// requests (and background refreshes) share a single set of upstream calls.
+const triggerExternalRefresh = () => {
+  if (!externalRefreshInFlight) {
+    externalRefreshInFlight = refreshExternalCache()
+      .catch((err) => {
+        console.error('[External] refresh failed:', err.message)
+        return externalCache.events // fall back to whatever we already had
+      })
+      .finally(() => { externalRefreshInFlight = null })
+  }
+  return externalRefreshInFlight
+}
+
+const fetchExternalEvents = async () => {
+  const now = Date.now()
+  const isFresh = externalCache.events.length > 0 && now - externalCache.fetchedAt < CACHE_TTL_MS
+  if (isFresh) return externalCache.events
+
+  // Stale but non-empty → serve it instantly, refresh in the background.
+  if (externalCache.events.length > 0) {
+    console.log(`[External] Serving ${externalCache.events.length} stale events; refreshing in background`)
+    triggerExternalRefresh() // fire-and-forget
+    return externalCache.events
+  }
+
+  // Cold cache → this is the only path that has to wait on the upstream APIs.
+  return triggerExternalRefresh()
+}
+
+// Warm the cache in the background on server startup so the first visitor
+// after a cold start reads a ready cache instead of blocking on aggregation.
+export const warmExternalEvents = () => triggerExternalRefresh()
+
 // @desc    Get aggregated external events (Eventbrite + Hack Club + Devpost), cached 24hr
 // @route   GET /api/events/external
 export const getExternalEvents = async (req, res) => {
@@ -435,7 +468,7 @@ export const refreshExternalEvents = async (req, res) => {
   externalCache = { events: [], fetchedAt: 0 }
   eventbriteCache = { events: [], fetchedAt: 0 }
   try {
-    const events = await fetchExternalEvents()
+    const events = await triggerExternalRefresh()
     res.json({ message: `Refreshed ${events.length} external events`, events })
   } catch (error) {
     res.status(500).json({ message: 'Failed to refresh external events', error: error.message })

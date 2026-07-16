@@ -168,33 +168,58 @@ export default function EventsPage() {
       }
     }
 
-    // 2) Fetch fresh data from API (in background if cache was loaded)
+    // 2) Fetch fresh data from API
     const fetchAllEvents = async () => {
-      if (!cached?.events.length) setIsLoadingEvents(true);
-      try {
+      const hadCache = !!cached?.events.length;
+
+      // With a stale cache already on screen, refresh quietly and swap once
+      // both sources are in — avoids the list flashing smaller mid-refresh.
+      if (hadCache) {
         const [localData, externalData] = await Promise.allSettled([
           getEventsAPI(),
           getExternalEventsAPI(),
         ]);
-
-        const localEvents = localData.status === 'fulfilled'
-          ? localData.value.map(mapAPIEvent)
-          : [];
-
-        const externalEvents = externalData.status === 'fulfilled'
-          ? externalData.value.map(mapExternalEvent)
-          : [];
-
+        const localEvents = localData.status === 'fulfilled' ? localData.value.map(mapAPIEvent) : [];
+        const externalEvents = externalData.status === 'fulfilled' ? externalData.value.map(mapExternalEvent) : [];
         const allEvents = [...externalEvents, ...localEvents];
-        setEvents(allEvents);
-        setLastUpdated(new Date());
-        setIsCached(false);
-        saveToCache(allEvents);
-      } catch (err) {
-        console.error('Failed to fetch events:', err);
-      } finally {
-        setIsLoadingEvents(false);
+        if (allEvents.length) {
+          setEvents(allEvents);
+          setLastUpdated(new Date());
+          setIsCached(false);
+          saveToCache(allEvents);
+        }
+        return;
       }
+
+      // First load (no cache): render each source the moment it arrives so the
+      // page is usable immediately, instead of waiting on the slow external
+      // aggregation to render the fast local events too.
+      setIsLoadingEvents(true);
+      let localEvents: Event[] = [];
+      let externalEvents: Event[] = [];
+      let localDone = false;
+      let externalDone = false;
+
+      const commit = () => {
+        setEvents([...externalEvents, ...localEvents]);
+        if (localDone || externalDone) setIsLoadingEvents(false);
+        if (localDone && externalDone) {
+          setLastUpdated(new Date());
+          setIsCached(false);
+          saveToCache([...externalEvents, ...localEvents]);
+        }
+      };
+
+      await Promise.allSettled([
+        getEventsAPI()
+          .then((data) => { localEvents = data.map(mapAPIEvent); })
+          .catch((err) => console.error('Failed to fetch local events:', err))
+          .finally(() => { localDone = true; commit(); }),
+        getExternalEventsAPI()
+          .then((data) => { externalEvents = data.map(mapExternalEvent); })
+          .catch((err) => console.error('Failed to fetch external events:', err))
+          .finally(() => { externalDone = true; commit(); }),
+      ]);
     };
     fetchAllEvents();
   }, []);
