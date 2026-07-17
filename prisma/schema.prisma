@@ -1,3 +1,11 @@
+// This schema exists in TWO copies that must stay identical:
+//   backend/prisma/schema.prisma — source of truth (migrations live next to it)
+//   prisma/schema.prisma         — root mirror; the Render build generates the
+//                                  runtime Prisma client from THIS copy.
+// A field added only to the backend copy ships a client that doesn't know it
+// (production 500s: "Unknown argument"). After editing, run:
+//   cp backend/prisma/schema.prisma prisma/schema.prisma
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,8 +18,13 @@ model User {
   id        String   @id @default(cuid())
   name      String
   email     String   @unique
-  password  String
+  // Null for accounts created through Google sign-in that never set a password.
+  password  String?
+  // Google account id (`sub` claim) once the user has signed in with Google.
+  googleId  String?  @unique
   role      String   @default("user")
+  resetPasswordToken   String?  @unique
+  resetPasswordExpires DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

@@ -1,3 +1,11 @@
+// This schema exists in TWO copies that must stay identical:
+//   backend/prisma/schema.prisma — source of truth (migrations live next to it)
+//   prisma/schema.prisma         — root mirror; the Render build generates the
+//                                  runtime Prisma client from THIS copy.
+// A field added only to the backend copy ships a client that doesn't know it
+// (production 500s: "Unknown argument"). After editing, run:
+//   cp backend/prisma/schema.prisma prisma/schema.prisma
+
 generator client {
   provider = "prisma-client-js"
 }
