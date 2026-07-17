@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { loginAPI, registerAPI, getMeAPI, checkBackendHealth } from '@/lib/api';
+import { loginAPI, registerAPI, googleLoginAPI, getMeAPI, checkBackendHealth } from '@/lib/api';
 
 interface User {
   _id: string;
@@ -19,6 +19,7 @@ interface AuthContextType {
   error: string | null;
   login: (email: string, password: string, rememberMe?: boolean) => Promise<void>;
   signup: (name: string, email: string, password: string, rememberMe?: boolean) => Promise<void>;
+  loginWithGoogle: (credential: string, rememberMe?: boolean) => Promise<void>;
   logout: () => void;
   clearError: () => void;
 }
@@ -179,6 +180,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Exchange a Google ID token (from the GIS button) for a MediHub session.
+  // The backend verifies the token and creates the account on first sign-in,
+  // so this one call covers both "login with Google" and "sign up with Google".
+  const loginWithGoogle = async (credential: string, rememberMe = false) => {
+    setError(null);
+    try {
+      const data = await googleLoginAPI(credential, rememberMe);
+      storeToken(data.token, rememberMe);
+      setUser({ _id: data._id, name: data.name, email: data.email });
+      setIsAuthenticated(true);
+      setBackendConnected(true);
+      setDbConnected(true);
+    } catch (err: any) {
+      const message = err.response
+        ? err.response.data?.message || 'Google sign-in failed'
+        : friendlyNetworkMessage;
+      setError(message);
+      throw new Error(message);
+    }
+  };
+
   const logout = () => {
     clearStoredToken();
     setIsAuthenticated(false);
@@ -198,6 +220,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         error,
         login,
         signup,
+        loginWithGoogle,
         logout,
         clearError,
       }}

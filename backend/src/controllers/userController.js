@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken'
 import bcrypt from 'bcryptjs'
+import { OAuth2Client } from 'google-auth-library'
 import prisma from '../config/prisma.js'
 import { hasMailConfig, sendWelcomeEmail, sendPasswordResetEmail, sendTestEmail, sendContactEmail } from '../utils/mailer.js'
 
@@ -20,6 +21,18 @@ const generatePasswordResetToken = (user) => {
 const generateToken = (id, rememberMe = false) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: rememberMe ? '7d' : '1d' })
 }
+
+export const hasGoogleAuthConfig = () => Boolean(process.env.GOOGLE_CLIENT_ID)
+
+const googleClient = hasGoogleAuthConfig() ? new OAuth2Client(process.env.GOOGLE_CLIENT_ID) : null
+
+const authResponse = (user, rememberMe) => ({
+  _id: user.id,
+  name: user.name,
+  email: user.email,
+  role: user.role,
+  token: generateToken(user.id, rememberMe),
+})
 
 const formatSmtpError = (error) => {
   const message = error?.message || 'Unknown SMTP failure'
@@ -96,6 +109,12 @@ export const loginUser = async (req, res) => {
       return res.status(401).json({ message: 'Invalid email or password' })
     }
 
+    if (!user.password) {
+      return res.status(401).json({
+        message: 'This account signs in with Google. Use "Continue with Google", or set a password via "Forgot password?".',
+      })
+    }
+
     const isMatch = await bcrypt.compare(password, user.password)
     if (!isMatch) {
       return res.status(401).json({ message: 'Invalid email or password' })
@@ -108,6 +127,68 @@ export const loginUser = async (req, res) => {
       role: user.role,
       token: generateToken(user.id, rememberMe),
     })
+  } catch (error) {
+    res.status(500).json({ message: error.message })
+  }
+}
+
+// @desc    Sign in or sign up with a Google ID token (Google Identity Services credential)
+// @route   POST /api/users/google
+export const googleAuth = async (req, res) => {
+  try {
+    if (!googleClient) {
+      return res.status(503).json({
+        message: 'Google sign-in is not configured on the server. Set GOOGLE_CLIENT_ID.',
+      })
+    }
+
+    const { credential, rememberMe = false } = req.body
+    if (!credential) {
+      return res.status(400).json({ message: 'Google credential is required' })
+    }
+
+    let payload
+    try {
+      const ticket = await googleClient.verifyIdToken({
+        idToken: credential,
+        audience: process.env.GOOGLE_CLIENT_ID,
+      })
+      payload = ticket.getPayload()
+    } catch {
+      return res.status(401).json({ message: 'Google sign-in could not be verified. Please try again.' })
+    }
+
+    const email = normalizeEmail(payload.email || '')
+    if (!email || !payload.email_verified) {
+      return res.status(401).json({ message: 'Your Google account has no verified email address.' })
+    }
+
+    const googleId = payload.sub
+
+    let user = await prisma.user.findUnique({ where: { googleId } })
+
+    if (!user) {
+      const existing = await prisma.user.findUnique({ where: { email } })
+      if (existing) {
+        // Google verified this email, so it is safe to attach Google sign-in
+        // to the account that already owns it.
+        user = await prisma.user.update({ where: { id: existing.id }, data: { googleId } })
+      } else {
+        user = await prisma.user.create({
+          data: {
+            name: (payload.name || '').trim() || email.split('@')[0],
+            email,
+            googleId,
+          },
+        })
+
+        void sendWelcomeEmail({ name: user.name, email: user.email }).catch((mailError) => {
+          console.error('Welcome email failed:', mailError.message)
+        })
+      }
+    }
+
+    res.json(authResponse(user, rememberMe))
   } catch (error) {
     res.status(500).json({ message: error.message })
   }

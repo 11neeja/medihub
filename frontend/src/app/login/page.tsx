@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { Mail, ArrowRight, ArrowLeft, AlertCircle, CheckCircle2, ShieldCheck } from 'lucide-react';
 import PasswordInput from '@/components/PasswordInput';
+import GoogleSignInButton from '@/components/GoogleSignInButton';
 import { forgotPasswordAPI, resetPasswordAPI } from '@/lib/api';
 
 const LOGIN_HERO_IMAGE =
@@ -29,7 +30,7 @@ export default function LoginPage() {
   const [resetError, setResetError] = useState('');
   const [resetSuccess, setResetSuccess] = useState('');
   const [resetSubmitting, setResetSubmitting] = useState(false);
-  const { login } = useAuth();
+  const { login, loginWithGoogle } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -64,6 +65,17 @@ export default function LoginPage() {
       setError(err.message || 'Login failed. Please try again.');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleGoogleCredential = async (credential: string) => {
+    setError('');
+    try {
+      await loginWithGoogle(credential, rememberMe);
+      router.push('/home');
+    } catch (err: any) {
+      setError(err.message || 'Google sign-in failed. Please try again.');
+      throw err; // let the button clear its busy state knowing we handled the message
     }
   };
 
@@ -247,6 +259,8 @@ export default function LoginPage() {
                 )}
               </button>
             </form>
+
+            <GoogleSignInButton text="signin_with" onCredential={handleGoogleCredential} />
 
             <div className="mt-8 pt-6 border-t border-[var(--color-border-light)] text-center">
               <p className="body-md">

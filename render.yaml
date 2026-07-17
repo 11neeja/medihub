@@ -4,7 +4,9 @@ services:
     env: node
     rootDir: backend
     plan: starter
-    buildCommand: npm install && npx prisma generate --schema prisma/schema.prisma
+    # migrate deploy applies any pending prisma/migrations to the production DB
+    # on every deploy (no-op when up to date), so schema changes ship themselves.
+    buildCommand: npm install && npx prisma generate --schema prisma/schema.prisma && npx prisma migrate deploy --schema prisma/schema.prisma
     startCommand: npm start
     healthCheckPath: /api/health
     envVars:
@@ -15,6 +17,11 @@ services:
       - key: DATABASE_URL
         sync: false
       - key: JWT_SECRET
+        sync: false
+      # OAuth 2.0 Web client ID from console.cloud.google.com — used to verify
+      # Google ID tokens for "Continue with Google". Same value as the
+      # frontend's NEXT_PUBLIC_GOOGLE_CLIENT_ID. Unset = Google sign-in off.
+      - key: GOOGLE_CLIENT_ID
         sync: false
       # Public URL of the deployed frontend — used to build links in emails
       # (password reset, welcome). MUST be set or reset links point to localhost.

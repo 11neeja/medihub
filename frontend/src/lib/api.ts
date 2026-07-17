@@ -43,6 +43,13 @@ export const registerAPI = async (name: string, email: string, password: string,
   return res.data
 }
 
+// credential = Google ID token from Google Identity Services; the backend
+// verifies it and signs the user in (creating the account on first use).
+export const googleLoginAPI = async (credential: string, rememberMe = false) => {
+  const res = await api.post('/users/google', { credential, rememberMe })
+  return res.data
+}
+
 export const forgotPasswordAPI = async (email: string) => {
   const res = await api.post('/users/forgot-password', { email })
   return res.data

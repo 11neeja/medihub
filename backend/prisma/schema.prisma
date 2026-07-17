@@ -10,7 +10,10 @@ model User {
   id        String   @id @default(cuid())
   name      String
   email     String   @unique
-  password  String
+  // Null for accounts created through Google sign-in that never set a password.
+  password  String?
+  // Google account id (`sub` claim) once the user has signed in with Google.
+  googleId  String?  @unique
   role      String   @default("user")
   resetPasswordToken   String?  @unique
   resetPasswordExpires DateTime?

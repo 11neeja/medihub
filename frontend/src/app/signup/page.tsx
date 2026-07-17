@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { User, Mail, ArrowRight, ArrowLeft, AlertCircle, ShieldCheck } from 'lucide-react';
 import PasswordInput from '@/components/PasswordInput';
+import GoogleSignInButton from '@/components/GoogleSignInButton';
 
 const SIGNUP_HERO_IMAGE =
   'https://images.unsplash.com/photo-1666214280391-8ff5bd3c0bf0?w=1200&h=1600&fit=crop&q=80';
@@ -18,8 +19,19 @@ export default function SignupPage() {
   const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { signup } = useAuth();
+  const { signup, loginWithGoogle } = useAuth();
   const router = useRouter();
+
+  const handleGoogleCredential = async (credential: string) => {
+    setError('');
+    try {
+      await loginWithGoogle(credential, rememberMe);
+      router.push('/home');
+    } catch (err: any) {
+      setError(err.message || 'Google sign-up failed. Please try again.');
+      throw err; // let the button clear its busy state knowing we handled the message
+    }
+  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -275,6 +287,8 @@ export default function SignupPage() {
                 )}
               </button>
             </form>
+
+            <GoogleSignInButton text="signup_with" onCredential={handleGoogleCredential} />
 
             <div className="mt-8 pt-6 border-t border-[var(--color-border-light)] text-center">
               <p className="body-md">
